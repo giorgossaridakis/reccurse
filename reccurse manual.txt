@@ -44,6 +44,67 @@ attributes for field titles and contents can be declared as active or not (0 1) 
 
 these are the choices we have from the ncurses library, thanks to which this software is alive and colourful.
 
+color codes
+-----------
+code   foreground   background
+ 1      RED         BLACK 
+ 2      GREEN       BLACK 
+ 3      YELLOW      BLACK 
+ 4      BLUE        BLACK 
+ 5      MAGENTA     BLACK 
+ 6      CYAN        BLACK 
+ 7      RED         GREEN 
+ 8      RED         YELLOW 
+ 9      RED         BLUE 
+ 10     RED         MAGENTA 
+ 11     RED         CYAN 
+ 12     RED         WHITE 
+ 13     GREEN       RED   
+ 14     GREEN       YELLOW   
+ 15     GREEN       BLUE 
+ 16     GREEN       MAGENTA 
+ 17     GREEN       CYAN 
+ 18     GREEN       WHITE 
+ 20     YELLOW      RED   
+ 21     YELLOW      GREEN    
+ 22     YELLOW      BLUE  
+ 23     YELLOW      MAGENTA  
+ 24     YELLOW      CYAN   
+ 25     YELLOW      WHITE  
+ 26     BLUE        RED  
+ 27     BLUE        GREEN  
+ 28     BLUE        YELLOW  
+ 29     BLUE        MAGENTA  
+ 30     BLUE        CYAN 
+ 31     BLUE        WHITE  
+ 32     MAGENTA     RED  
+ 33     MAGENTA     GREEN  
+ 34     MAGENTA     YELLOW  
+ 35     MAGENTA     BLUE  
+ 36     MAGENTA     CYAN  
+ 37     MAGENTA     WHITE  
+ 38     CYAN        RED    
+ 39     CYAN        GREEN  
+ 40     CYAN        YELLOW  
+ 41     CYAN        BLUE  
+ 42     CYAN        MAGENTA  
+ 43     CYAN        WHITE  
+ 44     WHITE       RED 
+ 45     WHITE       GREEN 
+ 46     WHITE       YELLOW   
+ 47     WHITE       BLUE 
+ 48     WHITE       MAGENTA 
+ 49     WHITE       CYAN 
+ 50     BLACK       BLACK 
+ 51     RED         RED 
+ 52     GREEN       GREEN   
+ 53     YELLOW      YELLOW   
+ 54     BLUE        BLUE 
+ 55     MAGENTA     MAGENTA 
+ 56     CYAN        CYAN 
+ 57     WHITE       WHITE 
+ 58     WHITE       BLACK 
+
 epilogue
 --------
 well, that's about it. the rest I believe are covered inside reccurse. for suggestions or more, my email address is giorgossaridakis@gmail.com 
