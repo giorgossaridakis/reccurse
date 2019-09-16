@@ -5,7 +5,7 @@ starting up
 reccurse is a "filemaker" type program for the terminal. it is basically a database with  customizable page setup for it's fields.
 there are three ways to start a new database:
 1. reccurse existing.rc:
-this will prompt the program to read page structure from a text file with .rc extension. it will then create the corresponding .db file. this is the file where everything is will be stored. reccurse by default saves changes in records in real time, so it's a good idea to always keep a backup of this file, with mind to prevent loss of data. 
+this will prompt the program to read page structure from a text file with .rc extension. it will then create the corresponding .db file. this is the file where everything will be stored. reccurse by default saves changes in records in real time, so it's a good idea to always keep a backup of this file, with mind to prevent loss of data. 
 2. reccurse existing.db:
 if you have a ready .db file, the program will read from it directly, it will not look for existing.rc
 3. reccurse nonexisting
@@ -30,8 +30,8 @@ fieldlist 0 000010000 1 40 15 9 2 001010000 6 1 5 2 2 . 0 1 1 1 .
 
 reccurse needs to locate a first # then a new line character.
 all field parameters must also end with a new line character.
-at the end of field declarations, a new line character is expected as well.
-the comments above are give or take self-explanatory. a suffix will be appended to end of a field's contents if that field is of type 0 (numerical). if formula is activated (1) then an entry of (12345+54321)/(1*0.33443) will produce a numerical result in a numerical type field. formula entries can also be given in reverse polish calculator notation, i.e. (12345 12345 +) (1*0.33433) / . A #5 is a reference to the value of the 5th field in the same record as the one being edited. A formula of #5+12345 will calculate <what's in field 5>+12345.
+at the end of field declarations, a # and new line character are expected as well.
+the comments above are give or take self-explanatory. a suffix (max 3 chars) will be appended to end of a field's contents if that field is of type 0 (numerical). if formula is activated (1) then an entry of (12345+54321)/(1*0.33443) will produce a numerical result in a numerical type field. formula entries can also be given in reverse polish calculator notation, i.e. (12345 12345 +) (1*0.33433) / . A #5 is a reference to the value of the 5th field in the same record as the one being edited. A formula of #5+12345 will calculate <what's in field 5>+12345.
 hopefully in the next version, I'll add functions and string handling calculation.
 a field list entry above 0 means that field can collect values from the fieldlist reference. up and down arrows during editing will summon them. <insert> will copy the value of the fieldlist reference from the same record.
 
