@@ -1,0 +1,52 @@
+reccurse manual ~0.270 version
+
+starting up
+-----------
+reccurse is a "filemaker" type program for the terminal. it is basically a database with  customizable page setup for it's fields.
+there are three ways to start a new database:
+1. reccurse existing.rc:
+this will prompt the program to read page structure from a text file with .rc extension. it will then create the corresponding .db file. this is the file where everything is will be stored. reccurse by default saves changes in records in real time, so it's a good idea to always keep a backup of this file, with mind to prevent loss of data. 
+2. reccurse existing.db:
+if you have a ready .db file, the program will read from it directly, it will not look for existing.rc
+3. reccurse nonexisting
+reccurse will open and ask for verification of the filename. consequently, it will create a .rc file with a sample field and the .db file it needs to operate.
+
+.rc file structure
+------------------
+here is a sample .rc file that you should have with the code->
+
+sample reccurse .rc file
+
+begin and end with character seen below, so no others allowed in strings
+. is absence of string 0 is absence of number.
+
+structure of record: <title (12 chars max), title_pos (0..4), title attributes, title color, pos_x, pos_y, size_x, size_y, attributes, color, box or not, box color, type (0 int or double 1 date 2 string), number of decimals, suffix if number or formula, formula or not, field list reference (0 for none), editable, active, auto enter value> 
+#
+date&time 0 000000000 3 10 5 10 2 000000000 5 1 1 1 2 $ 0 0 1 1 .
+string 2 000100100 2 20 15 9 2 001010000 1 1 2 2 2 !!! 0 0 1 1 Giorgos
+formula 3 000000000 34 40 5 8 1 000000000 2 1 4 0 2 eur 1 0 0 1 22_+_22
+fieldlist 0 000010000 1 40 15 9 2 001010000 6 1 5 2 2 . 0 1 1 1 .
+#
+
+reccurse needs to locate a first # then a new line character.
+all field parameters must also end with a new line character.
+at the end of field declarations, a new line character is expected as well.
+the comments above are give or take self-explanatory. a suffix will be appended to end of a field's contents if that field is of type 0 (numerical). if formula is activated (1) then an entry of (12345+54321)/(1*0.33443) will produce a numerical result in a numerical type field. formula entries can also be given in reverse polish calculator notation, i.e. (12345 12345 +) (1*0.33433) / . A #5 is a reference to the value of the 5th field in the same record as the one being edited. A formula of #5+12345 will calculate <what's in field 5>+12345.
+hopefully in the next version, I'll add functions and string handling calculation.
+a field list entry above 0 means that field can collect values from the fieldlist reference. up and down arrows during editing will summon them. <insert> will copy the value of the fieldlist reference from the same record.
+
+attributes
+----------
+attributes for field titles and contents can be declared as active or not (0 1) in the .rc file or switched on/off during execution. it's a nine digit number. let's see what they mean:
+     0         0         0         0         0         0         0         0         0
+   normal   standout  underline reverse    blink      dim      bold      protect   invis
+
+these are the choices we have from the ncurses library, thanks to which this software is alive and colourful.
+
+epilogue
+--------
+well, that's about it. the rest I believe are covered inside reccurse. for suggestions or more, my email address is giorgossaridakis@gmail.com 
+
+reccurse is distributed under the GNU Public Licence.
+
+written in Aug-Sep 2019 by Giorgos Saridakis.
