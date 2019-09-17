@@ -1,4 +1,4 @@
-// reccurse, the filemaker of ncurses, version 0.273
+// reccurse, the filemaker of ncurses, version 0.274
 
 // included libraries
 // C
@@ -33,7 +33,7 @@
 #define MAXRECORDS 9999 // pages limit
 #define FIELDSIZE MAXSTRING*2+MAXNUMBERDIGITS+15  // +7 would do
 #define MAXSEARCHDEPTH 5
-#define version 0.273
+#define version 0.274
 
 // keyboard
 #define UP 53
@@ -485,8 +485,7 @@ int Read_Write_Current_Record(int mode) // 0 read, 1 write
    ttext[i]='\0';
    stringcodedecode(ttext, ttext);
    for (i=0;i<4;i++)
-    dbfileaccess.put(ttext[i]);
-  trecord=currentrecord; }
+  dbfileaccess.put(ttext[i]); }
   dbfileaccess.close();
     
  return trecord;
@@ -714,7 +713,6 @@ void Delete_Field(int field_id)
    
    Read_Write_db_File(3);
    Read_Write_db_File(1);
-//    Read_Write_db_File();
 }
 
 // bring current datetime stamp in char array
@@ -850,7 +848,7 @@ void Delete_Record(int record_id)
 
    Read_Write_db_File(3);
    Read_Write_db_File(1);
-   Read_Write_db_File();
+//    Read_Write_db_File();
 }
 
 // duplicate entire record
@@ -980,9 +978,6 @@ int Show_Record_and_Menu()
        if (currentfield>fieldsperrecord-1)
       currentfield=0; }
      break;
-     case '?':
-      Show_Help_Screen();
-     break;
      case UP:// from all menus
       --currentfield;
        if (currentfield<0)
@@ -991,6 +986,9 @@ int Show_Record_and_Menu()
        --currentfield;
        if (currentfield<0)
       currentfield=fieldsperrecord-1; }
+     break;
+     case '?': // from all menus
+      Show_Help_Screen();
      break;
      // from menu 1
      case 'a':
