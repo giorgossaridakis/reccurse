@@ -1,4 +1,5 @@
 int ctoi(char c);
+char *dtoa(long double val);
 char *itoa(long int val, int base=10);
 char charcoder(char d, int mode=0);
 int filecodedecode(char *source, char *destination, int mode=0);
@@ -93,32 +94,6 @@ char *dtoa(long double val)
   result[i]='\0';
   
  return &result[0];
-}
-
-// string to double
-double atod(char *text, int decimals)
-{
-  char intpart[10], decpart[10];
-  double result;
-  int i;
-  
-   i=0;
-   while (*text!='.' && *text!=',') {
-    intpart[i++]=*text++;
-    if (!*text)
-   break; }
-   intpart[i++]='.';
-   intpart[i]='\0';
-   
-   i=0; ++text;
-   while (*text && i<decimals)
-    decpart[i++]=*text++;
-   decpart[i]='\0';
-        
-   result=(double) atoi(intpart);
-   result+=(double) atoi(decpart)/ pow(10, decimals);
-  
-  return result;
 }
 
 // simple code and decode char
