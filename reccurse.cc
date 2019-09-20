@@ -1,4 +1,4 @@
-// reccurse, the filemaker of ncurses, version 0.274
+// reccurse, the filemaker of ncurses, version 0.275
 
 // included libraries
 // C
@@ -33,7 +33,7 @@
 #define MAXRECORDS 9999 // pages limit
 #define FIELDSIZE MAXSTRING*2+MAXNUMBERDIGITS+15  // +7 would do
 #define MAXSEARCHDEPTH 5
-#define version 0.274
+#define version 0.275
 
 // keyboard
 #define UP 53
@@ -473,7 +473,7 @@ int Read_Write_Current_Record(int mode) // 0 read, 1 write
   if (!mode) {
    dbfileaccess.seekg(startofrecords, ios::beg);
    for (i=0;i<4;i++)
-    dbfileaccess.get(ttext[i++]);
+    dbfileaccess.get(ttext[i]);
    ttext[i]='\0';
    stringcodedecode(ttext, ttext, 1);
   trecord=atoi(ttext); }
@@ -848,7 +848,6 @@ void Delete_Record(int record_id)
 
    Read_Write_db_File(3);
    Read_Write_db_File(1);
-//    Read_Write_db_File();
 }
 
 // duplicate entire record
@@ -879,7 +878,7 @@ int Show_Record_and_Menu()
   FindSchedule tfindschedule;
   vector <Annotated_Field> trecords;
   
-   currentrecord=Read_Write_Current_Record();       
+   currentrecord=Read_Write_Current_Record();
    while (run) {
     Clear_Screen();
     for (i=0;i<fieldsperrecord;i++)
@@ -965,9 +964,11 @@ int Show_Record_and_Menu()
      break;
      case HOME: // from all menus
       currentrecord=findresults[0][0];
+      Read_Write_Current_Record(1);
      break;
      case END: // from all menus
       currentrecord=findresults[0][recordsnumber-1];
+      Read_Write_Current_Record(1);
      break;
      case DOWN: // from all menus
       ++currentfield;
