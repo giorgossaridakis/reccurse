@@ -7,11 +7,11 @@
 int parenthesesincluderforpolishreversecalculator(char formula[]);
 int reversepolishcalculatorequalizer(char formula[], int record_id=-1);
 double reversepolishcalculator(char formula[]);
-int getop(char s[]);
+int getop(char s[], char formula[]);
 void push(double f);
 double pop(void);
 
-char formula[MAXCOMMAND];
+// char formula[MAXCOMMAND];
 int pos;
 int sp = 0; /* next free stack position */
 double val[MAXVAL]; /* value stack */
@@ -26,7 +26,7 @@ double op2,op3;
 char s[MAXOP];
 
     pos=0;
-    while ((type = getop(s)) != EOF) {
+    while ((type = getop(s, formula)) != EOF) {
      switch (type) {
       case NUMBER:
        push(atof(s));
@@ -78,7 +78,7 @@ char s[MAXOP];
 }
 
 /* getop: get next character or numeric operand */
-int getop(char s[])
+int getop(char s[], char formula[])
 {
 int i, c;
 
@@ -212,14 +212,14 @@ int reversepolishcalculatorequalizer(char formula[], int record_id)
    
    // is string in polish calculator syntax ?
    pos=0;
-   if ((type=getop(s))==NUMBER && (type=getop(s))==NUMBER) {
+   if ((type=getop(s, formula))==NUMBER && (type=getop(s, formula))==NUMBER) {
     pos=0;
    return -1; }
    if (pos) {
     pos=0;
-    type=getop(s); // read first number
+    type=getop(s, formula); // read first number
     strcpy(transformedtext, s);
-    while ((type = getop(s)) != EOF) {
+    while ((type = getop(s, formula)) != EOF) {
      if (type==NUMBER) {
       strcat(transformedtext, s);
      ++numbers; }
