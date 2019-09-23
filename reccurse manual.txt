@@ -1,4 +1,4 @@
-reccurse manual ~0.270 version
+reccurse manual ~0.277 version
 
 starting up
 -----------
@@ -33,7 +33,7 @@ all field parameters must also end with a new line character.
 at the end of field declarations, a # and new line character are expected as well.
 the comments above are give or take self-explanatory. a suffix (max 3 chars) will be appended to end of a field's contents if that field is of type 0 (numerical). spaces in the .rc file are strictly to be replaced by underscores. hello world -> hello_world.
 if formula is activated (1) then an entry of (12345+54321)/(1*0.33443) will produce a numerical result in a numerical type field. formula entries can also be given in reverse polish calculator notation, i.e. (12345 12345 +) (1*0.33433) / . A #5 is a reference to the value of the 5th field in the same record as the one being edited. A formula of #5+12345 will calculate <what's in field 5>+12345.
-hopefully in the next version, I'll add functions and string handling calculation.
+formulas for string fields are easy. examples: #5 will collect the text value from field 5. no addition sign is required-> field five has #5. string functions are mid$(text or field reference, start character, number of characters) mid$(hello, 1, 2), left$(text, 2), right$(text, 2), toupper$(text) and tolower$(text). leave spaces after each function end.
 a field list entry above 0 means that field can collect values from the fieldlist reference. up and down arrows during editing will summon them. <insert> will copy the value of the fieldlist reference from the same record.
 
 attributes

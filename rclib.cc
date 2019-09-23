@@ -18,7 +18,7 @@ void stringquotesencloser(char *tstring, int flag=0);
 void stringquotesopener(char *tstring);
 int isinquotes(char tstring[]);
 void limitspaces(char *tstring);
-int isempty(char *tstring);
+int isnotempty(char *tstring);
 int numberofdigits(long int n);
 int sgetch(int x_pos=78, int y_pos=24, int sleeptime=250, int showflag=1);
 void cleanstdin();
@@ -34,6 +34,7 @@ int isprintablecharacter(char t);
 int iscorruptstring(char *tstring);
 int limitsignificantnumbers(char *s, int digits);
 int find(char text[], char token[]);
+int findsimple(char text[], char token[]);
 int sortrecords(int field_id, int recordssequence[], int mode=0);
 
 // definitions
@@ -435,11 +436,11 @@ void limitspaces(char *tstring)
 }
 
 // is string composed solely of spaces ?
-int isempty(char *tstring)
+int isnotempty(char *tstring)
 {
   int i=0;
   
-   while (*tstring && isprintablecharacter(*tstring))
+   while (*tstring)
     if (isprintablecharacter(*tstring) && !isspace(*tstring++))
      ++i;
     
@@ -637,6 +638,26 @@ int find(char text[], char token[])
  return (hits==arraypositions) ? 1 : 0;;
 }
 
+// find command in text
+int findsimple(char text[], char token[])
+{ 
+  int i, n, hit=0;
+  char ttoken[MAXSTRING];
+  
+   for (i=0;i<strlen(text);i++) {
+    if (tolower(text[i])==token[0]) {
+     hit=i+1;
+     for (n=0;n<strlen(token);n++)
+      ttoken[n]=tolower(text[i+n]);
+     ttoken[n]='\0';
+     if (strcmp(ttoken, token))
+      hit=0; 
+     else
+   break; } }
+   
+ return hit;
+}
+
 // sort records from sequence in parameter array
 int sortrecords(int field_id, int recordssequence[], int mode) // 0 ascending 1 descending
 {
@@ -664,3 +685,4 @@ int sortrecords(int field_id, int recordssequence[], int mode) // 0 ascending 1 
     
   return 0;
 }
+
