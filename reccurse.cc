@@ -1,4 +1,4 @@
-// reccurse, the filemaker of ncurses, version 0.281
+// reccurse, the filemaker of ncurses, version 0.282
 
 // included libraries
 // C
@@ -33,7 +33,7 @@
 #define MAXRECORDS 9999 // pages limit
 #define FIELDSIZE MAXSTRING*2+MAXNUMBERDIGITS+15  // +7 would do
 #define MAXSEARCHDEPTH 5
-#define version 0.281
+#define version 0.282
 
 // keyboard
 #define UP 53
@@ -535,7 +535,7 @@ int Read_Write_Current_Parameters(int item, int mode) // item:0 currentrecord, 1
 void Read_Record_Field(ifstream &instream, Field &tfield)
 {    
     instream >> tfield.title;
-    replaceunderscores(tfield.title, 1);
+    replaceunderscoresandbrackets(tfield.title, 1);
     instream >> tfield.title_position;
     instream >> tfield.title_attributes;
     instream >> tfield.title_color;
@@ -550,20 +550,20 @@ void Read_Record_Field(ifstream &instream, Field &tfield)
     instream >> tfield.type;
     instream >> tfield.decimals;
     instream >> tfield.suffix;
-    replaceunderscores(tfield.suffix, 1);
+    replaceunderscoresandbrackets(tfield.suffix, 1);
     instream >> tfield.formula;
     instream >> tfield.fieldlist;
     instream >> tfield.editable;
     instream >> tfield.active;
     instream >> tfield.automatic_value;
-    replaceunderscores(tfield.automatic_value, 1);
+    replaceunderscoresandbrackets(tfield.automatic_value, 1);
 }
 
 // read record fields from istringstream 
 void Read_Record_Field(istringstream &instream, Field &tfield)
 {    
     instream >> tfield.title;
-    replaceunderscores(tfield.title, 1);
+    replaceunderscoresandbrackets(tfield.title, 1);
     instream >> tfield.title_position;
     instream >> tfield.title_attributes;
     instream >> tfield.title_color;
@@ -578,21 +578,21 @@ void Read_Record_Field(istringstream &instream, Field &tfield)
     instream >> tfield.type;
     instream >> tfield.decimals;
     instream >> tfield.suffix;
-    replaceunderscores(tfield.suffix, 1);
+    replaceunderscoresandbrackets(tfield.suffix, 1);
     instream >> tfield.formula;
     instream >> tfield.fieldlist;
     instream >> tfield.editable;
     instream >> tfield.active;
     instream >> tfield.automatic_value;
-    replaceunderscores(tfield.automatic_value, 1);
+    replaceunderscoresandbrackets(tfield.automatic_value, 1);
 }
 
 // write record fields to ofstream
 void Write_Record_Field(ofstream &outstream, Field &tfield)
 {
-    replaceunderscores(tfield.title, 0);
+    replaceunderscoresandbrackets(tfield.title, 0);
     outstream << tfield.title;
-    replaceunderscores(tfield.title, 1);
+    replaceunderscoresandbrackets(tfield.title, 1);
     outstream << " ";
     outstream << tfield.title_position;
     outstream << " ";
@@ -620,9 +620,9 @@ void Write_Record_Field(ofstream &outstream, Field &tfield)
     outstream << " ";
     outstream << tfield.decimals;
     outstream << " ";
-    replaceunderscores(tfield.suffix, 0);
+    replaceunderscoresandbrackets(tfield.suffix, 0);
     outstream << tfield.suffix;
-    replaceunderscores(tfield.suffix, 1);
+    replaceunderscoresandbrackets(tfield.suffix, 1);
     outstream << " ";
     outstream << tfield.formula;
     outstream << " ";
@@ -632,18 +632,18 @@ void Write_Record_Field(ofstream &outstream, Field &tfield)
     outstream << " ";
     outstream << tfield.active;
     outstream << " ";
-    replaceunderscores(tfield.automatic_value, 0);
+    replaceunderscoresandbrackets(tfield.automatic_value, 0);
     outstream << tfield.automatic_value;
-    replaceunderscores(tfield.automatic_value, 1);
+    replaceunderscoresandbrackets(tfield.automatic_value, 1);
     outstream << " ";
 }
 
 // write record fields to string
 void Write_Record_Field(char *ttext, Field &tfield)
 {
-    replaceunderscores(tfield.title, 0);
+    replaceunderscoresandbrackets(tfield.title, 0);
     strcpy(ttext, tfield.title);
-    replaceunderscores(tfield.title, 1);
+    replaceunderscoresandbrackets(tfield.title, 1);
     strcat(ttext, " ");
     strcat(ttext, itoa(tfield.title_position));
     strcat(ttext, " ");
@@ -671,9 +671,9 @@ void Write_Record_Field(char *ttext, Field &tfield)
     strcat(ttext, " ");
     strcat(ttext, itoa(tfield.decimals));
     strcat(ttext, " ");
-    replaceunderscores(tfield.suffix, 0);
+    replaceunderscoresandbrackets(tfield.suffix, 0);
     strcat(ttext, tfield.suffix);
-    replaceunderscores(tfield.suffix, 1);
+    replaceunderscoresandbrackets(tfield.suffix, 1);
     strcat(ttext, " ");
     strcat(ttext, itoa(tfield.formula));
     strcat(ttext, " ");
@@ -683,9 +683,9 @@ void Write_Record_Field(char *ttext, Field &tfield)
     strcat(ttext, " ");
     strcat(ttext, itoa(tfield.active));
     strcat(ttext, " ");
-    replaceunderscores(tfield.automatic_value, 0);
+    replaceunderscoresandbrackets(tfield.automatic_value, 0);
     strcat(ttext, tfield.automatic_value);
-    replaceunderscores(tfield.automatic_value, 1);
+    replaceunderscoresandbrackets(tfield.automatic_value, 1);
     strcat(ttext, "\n");
 }
 
@@ -787,8 +787,8 @@ int Read_Write_Field(Annotated_Field &tfield, long int field_position, int mode)
    dbfileaccess.seekg(field_position, ios::beg);
   else {
    dbfileaccess.seekp(field_position, ios::beg);
-   replaceunderscores(tfield.text, 0);
-   replaceunderscores(tfield.formula, 0);
+   replaceunderscoresandbrackets(tfield.text, 0);
+   replaceunderscoresandbrackets(tfield.formula, 0);
    strcpy(ttext, itoa(tfield.id));
    strcat(ttext, " ");
    strcat(ttext, dtoa(tfield.number));
@@ -796,8 +796,8 @@ int Read_Write_Field(Annotated_Field &tfield, long int field_position, int mode)
    strcat(ttext, tfield.text);
    strcat(ttext, " ");
    strcat(ttext, tfield.formula);
-   replaceunderscores(tfield.text, 1);
-   replaceunderscores(tfield.formula, 1);
+   replaceunderscoresandbrackets(tfield.text, 1);
+   replaceunderscoresandbrackets(tfield.formula, 1);
    for (i=strlen(ttext);i<FIELDSIZE;i++)
     ttext[i]=SPACE;
   stringcodedecode(ttext, ttext); }
@@ -817,8 +817,8 @@ int Read_Write_Field(Annotated_Field &tfield, long int field_position, int mode)
    ttfield >> tfield.number;
    ttfield >> tfield.text;
    ttfield >> tfield.formula; 
-   replaceunderscores(tfield.text, 1);
-  replaceunderscores(tfield.formula, 1);  }
+   replaceunderscoresandbrackets(tfield.text, 1);
+  replaceunderscoresandbrackets(tfield.formula, 1);  }
   
  return 0;
 }
@@ -1137,6 +1137,7 @@ int Show_Record_and_Menu()
      break;
      case 'u': // invoke editor
       Field_Editor();
+      currentrecord=Read_Write_Current_Parameters(0);
      break;
      case DELETE:
       strcpy(records[(currentrecord*fieldsperrecord)+currentfield].text, " ");

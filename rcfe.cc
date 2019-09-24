@@ -209,6 +209,7 @@ void Field_Editor()
   printw("save changes (y/n):");
   t=sgetch();
   if (tolower(t)=='y') {
+   alteredscreenparameters=0;
    Read_Write_db_File(3);
   Read_Write_db_File(1); }
 }

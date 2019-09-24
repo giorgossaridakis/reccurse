@@ -25,7 +25,7 @@ void cleanstdin();
 void Show_Message(int x_pos, int y_pos, int color, char *message, int sleeptime=1500);
 void Show_Message(int x_pos, int y_pos, int color, const char *message, int sleeptime=1500);
 void Sleep(int sleepMs) { usleep(sleepMs*1000); } // sleep routine;=)
-void replaceunderscores(char dataname[], int flag);
+void replaceunderscoresandbrackets(char dataname[], int flag);
 char *ctos(int t);
 double bringfractionpartofdivision(int param1, int param2, int scale=10);
 int isspace(char t);
@@ -519,17 +519,21 @@ void Show_Message(int x_pos, int y_pos, int color, const char *message, int slee
 }
 
 // replace underscores with spaces
-void replaceunderscores(char dataname[], int flag) // 0 place underscore, 1 place SPACE
+void replaceunderscoresandbrackets(char dataname[], int flag) // 0 place underscore, 1 place SPACE
 {
   int i1;
-  if (!flag) 
-   for (i1=0;i1<strlen(dataname);i1++)
+  if (!flag) {
+   for (i1=0;i1<strlen(dataname);i1++) {
     if (dataname[i1]==SPACE)
      dataname[i1]='_';
-  if (flag) 
-   for (i1=0;i1<strlen(dataname);i1++)
+    if (dataname[i1]=='#')
+  dataname[i1]='`'; } }
+  if (flag) {
+   for (i1=0;i1<strlen(dataname);i1++) {
     if (dataname[i1]=='_')
      dataname[i1]=SPACE;
+    if (dataname[i1]=='`')
+  dataname[i1]='#'; } }
   dataname[i1]='\0';
 }
 
