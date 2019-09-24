@@ -1,4 +1,4 @@
-// reccurse, the filemaker of ncurses, version 0.275
+// reccurse, the filemaker of ncurses, version 0.280
 
 // included libraries
 // C
@@ -33,7 +33,7 @@
 #define MAXRECORDS 9999 // pages limit
 #define FIELDSIZE MAXSTRING*2+MAXNUMBERDIGITS+15  // +7 would do
 #define MAXSEARCHDEPTH 5
-#define version 0.275
+#define version 0.280
 
 // keyboard
 #define UP 53
@@ -65,6 +65,7 @@ int recordsnumber=0;
 int currentrecord=0;
 int startofrecords=0;
 int fieldsperrecord=0;
+int alteredscreenparameters=0;
 char rcfile[MAXSTRING], dbfile[MAXSTRING];
 int tfieldnumber; // keep a number for use in same field formula reference
 const char *onoff[]= { "off", "on" };
@@ -125,7 +126,7 @@ int Create_New_Sample_File(char *file);
 int Read_rc_File();
 int Write_rc_File(char *file);
 int Read_Write_db_File(int mode=0);
-int Read_Write_Current_Record(int mode=0); // 0 read, 1 write
+int Read_Write_Current_Parameters(int item, int mode=0); // 0 read, 1 write
 void Read_Record_Field(ifstream &instream, Field &tfield);
 void Read_Record_Field(istringstream &instream, Field &tfield);
 void Write_Record_Field(ofstream &outstream, Field &tfield);
@@ -159,6 +160,7 @@ int Import_Database(char *filename);
 #include "rcscr.cc"
 #include "rclib.cc"
 #include "rcpc.cc"
+#include "rcsc.cc"
 #include "rcfe.cc"
 
 int main(int argc, char *argv[])
@@ -250,6 +252,14 @@ void Intro_Screen()
 // goodbye
 int End_Program(int code)
 {
+  if (!code) {
+   if (alteredscreenparameters) {
+    char c;
+    Show_Message(1, 24, 2, "save altered screen attributes (y/n):", 0);
+    c=sgetch();
+    if (tolower(c)=='y')
+  Read_Write_db_File(4); } }
+   
   char tmessage[MAXSTRING];
   strcpy(tmessage, "exiting reccurse with code ");
   strcat(tmessage, itoa(code, 10));
@@ -351,7 +361,7 @@ int Write_rc_File(char *file)
 }
 
 // read-write .db file
-int Read_Write_db_File(int mode) // 0 read, 1 write, 2 create from file, 3 recreate from istringstream
+int Read_Write_db_File(int mode) // 0 read, 1 write, 2 create from file, 3&4 recreate from istringstream
 {
   int i, i1=0;
   char c;
@@ -417,7 +427,7 @@ int Read_Write_db_File(int mode) // 0 read, 1 write, 2 create from file, 3 recre
     if (!activefields) {
      Show_Message(1, 24, 1, "no active fields in database");
    End_Program(-2); } }
-
+   
    if (mode==3) { // recreate rc data into string and rewrite rcfile & dbfile
     char ttext3[MAXSTRING*5];
     dbfileaccess.close();
@@ -433,12 +443,27 @@ int Read_Write_db_File(int mode) // 0 read, 1 write, 2 create from file, 3 recre
     outdbfile.put(charcoder('#', 0));
     ++startofrecords;
    outdbfile.close(); }
+
+   if (mode==4) { // only rewrite rcdata
+    char ttext3[MAXSTRING*5];
+    fstream outdbfile(dbfile, ios::in | ios::out | ios::binary);
+    startofrecords=0;
+    for (i=0;i<record.size();i++) {
+     Write_Record_Field(ttext3, record[i]);
+     stringcodedecode(ttext3, ttext3);
+     startofrecords+=strlen(ttext3);
+     for (i1=0;i1<strlen(ttext3);i1++)
+    outdbfile.put(ttext3[i1]); }
+    outdbfile.put(charcoder('#', 0));
+    ++startofrecords;
+   outdbfile.close(); }
    
    switch (mode) {
     case 1:
      for (i=0;i<records.size();i++)
       Read_Write_Field(records[i], fieldserialtofieldposition(i), 1);
-     Read_Write_Current_Record(1);
+     for (i=0;i<4;i++)
+      Read_Write_Current_Parameters(i, 1);
     break;
     case 2:
     // create dbfile from source file
@@ -464,31 +489,46 @@ int Read_Write_db_File(int mode) // 0 read, 1 write, 2 create from file, 3 recre
 }
 
 // read & write current record
-int Read_Write_Current_Record(int mode) // 0 read, 1 write
+int Read_Write_Current_Parameters(int item, int mode) // item:0 currentrecord, 1 currentmenu, 2 menubar 3 autosave| mode:0 read, 1 write
 {
-  int i, trecord;
-  char *ttext=new char[5];;
+  int i, tvalue;
+  char *ttext=new char[5];
+  int parameterpositions[]={ 0, 4, 5, 6 };
+  int parametersize=(!item) ? 4 : 1;
   fstream dbfileaccess(dbfile, ios::in | ios::out | ios::binary);
-  
+
   if (!mode) {
-   dbfileaccess.seekg(startofrecords, ios::beg);
-   for (i=0;i<4;i++)
+   dbfileaccess.seekg(startofrecords+parameterpositions[item], ios::beg);
+   for (i=0;i<parametersize;i++)
     dbfileaccess.get(ttext[i]);
    ttext[i]='\0';
    stringcodedecode(ttext, ttext, 1);
-  trecord=atoi(ttext); }
+  tvalue=atoi(ttext); }
   else {
-   dbfileaccess.seekp(startofrecords, ios::beg);
-   strcpy(ttext, itoa(currentrecord));
+   dbfileaccess.seekp(startofrecords+parameterpositions[item], ios::beg);
+   switch (item) {
+    case 0:
+     i=currentrecord;
+    break;
+    case 1:
+     i=currentmenu;
+    break;
+    case 2:
+     i=menubar;
+    break;
+    case 3:
+     i=autosave;
+   break; }
+   strcpy(ttext, itoa(i));
    for (i=strlen(ttext);i<4;i++)
     ttext[i]=SPACE;
    ttext[i]='\0';
    stringcodedecode(ttext, ttext);
-   for (i=0;i<4;i++)
+   for (i=0;i<parametersize;i++)
   dbfileaccess.put(ttext[i]); }
   dbfileaccess.close();
     
- return trecord;
+ return tvalue;
 }
 
 // read record fields from ifstream 
@@ -787,7 +827,7 @@ int Read_Write_Field(Annotated_Field &tfield, long int field_position, int mode)
 long int fieldposition(int record_id, int field_id)
 {
   int i;
-  long int position=startofrecords+4;
+  long int position=startofrecords+7; // position after parameters
   
   for (i=0;i<record_id*fieldsperrecord;i++) 
    position+=FIELDSIZE;
@@ -845,7 +885,6 @@ void Delete_Record(int record_id)
    --currentrecord;
   
    records.erase(p, p+fieldsperrecord);
-
    Read_Write_db_File(3);
    Read_Write_db_File(1);
 }
@@ -867,7 +906,7 @@ void Duplicate_Record(int record_id)
 // show record
 int Show_Record_and_Menu()
 {
-  int i, i1, n, alterscreenparameters=0, trecordsnumber, run=1, c;
+  int i, i1, n, trecordsnumber, run=1, c;
   int findresults[MAXSEARCHDEPTH+1][MAXRECORDS], tsortresults[MAXRECORDS];
   char input_text[MAXSTRING], tattributes[9];
   const char *alterscreenparameterskeys="/*-+.";
@@ -878,7 +917,10 @@ int Show_Record_and_Menu()
   FindSchedule tfindschedule;
   vector <Annotated_Field> trecords;
   
-   currentrecord=Read_Write_Current_Record();
+   currentrecord=Read_Write_Current_Parameters(0);
+   currentmenu=Read_Write_Current_Parameters(1);
+   menubar=Read_Write_Current_Parameters(2);
+   autosave=Read_Write_Current_Parameters(3);
    while (run) {
     Clear_Screen();
     for (i=0;i<fieldsperrecord;i++)
@@ -895,24 +937,28 @@ int Show_Record_and_Menu()
     cleanstdin();
     c=sgetch();
     c=negatekeysforcurrentmenu(c);
-    if (!alterscreenparameters)
+    if (!alteredscreenparameters)
      for (i=0;i<strlen(alterscreenparameterskeys);i++)
       if (c==alterscreenparameterskeys[i])
-       alterscreenparameters=1;
+       alteredscreenparameters=1;
     switch (c) {
      // from menu 0
      case 'e':
       currentmenu=2;
+      Read_Write_Current_Parameters(1, 1);
+     break;
+     case 'o':
+      currentmenu=1;
+      Read_Write_Current_Parameters(1, 1);
+     break;
+     case 't':
+      currentmenu=3;
+      Read_Write_Current_Parameters(1, 1);
      break;
      case 'm': // from all menus
       ++menubar;
       menubar=(menubar==3) ? 0 : menubar;
-     break;
-     case 'o':
-      currentmenu=1;
-     break;
-     case 't':
-      currentmenu=3;
+      Read_Write_Current_Parameters(2, 1);
      break;
      case ESC: // from all menus
       if (recordsdemo) {
@@ -927,9 +973,10 @@ int Show_Record_and_Menu()
        if (c==ESC || c=='y')
         run=0;
        else
-      currentmenu=0; }
-      else
+        currentmenu=0; }
+      else {
        currentmenu=0;
+     Read_Write_Current_Parameters(1, 1); }
      break;
      case RIGHT: // from all menus
       for (i=0;i<recordsnumber+1;i++) 
@@ -951,7 +998,7 @@ int Show_Record_and_Menu()
        else
       --currentrecord; }
       if (!recordsdemo) 
-       Read_Write_Current_Record(1);
+       Read_Write_Current_Parameters(0, 1);
       Show_Menu_Bar();
      break;
      case LEFT: // from all menus
@@ -960,15 +1007,15 @@ int Show_Record_and_Menu()
         currentrecord=findresults[0][i];
       break; }
       if (!recordsdemo) 
-       Read_Write_Current_Record(1);
+       Read_Write_Current_Parameters(0, 1);
      break;
      case HOME: // from all menus
       currentrecord=findresults[0][0];
-      Read_Write_Current_Record(1);
+      Read_Write_Current_Parameters(0, 1);
      break;
      case END: // from all menus
       currentrecord=findresults[0][recordsnumber-1];
-      Read_Write_Current_Record(1);
+      Read_Write_Current_Parameters(0, 1);
      break;
      case DOWN: // from all menus
       ++currentfield;
@@ -997,6 +1044,7 @@ int Show_Record_and_Menu()
       Show_Menu_Bar(1);
       Show_Message(1, 24, 2, "autosave:", 0);
       Show_Message(10, 24, 2, onoff[autosave], 1500);
+      Read_Write_Current_Parameters(3, 1);
      break;
      case 'l':
       Read_Write_db_File();
@@ -1005,11 +1053,6 @@ int Show_Record_and_Menu()
      break;
      case 's':
       Show_Menu_Bar(1);
-      if (alterscreenparameters) {
-       Show_Message(1, 24, 2, "save altered screen attributes as well (y/n):", 0);
-       c=sgetch();
-       if (tolower(c)=='y')
-      Read_Write_db_File(3); }
       Read_Write_db_File(1);
       Show_Menu_Bar(1);
       Show_Message(1, 24, 2, "database saved", 1500);
@@ -1264,8 +1307,9 @@ int negatekeysforcurrentmenu(int t)
   if (t==6) { currentmenu=3; t='f'; return t; } // enter find mode
   if (t==5 || t==15 || t==20) { // direct menu access with ctrl
    switch (t) {
-    case 5:currentmenu=2; break; break; case 15:currentmenu=1; break; case 20:currentmenu=3;
+     case 5:currentmenu=2; break; break; case 15:currentmenu=1; break; case 20:currentmenu=3; 
    break; }
+   Read_Write_Current_Parameters(1, 1);
   return 0; }
   if (currentmenu==2)
    if (t==INSERT || t==DELETE || t==SPACE || t==COPY || t==PASTE)
@@ -1563,6 +1607,7 @@ void Show_Field_ID(Annotated_Field *tfield)
 void Generate_Field_String(Annotated_Field *field, char *ttext)
 {
  int i;
+ char formula[MAXSTRING];
      
   Field *tfield=&record[field->id];
   switch (tfield->type) {
@@ -1592,7 +1637,13 @@ void Generate_Field_String(Annotated_Field *field, char *ttext)
     strcpy(ttext, field->text);
     if (strcmp(tfield->automatic_value, "."))
      strcpy(ttext, tfield->automatic_value);
-    // string calculator here
+    if (tfield->formula) {
+     strcpy(formula, field->text);
+     if (strcmp(tfield->automatic_value, "."))
+      strcpy(formula, tfield->automatic_value);
+     i=stringformulacalculator(formula, currentrecord);
+     if (i)
+    strcpy(ttext, formula); }
   break; }
   strcpy(field->text, ttext);
 }
