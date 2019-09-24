@@ -66,20 +66,27 @@ void Field_Editor()
    printw("20.autovalue:*");
    Change_Color(5);
    gotoxy(19, 18);
-   printw("<arrows> <enter> <space> <esc>");
+   printw("<arrows><enter><space><*><esc>");
    gotoxy(22, 19);
    printw("<j>ump <insert> <delete>");
    Change_Color(3);
    gotoxy(18,20);
    t=tolower(sgetch(18,20));
    cleanstdin();
-   if (t!=SPACE && t!=LEFT && t!=RIGHT && t!=ESC && t!=INSERT && t!=DELETE && t!='j')
+   if (t!=SPACE && t!=LEFT && t!=RIGHT && t!=ESC && t!=INSERT && t!=DELETE && t!='j' && t!='*')
     t='\n';
    switch (t) {
     case SPACE:
      Clear_Screen();
      Show_Field(&records[fieldshown]);
      getch();
+    break;
+    case '*':
+     Clear_Screen();
+     for (i=0;i<fieldsperrecord;i++) {
+      Show_Field(&records[(currentrecord*fieldsperrecord)+i]);
+      Show_Field_ID(&records[(currentrecord*fieldsperrecord)+i]); }
+      getch();
     break;
     case LEFT:
      if (fieldshown)

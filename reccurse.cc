@@ -1,4 +1,4 @@
-// reccurse, the filemaker of ncurses, version 0.280
+// reccurse, the filemaker of ncurses, version 0.281
 
 // included libraries
 // C
@@ -33,7 +33,7 @@
 #define MAXRECORDS 9999 // pages limit
 #define FIELDSIZE MAXSTRING*2+MAXNUMBERDIGITS+15  // +7 would do
 #define MAXSEARCHDEPTH 5
-#define version 0.280
+#define version 0.281
 
 // keyboard
 #define UP 53
@@ -1035,6 +1035,17 @@ int Show_Record_and_Menu()
        if (currentfield<0)
       currentfield=fieldsperrecord-1; }
      break;
+     case 'j': // from all menus
+      if (recordsdemo)
+       break;
+      Show_Menu_Bar(1);
+      Change_Color(58);
+      gotoxy(1, 24);
+      printw("jump to record:");
+      i=Scan_Input(1, 1, recordsnumber, 4)-1;
+      if (i>-1 && i<recordsnumber)
+       currentrecord=i;
+     break;
      case '?': // from all menus
       Show_Help_Screen();
      break;
@@ -1300,7 +1311,7 @@ int negatekeysforcurrentmenu(int t)
   int i;
   const char *menukeys[]={ "eot", "alsh", "dcp+-*/.", "ifru" }; // m works in all menus
   
-  if (t==ESC || t==LEFT || t==RIGHT || t==UP || t==DOWN || t=='m' || t=='?' || t==HOME || t==END)
+  if (t==ESC || t==LEFT || t==RIGHT || t==UP || t==DOWN || t=='m' || t=='j' || t=='?' || t==HOME || t==END)
    return t;
   if (recordsdemo)
    return 0;
@@ -1326,7 +1337,7 @@ int negatekeysforcurrentmenu(int t)
 // menu bar
 void Show_Menu_Bar(int mode) // 0 show, 1 remove
 {
-  const char *menutexts[]={ "<shift>/&<tab>|<arrows|home&end|<e>dit|<o>ptions|ex<t>ra|<m>enu bar|<ESC>quit", "<a>utosave on/off|<l>oad database|<s>ave database|<h>elp page|<ESC>main menu", "e<d>it|<c>opy|<DEL>ete|datestam<p>|<INS>record options|<ESC>main menu", "database <i>nformation|<f>ind|so<r>t records|set<u>p database|<ESC>main menu", "really quit ?" };  //main, options, edit, extra, quit
+  const char *menutexts[]={ "<shift&tab>|<arrows|home&end|<j>|<e>dit|<o>ptions|ex<t>ra|<m>enubar|<ESC>quit", "<a>utosave on/off|<l>oad database|<s>ave database|<h>elp page|<ESC>main menu", "e<d>it|<c>opy|<DEL>ete|datestam<p>|<INS>record options|<ESC>main menu", "database <i>nformation|<f>ind|so<r>t records|set<u>p database|<ESC>main menu", "really quit ?" };  //main, options, edit, extra, quit
   
   int i, recordsize=0;
   int menucolors[5]={ 5, 6, 4, 3, 1 };
