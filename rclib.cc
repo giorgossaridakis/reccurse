@@ -251,7 +251,7 @@ int Scan_Input(int flag, int lim_a, int lim_b, int length) // 0 string, 1 intege
 char Scan_Input(char istring[MAXSTRING], int x_pos, int y_pos, int color)
 {
   int i, t, column=strlen(istring)-1, fieldreferenceflag=0, fieldreferencelist, fieldreferencerecord=currentrecord;
-  char tstring[MAXSTRING];
+  char tstring[MAXSTRING], iistring[MAXSTRING];
   
   if (record.size() && records.size()) {
    if (record[records[(currentrecord*fieldsperrecord)+currentfield].id].fieldlist) {
@@ -314,10 +314,10 @@ char Scan_Input(char istring[MAXSTRING], int x_pos, int y_pos, int color)
         t=0;
         for (i=0;i<strlen(tstring)-1;i++) {
          if (i==column-1)
-          istring[t++]=SPACE;
-         istring[t++]=tstring[i]; }
-         istring[MAXSTRING]='\0';
-        strcpy(tstring, istring); }
+          iistring[t++]=SPACE;
+         iistring[t++]=tstring[i]; }
+         iistring[MAXSTRING]='\0';
+        strcpy(tstring, iistring); }
       break;
       case BACKSPACE:
        if (column>x_pos) {
