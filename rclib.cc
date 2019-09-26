@@ -308,7 +308,16 @@ char Scan_Input(char istring[MAXSTRING], int x_pos, int y_pos, int color)
        fieldreferenceflag=2; }
       break;
       case INSERT:
-       fieldreferenceflag=2;
+       if (fieldreferenceflag)
+        fieldreferenceflag=2;
+       else {
+        t=0;
+        for (i=0;i<strlen(tstring)-1;i++) {
+         if (i==column-1)
+          istring[t++]=SPACE;
+         istring[t++]=tstring[i]; }
+         istring[MAXSTRING]='\0';
+        strcpy(tstring, istring); }
       break;
       case BACKSPACE:
        if (column>x_pos) {
