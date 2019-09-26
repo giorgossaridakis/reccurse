@@ -10,6 +10,8 @@ int Copy_File(char *source, char *dest);
 void checkpoint(int id, int color=58);
 int Scan_Input(int flag=0, int lim_a=0, int lim_b=0, int length=80);
 char Scan_Input(char istring[MAXSTRING], int x_pos, int y_pos, int color);
+void Scan_Date(int x_pos, int y_pos, char tdate[]);
+char *addmissingzeros(char tstring[], int zeros);
 void terminatestringatcharactersend(char *ttext);
 void addleadingzeros(char ttext[], Annotated_Field *tfield);
 int fieldlength(char *fieldtext);
@@ -36,6 +38,7 @@ int limitsignificantnumbers(char *s, int digits);
 int find(char text[], char token[]);
 int findsimple(char text[], char token[]);
 int sortrecords(int field_id, int recordssequence[], int mode=0);
+int CalcDayNumFromDate(int y, int m, int d);
 
 // definitions
 #define MAXSTRING 80 // characters in a regular string
@@ -43,9 +46,19 @@ int sortrecords(int field_id, int recordssequence[], int mode=0);
 #define QUOTE 34
 #define COMMA 44
 
-// local variables
+// variables
 char input_string[MAXSTRING];
+const char *daysofweek[] = {
+    "Wednesday",
+    "Thursday",
+    "Friday",
+    "Saturday",
+    "Sunday",
+    "Monday",
+    "Tuesday"
+};
 
+//functions
 // remainder from division
 int mod (double a, double b)
 {
@@ -328,6 +341,110 @@ char Scan_Input(char istring[MAXSTRING], int x_pos, int y_pos, int color)
      strcpy(istring, tstring);
     
  return t;
+}
+
+// scan date
+void Scan_Date(int x_pos, int y_pos, char tdate[])
+{
+  int weekday, c, y, m, d;
+  int highlight=0; // 0 y, 1 m, 2 d
+  time_t now = time(0);
+  char date[MAXSTRING];
+  tm *ltm = localtime(&now);
+  
+//    cout << "Year" << 1900 + ltm->tm_year<<endl;
+//    cout << "Month: "<< 1 + ltm->tm_mon<< endl;
+//    cout << "Day: "<<  ltm->tm_mday << endl;
+//    cout << "Time: "<< 1 + ltm->tm_hour << ":";
+//    cout << 1 + ltm->tm_min << ":";
+//    cout << 1 + ltm->tm_sec << endl;
+   y=1900 + ltm->tm_year;
+   m=1 + ltm->tm_mon;
+   d=ltm->tm_mday;
+   while (c!=ESC && c!='\n') {
+    Show_Menu_Bar(1);
+    Change_Color(3);
+    strcpy(date, addmissingzeros(itoa(d), 2));
+    strcat(date, " ");
+    strcat(date, addmissingzeros(itoa(m), 2));
+    strcat(date, " ");
+    strcat(date, itoa(y));
+    strcat(date, " ");
+    strcat(date, daysofweek[CalcDayNumFromDate(y, m, d)]);
+    gotoxy(x_pos, y_pos);
+    printw("date->%s", date);
+    Change_Color(24);
+    switch (highlight) {
+     case 0:
+      gotoxy(x_pos+12, y_pos);
+      printw("%s", itoa(y));
+     break;
+     case 1:
+      gotoxy(x_pos+9, y_pos);
+      printw("%s", addmissingzeros(itoa(m), 2));
+     break;
+     case 2:
+      gotoxy(x_pos+6, y_pos);
+      printw("%s", addmissingzeros(itoa(d), 2));
+    break; }
+    refresh();
+    c=getch();
+    if (c==0 || c==254)
+     c=getch();
+    switch (c) {
+     case LEFT:
+      if (highlight<2)
+       ++highlight;
+     break;
+     case RIGHT:
+      if (highlight)
+       --highlight;
+     break;
+     case UP:
+      switch (highlight) {
+       case 0:
+        ++y;
+       break;
+       case 1:
+        ++m;
+       break;
+       case 2:
+        ++d;
+      break; }
+     break;
+     case DOWN:
+      switch (highlight) {
+       case 0:
+        --y;
+       break;
+       case 1:
+        --m;
+       break;
+       case 2:
+        --d;
+      break; }
+  break; } }
+
+  if (c=='\n')
+   strcpy(tdate, date);
+}
+
+// add zeros before first number in string
+char *addmissingzeros(char tstring[], int length)
+{    
+  int i;
+  char ttstring[strlen(tstring)+(length-strlen(tstring))];
+  if (strlen(tstring)==length)
+   return &tstring[0];
+  strcpy(ttstring, tstring);
+  
+   for (i=0;i<length-strlen(tstring);i++)
+    ttstring[i]='0';
+   ttstring[i]='\0';
+   strcat(ttstring, tstring);
+   strcpy(tstring, ttstring);
+   
+ return &tstring[0];
 }
 
 // terminate string when characters end to cut off extra spaces
@@ -688,5 +805,18 @@ int sortrecords(int field_id, int recordssequence[], int mode) // 0 ascending 1 
     recordssequence[i]=trecordsequece[i]; }
     
   return 0;
+}
+
+// ----------------------------------------------------------------------
+// Given the year, month and day, return the day number.
+// (see: https://alcor.concordia.ca/~gpkatch/gdate-method.html)
+// ----------------------------------------------------------------------
+int CalcDayNumFromDate(int y, int m, int d)
+{
+  m = (m + 9) % 12;
+  y -= m / 10;
+  int dn = 365*y + y/4 - y/100 + y/400 + (m*306 + 5)/10 + (d - 1);
+
+  return dn % 7;
 }
 

@@ -1,4 +1,4 @@
-// reccurse, the filemaker of ncurses, version 0.282
+// reccurse, the filemaker of ncurses, version 0.283
 
 // included libraries
 // C
@@ -14,6 +14,7 @@
 #include <signal.h>
 // C++ 
 #include <iostream>
+#include <iomanip>
 #include <fstream>
 #include <sstream>
 #include <cstdlib>
@@ -33,7 +34,7 @@
 #define MAXRECORDS 9999 // pages limit
 #define FIELDSIZE MAXSTRING*2+MAXNUMBERDIGITS+15  // +7 would do
 #define MAXSEARCHDEPTH 5
-#define version 0.282
+#define version 0.283
 
 // keyboard
 #define UP 53
@@ -1086,7 +1087,7 @@ int Show_Record_and_Menu()
      break;
      // from menu 2
      case 'd':
-      if (!strcmp(record[records[(currentrecord*fieldsperrecord)+currentfield].id].automatic_value, ".") && record[records[(currentrecord*fieldsperrecord)+currentfield].id].editable) {
+      if (!strcmp(record[records[(currentrecord*fieldsperrecord)+currentfield].id].automatic_value, ".") /*&& record[records[(currentrecord*fieldsperrecord)+currentfield].id].editable*/ && record[records[(currentrecord*fieldsperrecord)+currentfield].id].type!=1) {
        for (i=0;i<fieldsperrecord;i++)
         Show_Field_ID(&records[(currentrecord*fieldsperrecord)+i]);
        if (record[records[(currentrecord*fieldsperrecord)+currentfield].id].fieldlist) {
@@ -1095,6 +1096,12 @@ int Show_Record_and_Menu()
         Show_Field(&records[(currentrecord*fieldsperrecord)+record[currentfield].fieldlist-1], 1);
         attroff(A_BLINK); }
       Screen_String_Editor(records[(currentrecord*fieldsperrecord)+currentfield]); }
+      if (record[records[(currentrecord*fieldsperrecord)+currentfield].id].type==1) {
+       strcpy(input_string, records[(currentrecord*fieldsperrecord)+currentfield].text);
+       Scan_Date(1, 24, input_string);
+       strcpy(records[(currentrecord*fieldsperrecord)+currentfield].text, input_string);
+       if (autosave)
+      Read_Write_Field(records[(currentrecord*fieldsperrecord)+currentfield], fieldposition(currentrecord, currentfield), 1); }
      break;
      case 'p':
       if (record[records[(currentrecord*fieldsperrecord)+currentfield].id].type && record[records[(currentrecord*fieldsperrecord)+currentfield].id].editable) {
