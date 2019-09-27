@@ -170,7 +170,9 @@ void Field_Editor()
         record[fieldshown].box_color=Scan_Input(1, 1, 58, 2);
        break;
        case 13:
-        record[fieldshown].type=Scan_Input(1, 0, 2, 1);
+        i=Scan_Input(1, 0, 3, 1);
+        if (i && i<4)
+         record[fieldshown].type=i;
        break;
        case 14:
         record[fieldshown].decimals=Scan_Input(1, 1, 5, 1);
