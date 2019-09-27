@@ -1,4 +1,4 @@
-// reccurse, the filemaker of ncurses, version 0.285
+// reccurse, the filemaker of ncurses, version 0.286
 
 // included libraries
 // C
@@ -34,7 +34,7 @@
 #define MAXRECORDS 9999 // pages limit
 #define FIELDSIZE MAXSTRING*2+MAXNUMBERDIGITS+15  // +7 would do
 #define MAXSEARCHDEPTH 5
-#define version 0.285
+#define version 0.286
 
 // keyboard
 #define UP 53
@@ -948,8 +948,10 @@ int Show_Record_and_Menu()
     i=strlen(menutexts[currentmenu])+1;
     if (!menubar)
      i=1;
-    if (menubar==2)
+    if (menubar==2) {
      i=strlen(infotext)+1;
+     if (recordsdemo)
+    i+=14; }
     if (menubar==3)
      i=strlen(records[(currentrecord*fieldsperrecord)+currentfield].text)+1;
     gotoxy(i, menulines[currentmenu]);
@@ -987,6 +989,7 @@ int Show_Record_and_Menu()
        currentmenu=4;
        menubar=1;
        Show_Menu_Bar();
+       gotoxy(strlen(menutexts[currentmenu])+1, menulines[currentmenu]);
        c=sgetch();
        if (c==ESC || c=='y')
         run=0;
@@ -1066,10 +1069,6 @@ int Show_Record_and_Menu()
      case RIGHT:
       if (recordsdemo)
        break;
-//       for (i=0;i<fieldsperrecord;i++)
-//        if (record[records[(currentrecord*fieldsperrecord)+currentfield].id].pt.y==record[records[(currentrecord*fieldsperrecord)+i].id].pt.y && record[records[(currentrecord*fieldsperrecord)+currentfield].id].pt.x<record[records[(currentrecord*fieldsperrecord)+i].id].pt.x) {
-//         currentfield=i;
-//        break; }
       { 
         vector <int> fieldxidentities;
         n=0;
