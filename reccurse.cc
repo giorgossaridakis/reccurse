@@ -1,4 +1,4 @@
-// reccurse, the filemaker of ncurses, version 0.283
+// reccurse, the filemaker of ncurses, version 0.285
 
 // included libraries
 // C
@@ -34,7 +34,7 @@
 #define MAXRECORDS 9999 // pages limit
 #define FIELDSIZE MAXSTRING*2+MAXNUMBERDIGITS+15  // +7 would do
 #define MAXSEARCHDEPTH 5
-#define version 0.283
+#define version 0.285
 
 // keyboard
 #define UP 53
@@ -51,17 +51,20 @@
 #define COPY 11 // 0 first
 #define PASTE 22 // 0 first
 #define TAB 9
+#define SHIFT_TAB 147
+#define END_OF_FIELDS 130
+#define START_OF_FIELDS 131
 
 const char *rcprototype="sample.rc";
 
 using namespace std;
 
 // global variables
-int menubar=1;
+int menubar;
 int autosave=1;
 int recordsdemo=0;
 int currentmenu=0;
-int currentfield=0;
+int currentfield;
 int recordsnumber=0;
 int currentrecord=0;
 int startofrecords=0;
@@ -71,6 +74,10 @@ char rcfile[MAXSTRING], dbfile[MAXSTRING];
 int tfieldnumber; // keep a number for use in same field formula reference
 const char *onoff[]= { "off", "on" };
 char clipboard[MAXSTRING];
+int menucolors[5]={ 5, 6, 4, 3, 1 };
+int menulines[5]={ 24, 24, 24, 24, 24 };
+char infotext[MAXSTRING];
+const char *menutexts[]={ "<tabshiftarrows|< >|home&end|<j>|<e>dit|<o>ptions|ex<t>ra|<m>enubar|<ESC>quit", "<a>utosave on/off|<l>oad database|<s>ave database|<h>elp page|<ESC>main menu", "e<d>it|<c>opy|<DEL>ete|datestam<p>|<INS>record options|<ESC>main menu", "database <i>nformation|<f>ind|so<r>t records|set<u>p database|<ESC>main menu", "really quit ?" };  //main, options, edit, extra, quit
 
 struct Points {
  int x;
@@ -151,7 +158,7 @@ void Show_Menu_Bar(int mode=0);
 void Show_Help_Screen();
 void Show_DB_Information();
 int Show_Field(Annotated_Field *tfield, int flag=0);
-void Show_Field_ID(Annotated_Field *tfield);
+int Show_Field_ID(Annotated_Field *tfield);
 void Generate_Field_String(Annotated_Field *tfield, char *ttext);
 void INThandler(int sig);
 int Export_Database(char *filename);
@@ -920,13 +927,15 @@ int Show_Record_and_Menu()
   
    currentrecord=Read_Write_Current_Parameters(0);
    currentmenu=Read_Write_Current_Parameters(1);
+   currentfield=findfieldege();
    menubar=Read_Write_Current_Parameters(2);
    autosave=Read_Write_Current_Parameters(3);
    while (run) {
     Clear_Screen();
     for (i=0;i<fieldsperrecord;i++)
      Show_Field(&records[(currentrecord*fieldsperrecord)+i]);
-    Show_Field(&records[(currentrecord*fieldsperrecord)+currentfield], 1);
+    if (currentfield>-1 && !recordsdemo)
+     Show_Field(&records[(currentrecord*fieldsperrecord)+currentfield], 1);
     if (!recordsdemo)
      for (i=0;i<MAXRECORDS;i++)
       if (i<=recordsnumber)
@@ -936,6 +945,14 @@ int Show_Record_and_Menu()
      
     Show_Menu_Bar();
     cleanstdin();
+    i=strlen(menutexts[currentmenu])+1;
+    if (!menubar)
+     i=1;
+    if (menubar==2)
+     i=strlen(infotext)+1;
+    if (menubar==3)
+     i=strlen(records[(currentrecord*fieldsperrecord)+currentfield].text)+1;
+    gotoxy(i, menulines[currentmenu]);
     c=sgetch();
     c=negatekeysforcurrentmenu(c);
     if (!alteredscreenparameters)
@@ -958,7 +975,7 @@ int Show_Record_and_Menu()
      break;
      case 'm': // from all menus
       ++menubar;
-      menubar=(menubar==3) ? 0 : menubar;
+      menubar=(menubar==4) ? 0 : menubar;
       Read_Write_Current_Parameters(2, 1);
      break;
      case ESC: // from all menus
@@ -979,7 +996,7 @@ int Show_Record_and_Menu()
        currentmenu=0;
      Read_Write_Current_Parameters(1, 1); }
      break;
-     case RIGHT: // from all menus
+     case '>': // from all menus
       for (i=0;i<recordsnumber+1;i++) 
        if (findresults[0][i]>currentrecord) {
         currentrecord=findresults[0][i];
@@ -1002,7 +1019,7 @@ int Show_Record_and_Menu()
        Read_Write_Current_Parameters(0, 1);
       Show_Menu_Bar();
      break;
-     case LEFT: // from all menus
+     case '<': // from all menus
       for (i=currentrecord;i>-1;i--) 
        if (findresults[0][i]<currentrecord && findresults[0][i]>-1) {
         currentrecord=findresults[0][i];
@@ -1018,7 +1035,15 @@ int Show_Record_and_Menu()
       currentrecord=findresults[0][recordsnumber-1];
       Read_Write_Current_Parameters(0, 1);
      break;
+     case START_OF_FIELDS:
+      currentfield=findfieldege();
+     break;
+     case END_OF_FIELDS:
+      currentfield=findfieldege(1);
+     break;
      case DOWN: // from all menus
+      if (recordsdemo)
+       break;
       ++currentfield;
       if (currentfield>fieldsperrecord-1)
        currentfield=0;
@@ -1028,6 +1053,8 @@ int Show_Record_and_Menu()
       currentfield=0; }
      break;
      case UP:// from all menus
+      if (recordsdemo)
+       break;
       --currentfield;
        if (currentfield<0)
         currentfield=fieldsperrecord-1;
@@ -1035,6 +1062,36 @@ int Show_Record_and_Menu()
        --currentfield;
        if (currentfield<0)
       currentfield=fieldsperrecord-1; }
+     break;
+     case RIGHT:
+      if (recordsdemo)
+       break;
+//       for (i=0;i<fieldsperrecord;i++)
+//        if (record[records[(currentrecord*fieldsperrecord)+currentfield].id].pt.y==record[records[(currentrecord*fieldsperrecord)+i].id].pt.y && record[records[(currentrecord*fieldsperrecord)+currentfield].id].pt.x<record[records[(currentrecord*fieldsperrecord)+i].id].pt.x) {
+//         currentfield=i;
+//        break; }
+      { 
+        vector <int> fieldxidentities;
+        n=0;
+        sortfieldsbyxpt(fieldxidentities);
+        for (i=0;i<fieldxidentities.size();i++) 
+         if (currentfield==fieldxidentities[i])
+          break;
+        if (i<fieldxidentities.size()-1)
+       currentfield=fieldxidentities[i+1]; }
+     break;
+     case LEFT:
+      if (recordsdemo)
+       break;
+      { 
+        vector <int> fieldxidentities;
+        n=0;
+        sortfieldsbyxpt(fieldxidentities);
+        for (i=0;i<fieldxidentities.size();i++) 
+         if (currentfield==fieldxidentities[i])
+          break;
+        if (i<fieldxidentities.size() && i)
+       currentfield=fieldxidentities[i-1]; }
      break;
      case 'j': // from all menus
       if (recordsdemo)
@@ -1149,6 +1206,7 @@ int Show_Record_and_Menu()
      case DELETE:
       strcpy(records[(currentrecord*fieldsperrecord)+currentfield].text, " ");
       terminatestringatcharactersend(records[(currentrecord*fieldsperrecord)+currentfield].text);
+      records[(currentrecord*fieldsperrecord)+currentfield].number=0;
       Read_Write_Field(records[(currentrecord*fieldsperrecord)+currentfield], fieldposition(currentrecord, currentfield), 1);
      break;
      case INSERT:
@@ -1319,7 +1377,9 @@ int negatekeysforcurrentmenu(int t)
   int i;
   const char *menukeys[]={ "eot", "alsh", "dcp+-*/.", "ifru" }; // m works in all menus
   
-  if (t==ESC || t==LEFT || t==RIGHT || t==UP || t==DOWN || t=='m' || t=='j' || t=='?' || t==HOME || t==END)
+  if (t==196) t='>';
+  if (t==187) t='<';
+  if (t==ESC || t==LEFT || t==RIGHT || t==UP || t==DOWN || t=='m' || t=='j' || t=='?' || t==HOME || t==END || t=='<' || t=='>' || t==START_OF_FIELDS || t==END_OF_FIELDS)
    return t;
   if (recordsdemo)
    return 0;
@@ -1344,14 +1404,9 @@ int negatekeysforcurrentmenu(int t)
 
 // menu bar
 void Show_Menu_Bar(int mode) // 0 show, 1 remove
-{
-  const char *menutexts[]={ "<shift&tab>|<arrows|home&end|<j>|<e>dit|<o>ptions|ex<t>ra|<m>enubar|<ESC>quit", "<a>utosave on/off|<l>oad database|<s>ave database|<h>elp page|<ESC>main menu", "e<d>it|<c>opy|<DEL>ete|datestam<p>|<INS>record options|<ESC>main menu", "database <i>nformation|<f>ind|so<r>t records|set<u>p database|<ESC>main menu", "really quit ?" };  //main, options, edit, extra, quit
-  
+{  
   int i, recordsize=0;
-  int menucolors[5]={ 5, 6, 4, 3, 1 };
-  int menulines[5]={ 24, 24, 24, 24, 24 };
-  
-  
+
   Change_Color(50);
   gotoxy(1, menulines[currentmenu]);
   for (i=0;i<79;i++)
@@ -1361,18 +1416,34 @@ void Show_Menu_Bar(int mode) // 0 show, 1 remove
    Change_Color(menucolors[currentmenu]);
    gotoxy(1, menulines[currentmenu]);
   printw("%s", menutexts[currentmenu]); }
+  if (!mode && menubar==3) {
+   Change_Color(record[records[(currentrecord*fieldsperrecord)+currentfield].id].color);
+   gotoxy(1, menulines[currentmenu]);
+  printw("%s", records[(currentrecord*fieldsperrecord)+currentfield].text);  }
   if (!mode) {
+   gotoxy(1,menulines[currentmenu]);
    if (recordsdemo || menubar==2) {
     recordsize=0;
     for (i=0;i<fieldsperrecord;i++)
      recordsize+=fieldlength(records[(currentrecord*fieldsperrecord)+i].text);
-    gotoxy(1,menulines[currentmenu]);
     if (recordsdemo) {
      Change_Color(4);
     printw("find results->"); }
     Change_Color(2);
-  printw("record %d of %d.field %d of %d.record size:%d.field size:%d", currentrecord+1, recordsnumber, currentfield+1, fieldsperrecord, recordsize, fieldlength(records[(currentrecord*fieldsperrecord)+currentfield].text));  } }
- 
+    strcpy(infotext, "record ");
+    strcat(infotext, itoa(currentrecord+1));
+    strcat(infotext, " of ");
+    strcat(infotext, itoa(recordsnumber));
+    strcat(infotext, ".field ");
+    strcat(infotext, itoa(currentfield+1));
+    strcat(infotext, " of ");
+    strcat(infotext, itoa(fieldsperrecord));
+    strcat(infotext, ".record size:");
+    strcat(infotext, itoa(recordsize));
+    strcat(infotext, ".field size:");
+    strcat(infotext, itoa(fieldlength(records[(currentrecord*fieldsperrecord)+currentfield].text)));
+   printw("%s", infotext); } }
+
   refresh();
 }
 
@@ -1380,7 +1451,7 @@ void Show_Menu_Bar(int mode) // 0 show, 1 remove
 void Show_Help_Screen()
 {
   char helpinfo[2500];
-  strcpy(helpinfo, "                                <help screen>                                   reccurse is a custom design record keeper with advanced functions.              based on the ncurses library, reccurse is a clever tool for terminal use.       instruction keys are usually displayed in the bottom bar, the bottom bar itself can be switched from keyboard hints, to navigation information, to disappearancewith the <m> key.                                                                   extra keys ->ctrl+e to edit submenu                                                          ctrl+o to options submenu                                                       ctrl+t to extra submenu                                                         ctrl+f find function                                                            ctrl+k copy to clipboard, ctrl+v paste                         +-*/. keys will add/remove attributes in edit submenu, ? for this help screen   <carriage return> enters edit mode - <space> ticks/unticks tickboxes (1x1fields)when find is selected, user is prompted to enter a field number, then a search  criteria (asterisks denote any text until the next alphanumeric character).     the sequence is repeated until a carriage return is given. this allows for      multiple searches, each sequential will operate on the previous find records    that match the requested criteria.                                              when sort is selected, user is prompted to enter a field number, then           <a>scending or <d>escending order. the sequence is repeated and records are     sorted each time according to the requested sort parameters.                    reccurse will record changes in fields after editing, if autosave is enabled in options submenu (default option). to prevent loss of data, keep a backup.                 reccurse is distributed under the GNU Public Licence. :)");
+  strcpy(helpinfo, "                                <help screen>                                   reccurse is a custom design record keeper with advanced functions.              based on the ncurses library, reccurse is a clever tool for terminal use.       instruction keys are usually displayed in the bottom bar, the bottom bar itself can be switched from keyboard hints, to navigation information, to field text,  to disappearance with the <m> key.                                                    extra keys ->ctrl+e to edit submenu                                                          ctrl+o to options submenu                                                       ctrl+t to extra submenu                                                         ctrl+f find function                                                            ctrl+k copy to clipboard, ctrl+v paste                       +-*/. keys will add/remove attributes in edit submenu, ? for this help screen   <carriage return> enters edit mode - <space> ticks/unticks tickboxes (1x1fields)when find is selected, user is prompted to enter a field number, then a search  criteria (asterisks denote any text until the next alphanumeric character).     the sequence is repeated until a carriage return is given. this allows for      multiple searches, each sequential will operate on the previous find records    that match the requested criteria.                                              when sort is selected, user is prompted to enter a field number, then           <a>scending or <d>escending order. the sequence is repeated and records are     sorted each time according to the requested sort parameters.                    reccurse will record changes in fields after editing, if autosave is enabled in options submenu (default option). to prevent loss of data, keep a backup.                 reccurse is distributed under the GNU Public Licence. :)");
 
    Clear_Screen();
    Change_Color(58);
@@ -1609,10 +1680,13 @@ int Show_Field(Annotated_Field *field, int flag) // 1 highlight
 }
 
 // show field id and highlight
-void Show_Field_ID(Annotated_Field *tfield)
+int Show_Field_ID(Annotated_Field *tfield)
 {
   int trecord=tfield->id;
   int highlightcolor=(record[trecord].color==highlightcolors[1]) ? highlightcolors[0] : highlightcolors[1];
+  
+  if (!record[trecord].editable)
+   return -1;
   
    Change_Color(highlightcolor);
    attron(A_BLINK);
@@ -1620,6 +1694,8 @@ void Show_Field_ID(Annotated_Field *tfield)
    printw("%d", tfield->id+1);
    refresh();
    attroff(A_BLINK);
+   
+ return 0;
 }
   
 // arrange string for field text
@@ -1657,6 +1733,34 @@ void Generate_Field_String(Annotated_Field *field, char *ttext)
     if (strcmp(tfield->automatic_value, "."))
      strcpy(ttext, tfield->automatic_value);
     if (tfield->formula) {
+     strcpy(formula, field->text);
+     if (strcmp(tfield->automatic_value, "."))
+      strcpy(formula, tfield->automatic_value);
+     i=stringformulacalculator(formula, currentrecord);
+     if (i)
+    strcpy(ttext, formula); }
+   break; 
+   case 3:
+    strcpy(ttext, field->text);
+    if (strcmp(tfield->automatic_value, "."))
+     field->number=atof(tfield->automatic_value);
+    if (tfield->formula && atoi(ttext)) {
+     strcpy(formula, field->text);
+     if (strcmp(tfield->automatic_value, "."))
+      strcpy(formula, tfield->automatic_value);   
+     i=parenthesesincluderforpolishreversecalculator(formula);
+     if (!i) {
+      reversepolishcalculatorequalizer(formula, currentrecord);
+     field->number=reversepolishcalculator(formula); }
+     else
+    field->number=0; }
+    if (field->number) {
+     strcpy(ttext, dtoa(field->number));
+     limitsignificantnumbers(ttext, tfield->decimals);
+     if (strcmp(tfield->suffix, "."))
+      strcat(ttext, tfield->suffix);
+    addleadingzeros(ttext, field); }
+    if (tfield->formula && !field->number) {
      strcpy(formula, field->text);
      if (strcmp(tfield->automatic_value, "."))
       strcpy(formula, tfield->automatic_value);
@@ -1773,5 +1877,3 @@ int Import_Database(char *filename)
 
  return 0;
 }
-
-

@@ -38,6 +38,8 @@ int limitsignificantnumbers(char *s, int digits);
 int find(char text[], char token[]);
 int findsimple(char text[], char token[]);
 int sortrecords(int field_id, int recordssequence[], int mode=0);
+void sortfieldsbyxpt(vector <int> &fieldxidentities);
+int findfieldege(int flag=0);
 int CalcDayNumFromDate(int y, int m, int d);
 
 // definitions
@@ -602,7 +604,7 @@ int sgetch(int x_pos, int y_pos, int sleeptime, int showflag)
    t=DOWN;
   if (t==0 || t==254) {
    t=getch();
-   if (t==-109) // SHIFT_TAB
+   if (t==-109 || t==SHIFT_TAB) // possible SHIFT_TAB
   t=UP; }
   
  return t;
@@ -816,6 +818,45 @@ int sortrecords(int field_id, int recordssequence[], int mode) // 0 ascending 1 
   return 0;
 }
 
+// return table with sorted by x.pt fields
+void sortfieldsbyxpt(vector <int> &fieldxidentities)
+{
+ int i, t, operation=1;
+
+   for (i=0;i<fieldsperrecord;i++)
+    if (record[records[(currentrecord*fieldsperrecord)+currentfield].id].pt.y==record[records[(currentrecord*fieldsperrecord)+i].id].pt.y && record[i].editable && record[i].active)
+     fieldxidentities.push_back(i);
+   i=0;
+   while (operation) {
+    operation=0;
+    for (i=0;i<fieldxidentities.size()-1;i++) {
+     if (fieldxidentities[i+1]<fieldxidentities[i]) {
+      operation=1;
+      t=fieldxidentities[i];
+      fieldxidentities[i]=fieldxidentities[i+1];
+   fieldxidentities[i+1]=t; } } }
+}
+
+// find first/last active & editable field
+int findfieldege(int flag) // 0 first, 1 last
+{
+  int i, tfield=-1;  
+    
+   tfield=-1;
+   if (!flag) {
+   for (i=0;i<fieldsperrecord;i++)
+    if (record[i].editable && record[i].active) {
+     tfield=i;
+   break; } }
+   else {
+   for (i=fieldsperrecord-1;i>0;i--)
+    if (record[records[(currentrecord*fieldsperrecord)+i].id].editable) {
+     tfield=i;
+   break; } }
+    
+ return tfield;
+}
+
 // ----------------------------------------------------------------------
 // Given the year, month and day, return the day number.
 // (see: https://alcor.concordia.ca/~gpkatch/gdate-method.html)
@@ -828,4 +869,6 @@ int CalcDayNumFromDate(int y, int m, int d)
 
   return dn % 7;
 }
+
+
 

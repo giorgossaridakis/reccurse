@@ -1,4 +1,4 @@
-reccurse manual ~0.277 version
+reccurse manual ~0.285 version
 
 starting up
 -----------
@@ -20,7 +20,7 @@ sample reccurse .rc file
 begin and end with character seen below, so no others allowed in strings
 . is absence of string 0 is absence of number.
 
-structure of record: <title (12 chars max), title_pos (0..4), title attributes, title color, pos_x, pos_y, size_x, size_y, attributes, color, box or not, box color, type (0 int or double 1 date 2 string), number of decimals, suffix if number or formula, formula or not, field list reference (0 for none), editable, active, auto enter value> 
+structure of record: <title (12 chars max), title_pos (0..4), title attributes, title color, pos_x, pos_y, size_x, size_y, attributes, color, box or not, box color, type (0 int or double 1 date 2 string 3 mixed), number of decimals, suffix if number or formula, formula or not, field list reference (0 for none), editable, active, auto enter value> 
 #
 date&time 0 000000000 3 10 5 10 2 000000000 5 1 1 1 2 $ 0 0 1 1 .
 string 2 000100100 2 20 15 9 2 001010000 1 1 2 2 2 !!! 0 0 1 1 Giorgos
@@ -35,6 +35,10 @@ the comments above are give or take self-explanatory. a suffix (max 3 chars) wil
 if formula is activated (1) then an entry of (12345+54321)/(1*0.33443) will produce a numerical result in a numerical type field. formula entries can also be given in reverse polish calculator notation, i.e. (12345 12345 +) (1*0.33433) / . A #5 is a reference to the value of the 5th field in the same record as the one being edited. A formula of #5+12345 will calculate <what's in field 5>+12345.
 formulas for string fields are easy. examples: #5 will collect the text value from field 5. no addition sign is required-> field five has #5. string functions are mid$(text or field reference, start character, number of characters) mid$(hello, 1, 2), left$(text, 2), right$(text, 2), toupper$(text) and tolower$(text). leave spaces after each function end.
 a field list entry above 0 means that field can collect values from the fieldlist reference. up and down arrows during editing will summon them. <insert> will copy the value of the fieldlist reference from the same record.
+
+navigation tips
+---------------
+move through fields with arrow keys or tab, shift+tab. shift+up goes to first field in record, shift+down to the last. < or shift+left will take you to the previous record, > or shift+right to the next. HOME for the first record, END for the las.t 
 
 attributes
 ----------
