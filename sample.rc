@@ -3,7 +3,7 @@ sample reccurse .rc file
 begin and end with character seen below, so no others allowed in strings
 . is absence of string 0 is absence of number.
 
-structure of record: <title (12 chars max), title_pos (0..4), title attributes, title color, pos_x, pos_y, size_x, size_y, attributes, color, box or not, box color, type (0 int or double 1 date 2 string), number of decimals, suffix if number or formula, formula or not, field list reference (0 for none), editable, active, auto enter value> 
+structure of record: <title (12 chars max), title_pos (0..4), title attributes, title color, pos_x, pos_y, size_x, size_y, attributes, color, box or not, box color, type (0 int or double 1 date 2 string 3 mixed), number of decimals, suffix if number or formula, formula or not, field list reference (0 for none), editable, active, auto enter value> 
 #
 date&time 0 000000000 3 10 5 10 2 000000000 5 1 1 1 2 $ 0 0 1 1 .
 string 2 000100100 2 20 15 9 2 001010000 1 1 2 2 2 !!! 0 0 1 1 Giorgos
