@@ -1,4 +1,4 @@
-// reccurse, the filemaker of ncurses, version 0.294
+// reccurse, the filemaker of ncurses, version 0.295
 
 // included libraries
 // C
@@ -36,7 +36,7 @@
 #define MAXSEARCHDEPTH 5
 #define HORIZONTALLY 0
 #define VERTICALLY 1
-#define version 0.294
+#define version 0.295
 
 // keyboard
 #define UP 53
@@ -1159,6 +1159,15 @@ int Show_Record_and_Menu()
           if (currentfield>fieldsperrecord-1)
       currentfield=0; } } }
      break;
+     case TAB: // keep a simple navigational button
+      ++currentfield;
+      if (currentfield>fieldsperrecord-1)
+       currentfield=0;
+      while (!record[records[(currentrecord*fieldsperrecord)+currentfield].id].active || !record[records[(currentrecord*fieldsperrecord)+currentfield].id].editable) {
+       ++currentfield;
+       if (currentfield>fieldsperrecord-1)
+     currentfield=0; }
+     break;
      case UP:// from all menus
       if (recordsdemo)
        break;
@@ -1179,6 +1188,15 @@ int Show_Record_and_Menu()
           --currentfield;
           if (currentfield<0)
       currentfield=fieldsperrecord-1; } } }
+     break;
+     case SHIFT_TAB: // one more simple navigational button
+      --currentfield;
+      if (currentfield<0)
+       currentfield=fieldsperrecord-1;
+      while (!record[records[(currentrecord*fieldsperrecord)+currentfield].id].active || !record[records[(currentrecord*fieldsperrecord)+currentfield].id].editable) {
+        --currentfield;
+        if (currentfield<0)
+      currentfield=fieldsperrecord-1; }
      break;
      case RIGHT:
       if (recordsdemo)
@@ -1496,9 +1514,9 @@ int negatekeysforcurrentmenu(int t)
   int i;
   const char *menukeys[]={ "eot", "alsh", "dcpjv+-*/.", "ifru" }; // m works in all menus
   
-  if (t==196) t='>';
-  if (t==187) t='<';
-  if (t==ESC || t==LEFT || t==RIGHT || t==UP || t==DOWN || t=='m' || t=='g' || t=='?' || t==HOME || t==END || t=='<' || t=='>' || t==START_OF_RECORDS || t==END_OF_RECORDS)
+  if (t==196) t='>'; // shift+right arrow
+  if (t==187) t='<'; // shift+left arrow
+  if (t==ESC || t==LEFT || t==RIGHT || t==UP || t==DOWN || t==TAB || t==SHIFT_TAB || t=='m' || t=='g' || t=='?' || t==HOME || t==END || t=='<' || t=='>' || t==START_OF_RECORDS || t==END_OF_RECORDS)
    return t;
   if (recordsdemo)
    return 0;

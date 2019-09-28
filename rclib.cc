@@ -616,12 +616,10 @@ int sgetch(int x_pos, int y_pos, int sleeptime, int showflag)
     refresh(); 
    Sleep(sleeptime); }
   return tolower(t); }
-  if (t==TAB)
-   t=DOWN;
   if (t==0 || t==254) {
    t=getch();
-   if (t==-109 || t==SHIFT_TAB) // possible SHIFT_TAB
-  t=UP; }
+   if (t==-109) // possible SHIFT_TAB
+  t=SHIFT_TAB; }
   
  return t;
 }
