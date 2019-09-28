@@ -5,7 +5,7 @@ starting up
 reccurse is a "filemaker" type program for the terminal. it is basically a database with  customizable page setup for it's fields.
 there are three ways to start a new database:
 1. reccurse existing.rc:
-this will prompt the program to read page structure from a text file with .rc extension. it will then create the corresponding .db file. this is the file where everything will be stored. reccurse by default saves changes in records in real time, so it's a good idea to always keep a backup of this file, with mind to prevent loss of data. 
+this will prompt the program to read page structure from a text file with .rc extension. it will then create the corresponding .db file. this is the file where everything will be stored. reccurse by default saves changes in records in real time, so it's a good idea to always keep a backup of this file, with mind to prevent loss of data.
 2. reccurse existing.db:
 if you have a ready .db file, the program will read from it directly, it will not look for existing.rc
 3. reccurse nonexisting
@@ -38,7 +38,11 @@ a field list entry above 0 means that field can collect values from the fieldlis
 
 navigation tips
 ---------------
-move through fields with arrow keys or tab, shift+tab. shift+up goes to first field in record, shift+down to the last. < or shift+left will take you to the previous record, > or shift+right to the next. HOME for the first record, END for the las.t 
+move through fields with arrow keys or tab, shift+tab. shift+up goes to first field in record, shift+down to the last. < or shift+left will take you to the previous record, > or shift+right to the next. HOME for the first record, END for the last.
+
+autosave
+--------
+this will automatically save changes you make into fields if enabled. when attributes have been changed through screen buttons or the field setup menu, you will be asked whether to save or not. keep in mind that adding or deleting fields or entire records will be saved either autosave is enabled or not. the same goes for joining or dividing fields.
 
 attributes
 ----------
