@@ -1,4 +1,4 @@
-// reccurse, the filemaker of ncurses, version 0.291
+// reccurse, the filemaker of ncurses, version 0.292
 
 // included libraries
 // C
@@ -36,7 +36,7 @@
 #define MAXSEARCHDEPTH 5
 #define HORIZONTALLY 0
 #define VERTICALLY 1
-#define version 0.291
+#define version 0.292
 
 // keyboard
 #define UP 53
@@ -125,8 +125,8 @@ class Annotated_Field {
    Annotated_Field() { } ;
 ~Annotated_Field() { } ; } ;
 
-vector<Field> record;
-vector<Annotated_Field> records;
+vector<Field> record, dummyrecord;
+vector<Annotated_Field> records, dummyrecords;
 
 // functions
 void Intro_Screen();
@@ -167,6 +167,7 @@ void Generate_Field_String(Annotated_Field *tfield, char *ttext);
 void INThandler(int sig);
 int Export_Database(char *filename);
 int Import_Database(char *filename);
+int Import_External_db_File(char *filename);
 
 // to be compiled together
 #include "rcscr.cc"
@@ -1323,10 +1324,10 @@ int Show_Record_and_Menu()
      break;
      case INSERT:
       Show_Menu_Bar(1);
-      Show_Message(1, 24, 4, "d<u>plicate record, <d>elete record, <im>port/e<x>port records ?", 0);
+      Show_Message(1, 24, 4, "d<u>plicate, <d>elete record, <i>mport/e<x>port records, externa<l> .dbfile ?", 0);
       cleanstdin();
       c=tolower(sgetch());
-      if (c!='u' && c!='d' && c!='x' && c!='i')
+      if (c!='u' && c!='d' && c!='x' && c!='i' && c!='l')
        break;
       switch (c) {
        case 'u':
@@ -1352,6 +1353,12 @@ int Show_Record_and_Menu()
         Show_Message(1, 24, 5, "filename:", 0);
         Scan_Input(0, 0, 1, 25);
         Export_Database(input_string);
+       break;
+       case 'l':
+        Show_Menu_Bar(1);
+        Show_Message(1, 24, 4, "external dbfile:", 0);
+        Scan_Input(0, 0, 1, 25);
+        i=Import_External_db_File(input_string);
       break; }
      break;
      case COPY:
@@ -1798,7 +1805,7 @@ int Show_Field_ID(Annotated_Field *tfield)
   int trecord=tfield->id;
   int highlightcolor=(record[trecord].color==highlightcolors[1]) ? highlightcolors[0] : highlightcolors[1];
   
-  if (!record[trecord].editable)
+  if (!record[trecord].editable || !record[trecord].active)
    return -1;
   
    Change_Color(highlightcolor);
@@ -1986,5 +1993,87 @@ int Import_Database(char *filename)
    Show_Message(1, 24, 4, tstring, 1500);
    Show_Menu_Bar();
 
+ return 0;
+}
+
+// selectively import fields from external dbfile
+int Import_External_db_File(char *filename)
+{
+  int i, fieldshown=0, t, dummyfieldsperrecord, dummyrecordsnumber;
+  char tstring[MAXSTRING];
+  strcpy(tstring, dbfile);
+  strcpy(dbfile, filename);
+  Reccurse_File_Extension(dbfile, 2);
+  if (!tryfile(dbfile)) {
+   Show_Message(1, 24, 1, "external database file unreachable", 2000);
+  return -1; }
+  
+  dummyrecord.clear();
+  dummyrecords.clear();
+  Read_Write_db_File();
+  dummyrecord=record;
+  dummyrecords=records;
+  dummyfieldsperrecord=fieldsperrecord;
+  dummyrecordsnumber=recordsnumber;
+  strcpy(dbfile, tstring);
+  Reccurse_File_Extension(dbfile, 2);
+  Read_Write_db_File();
+  int endofappend=recordsnumber, chosendestinationfield;
+
+  Show_Menu_Bar(3);
+  Change_Color(3);
+  gotoxy(1, 24);
+  printw("external .dbfile has %d fields per record and a total of %d records", dummyfieldsperrecord, dummyrecordsnumber);
+  refresh();
+  Sleep(2000);
+  
+   Change_Color(4);
+   while (t!=ESC && t!='\n') {
+    Show_Menu_Bar(1);
+    Change_Color(4);
+    gotoxy(1, 24);
+    printw("id:%d title:%.15s type:%d formula:%d automatic value:%.10s", fieldshown+1, dummyrecord[fieldshown].title, dummyrecord[fieldshown].type, dummyrecord[fieldshown].formula, dummyrecord[fieldshown].automatic_value);
+    refresh();
+    t=sgetch(); 
+    if (t==RIGHT)
+     t==DOWN;
+    if (t==LEFT)
+     t==UP;
+    switch (t) {
+     case DOWN:
+      if (fieldshown<dummyfieldsperrecord-1)
+       ++fieldshown;
+     break;
+     case UP:
+      if (fieldshown)
+       --fieldshown;
+    break; } }
+    if (t==ESC)
+     return -1;       
+    for (i=0;i<fieldsperrecord;i++)
+     Show_Field_ID(&records[(currentrecord*fieldsperrecord)+i]);
+    Show_Menu_Bar(1);
+    Show_Message(1, 24, 4, "to local field id:", 0);
+    chosendestinationfield=Scan_Input(1, 1, fieldsperrecord, 4);
+    if (chosendestinationfield<1 || chosendestinationfield>fieldsperrecord)
+     return -1;
+    --chosendestinationfield;
+    if (dummyrecordsnumber>recordsnumber) {
+     Show_Menu_Bar(1);
+     Show_Message(1, 24, 1, "external .db file has more records than current. append (y/n):", 0);
+     t=tolower(sgetch());
+     if (t=='y') {
+      endofappend=dummyrecordsnumber; 
+      for (i=recordsnumber;i<dummyrecordsnumber;i++)
+    Initialize_Record(); } }
+    
+    // now copy to endofappend
+    for (i=0;i<endofappend;i++)
+     strcpy(records[(i*fieldsperrecord)+chosendestinationfield].text, dummyrecords[(i*dummyfieldsperrecord)+fieldshown].text);
+    Read_Write_db_File(1);
+
+   Show_Menu_Bar(1);
+   Show_Message(1, 24, 4, "import from external .db file complete", 1500);
+    
  return 0;
 }
