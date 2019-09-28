@@ -114,7 +114,7 @@ void Field_Editor()
      break;
      case 'j':
       printw("to field:");
-      fieldshown=Scan_Input(1, 1, fieldsperrecord-1, 4);
+      fieldshown=Scan_Input(1, 1, fieldsperrecord-1, 4)-1;
      break;
      case '\n':
       printw("selection:");
@@ -139,7 +139,9 @@ void Field_Editor()
         strcpy(record[fieldshown].title_attributes, ttext);
        break;
        case 4:
-        record[fieldshown].title_color=Scan_Input(1, 1, 58, 2);
+        i=Scan_Input(1, 1, 58, 2);
+        if (i && i<59)
+         record[fieldshown].title_color=i;
        break;
        case 5:
         record[fieldshown].pt.x=Scan_Input(1, 1, 80, 2);
@@ -161,13 +163,19 @@ void Field_Editor()
         strcpy(record[fieldshown].attributes, ttext);
        break;
        case 10:
-        record[fieldshown].color=Scan_Input(1, 1, 58, 2);
+        i=Scan_Input(1, 1, 58, 2);
+        if (i && i<59)
+         record[fieldshown].color=i;
        break;
        case 11:
-        record[fieldshown].box=Scan_Input(1, 0, 1, 1);
+        i=Scan_Input(1, 0, 1, 1);
+        if (!i || i==1)
+         record[fieldshown].box=i;
        break;
        case 12:
-        record[fieldshown].box_color=Scan_Input(1, 1, 58, 2);
+        i=Scan_Input(1, 1, 58, 2);
+        if (i && i<59)
+         record[fieldshown].box_color=i;
        break;
        case 13:
         i=Scan_Input(1, 0, 3, 1);
@@ -175,7 +183,9 @@ void Field_Editor()
          record[fieldshown].type=i;
        break;
        case 14:
-        record[fieldshown].decimals=Scan_Input(1, 1, 5, 1);
+        i=Scan_Input(1, 1, 5, 1);
+        if (i && i<6)
+         record[fieldshown].decimals=i;
        break;
        case 15:
         strcpy(ttext, record[fieldshown].suffix);
@@ -185,22 +195,31 @@ void Field_Editor()
         strcpy(record[fieldshown].suffix, ttext); 
        break;
        case 16:
-        record[fieldshown].formula=Scan_Input(1, 0, 1, 1);
+        i=Scan_Input(1, 0, 1, 1);
+        if (!i || i==1)
+         record[fieldshown].formula=i;
        break;
        case 17:
-        record[fieldshown].fieldlist=Scan_Input(1, 1, fieldsperrecord, 4);
+        i==Scan_Input(1, 1, fieldsperrecord, 4);
+        if (i && i<fieldsperrecord+1)
+         record[fieldshown].fieldlist=i;
        break;
        case 18:
-        record[fieldshown].editable=Scan_Input(1, 0, 1, 1);
+        i=Scan_Input(1, 0, 1, 1);
+        if (!i || i==1)
+         record[fieldshown].editable=i;
        break;
        case 19:
-        record[fieldshown].active=Scan_Input(1, 0, 1, 1);
+        i=Scan_Input(1, 0, 1, 1);
+        if (!i || i==1)
+         record[fieldshown].active=i;
        break;
        case 20:
         Scan_Input(record[fieldshown].automatic_value, 1, 24, record[fieldshown].color);
       break; }
   break; } }
   currentrecord=0;
+  alteredparameters=1;
   Change_Color(58);
   for (i=18;i<40;i++) {
    gotoxy(i, 20);
@@ -211,7 +230,7 @@ void Field_Editor()
   printw("save changes (y/n):");
   t=sgetch();
   if (tolower(t)=='y') {
-   alteredscreenparameters=0;
+   alteredparameters=0;
    Read_Write_db_File(3);
   Read_Write_db_File(1); }
 }

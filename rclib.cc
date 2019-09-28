@@ -14,6 +14,7 @@ void Scan_Date(int x_pos, int y_pos, char tdate[]);
 char *addmissingzeros(char tstring[], int zeros);
 void terminatestringatcharactersend(char *ttext);
 void addleadingzeros(char ttext[], Annotated_Field *tfield);
+void removeleadingzeros(char ttext[], Annotated_Field *tfield);
 int fieldlength(char *fieldtext);
 long int filesize(char *filename);
 void stringquotesencloser(char *tstring, int flag=0);
@@ -38,7 +39,8 @@ int limitsignificantnumbers(char *s, int digits);
 int find(char text[], char token[]);
 int findsimple(char text[], char token[]);
 int sortrecords(int field_id, int recordssequence[], int mode=0);
-void sortfieldsbyxpt(vector <int> &fieldxidentities);
+void sortfieldsbyxpt(int field_id, vector <int> &fieldxidentities);
+void sortfieldsbyypt(int field_id, vector <int> &fieldyidentities);
 int findfieldege(int flag=0);
 int CalcDayNumFromDate(int y, int m, int d);
 
@@ -477,10 +479,24 @@ void addleadingzeros(char ttext[], Annotated_Field *tfield)
     
   n=record[records[(currentrecord*fieldsperrecord)+tfield->id].id].size.x-strlen(ttext);
   for (i=0;i<n;i++)
-   ttext2[i]='0';
+   ttext2[i]=' ';
   ttext2[i]='\0';
   strcat(ttext2, ttext);
   strcpy(ttext, ttext2);
+}
+
+// remove leading zeros or spaces from string
+void removeleadingzeros(char ttext[], Annotated_Field *tfield)
+{
+  int i=0, n=0;;
+  char ttext2[MAXSTRING];
+  
+   while (isspace(ttext[i]) || ttext[i]=='0')
+    ++i;
+   for (;i<strlen(ttext);i++)
+    ttext2[n++]=ttext[i];
+   ttext2[n]='\0';
+  strcpy(ttext, ttext2);  
 }
 
 // count text length without spaces
@@ -819,22 +835,41 @@ int sortrecords(int field_id, int recordssequence[], int mode) // 0 ascending 1 
 }
 
 // return table with sorted by x.pt fields
-void sortfieldsbyxpt(vector <int> &fieldxidentities)
+void sortfieldsbyxpt(int field_id, vector <int> &fieldxidentities)
 {
  int i, t, operation=1;
 
    for (i=0;i<fieldsperrecord;i++)
-    if (record[records[(currentrecord*fieldsperrecord)+currentfield].id].pt.y==record[records[(currentrecord*fieldsperrecord)+i].id].pt.y && record[i].editable && record[i].active)
+    if (record[records[(currentrecord*fieldsperrecord)+field_id].id].pt.y==record[records[(currentrecord*fieldsperrecord)+i].id].pt.y && record[i].editable && record[i].active)
      fieldxidentities.push_back(i);
    i=0;
    while (operation) {
     operation=0;
     for (i=0;i<fieldxidentities.size()-1;i++) {
-     if (fieldxidentities[i+1]<fieldxidentities[i]) {
+     if (record[fieldxidentities[i+1]].pt.x<record[fieldxidentities[i]].pt.x) {
       operation=1;
       t=fieldxidentities[i];
       fieldxidentities[i]=fieldxidentities[i+1];
    fieldxidentities[i+1]=t; } } }
+}
+
+// return table with sorted by y.pt fields
+void sortfieldsbyypt(int field_id, vector <int> &fieldyidentities)
+{
+ int i, t, operation=1;
+
+   for (i=0;i<fieldsperrecord;i++)
+    if (record[records[(currentrecord*fieldsperrecord)+field_id].id].pt.x==record[records[(currentrecord*fieldsperrecord)+i].id].pt.x && record[i].editable && record[i].active)
+     fieldyidentities.push_back(i);
+   i=0;
+   while (operation) {
+    operation=0;
+    for (i=0;i<fieldyidentities.size()-1;i++) {
+     if (record[fieldyidentities[i+1]].pt.y<record[fieldyidentities[i]].pt.y) {
+      operation=1;
+      t=fieldyidentities[i];
+      fieldyidentities[i]=fieldyidentities[i+1];
+   fieldyidentities[i+1]=t; } } }
 }
 
 // find first/last active & editable field
