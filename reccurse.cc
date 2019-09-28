@@ -1,4 +1,4 @@
-// reccurse, the filemaker of ncurses, version 0.292
+// reccurse, the filemaker of ncurses, version 0.294
 
 // included libraries
 // C
@@ -36,7 +36,7 @@
 #define MAXSEARCHDEPTH 5
 #define HORIZONTALLY 0
 #define VERTICALLY 1
-#define version 0.292
+#define version 0.294
 
 // keyboard
 #define UP 53
@@ -2023,7 +2023,7 @@ int Import_External_db_File(char *filename)
   Show_Menu_Bar(3);
   Change_Color(3);
   gotoxy(1, 24);
-  printw("external .dbfile has %d fields per record and a total of %d records", dummyfieldsperrecord, dummyrecordsnumber);
+  printw("external .db file has %d fields per record and a total of %d records", dummyfieldsperrecord, dummyrecordsnumber);
   refresh();
   Sleep(2000);
   
@@ -2036,9 +2036,9 @@ int Import_External_db_File(char *filename)
     refresh();
     t=sgetch(); 
     if (t==RIGHT)
-     t==DOWN;
+     t=DOWN;
     if (t==LEFT)
-     t==UP;
+     t=UP;
     switch (t) {
      case DOWN:
       if (fieldshown<dummyfieldsperrecord-1)
