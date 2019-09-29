@@ -1,4 +1,4 @@
-// reccurse, the filemaker of ncurses, version 0.296
+// reccurse, the filemaker of ncurses, version 0.297
 
 // included libraries
 // C
@@ -36,7 +36,7 @@
 #define MAXSEARCHDEPTH 5
 #define HORIZONTALLY 0
 #define VERTICALLY 1
-#define version 0.296
+#define version 0.297
 
 // keyboard
 #define UP 53
@@ -57,8 +57,6 @@
 #define END_OF_RECORDS 130
 #define START_OF_RECORDS 131
 
-const char *rcprototype="sample.rc";
-
 using namespace std;
 
 // global variables
@@ -73,7 +71,6 @@ int startofrecords=0;
 int fieldsperrecord=0;
 int alteredparameters=0;
 char rcfile[MAXSTRING], dbfile[MAXSTRING];
-int tfieldnumber; // keep a number for use in same field formula reference
 const char *onoff[]= { "off", "on" };
 char clipboard[MAXSTRING];
 int menucolors[5]={ 5, 6, 4, 3, 1 };
@@ -132,7 +129,6 @@ vector<Annotated_Field> records, dummyrecords;
 void Intro_Screen();
 int End_Program(int code=0);;
 void Reccurse_File_Extension(char *filename, int flag=0);
-int Create_New_Sample_File(char *file);
 int Read_rc_File();
 int Write_rc_File(char *file);
 int Read_Write_db_File(int mode=0);
@@ -164,7 +160,6 @@ void Show_DB_Information();
 int Show_Field(Annotated_Field *tfield, int flag=0);
 int Show_Field_ID(Annotated_Field *tfield);
 void Generate_Field_String(Annotated_Field *tfield, char *ttext);
-void INThandler(int sig);
 int Export_Database(char *filename);
 int Import_Database(char *filename);
 int Import_External_db_File(char *filename);
@@ -187,8 +182,6 @@ int main(int argc, char *argv[])
 
    Intro_Screen();
    
-    if (argc>2 && !strcmp(argv[2], "-c")) 
-     i=Create_New_Sample_File(rcfile);
     if (argc>1) {
      strcpy(rcfile, argv[1]);
      strcpy(dbfile, argv[1]);
@@ -305,17 +298,6 @@ void Reccurse_File_Extension(char *filename, int flag) // 0 remove, 1 add .rc, 2
     Reccurse_File_Extension(filename, 0);
     strcat(filename, ".db");
   break; }
-}
-
-// create sample .rc file
-int Create_New_Sample_File(char *file)
-{
-  Reccurse_File_Extension(file, 1);
-  if (!tryfile(const_cast <char *> (rcprototype)))
-   return -1;
-  Copy_File(const_cast <char *> (rcprototype), file);
-  
- return 0;
 }
 
 // read .rc file
@@ -1498,7 +1480,6 @@ int Screen_String_Editor(Annotated_Field &tfield)
     if (t==ESC)
      return -1;
     strcpy(tfield.text, tstring);
-    tfieldnumber=tfield.number;
     tfield.number=atof(tfield.text);
     if (record[records[(currentrecord*fieldsperrecord)+tfield.id].id].formula)
      strcpy(tfield.formula, tfield.text);
@@ -1845,7 +1826,7 @@ void Generate_Field_String(Annotated_Field *field, char *ttext)
   Field *tfield=&record[field->id];
   switch (tfield->type) {
    case 0:
-    if (strcmp(tfield->automatic_value, ".") && !tfield->formula)
+    if (strcmp(tfield->automatic_value, "."))
      field->number=atof(tfield->automatic_value);
     if (tfield->formula) {
      strcpy(formula, field->text);
@@ -1905,24 +1886,6 @@ void Generate_Field_String(Annotated_Field *field, char *ttext)
     strcpy(ttext, formula); }
   break; }
   strcpy(field->text, ttext);
-}
-
-// handle ctrl+c
-void INThandler(int sig)
-{
-     char  c;
-
-     signal(sig, SIG_IGN);
-     Show_Menu_Bar(1);
-     Change_Color(1);
-     gotoxy(1,24);
-     printw("really quit ?");
-     c = sgetch();
-     if (tolower(c) == 'y')
-      End_Program();
-     
-     signal(SIGINT, INThandler);
-     Show_Menu_Bar();
 }
 
 // export to comma separated values file

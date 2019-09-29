@@ -13,15 +13,13 @@ char Scan_Input(char istring[MAXSTRING], int x_pos, int y_pos, int color);
 void Scan_Date(int x_pos, int y_pos, char tdate[]);
 char *addmissingzeros(char tstring[], int zeros);
 void terminatestringatcharactersend(char *ttext);
-void addleadingzeros(char ttext[], Annotated_Field *tfield);
-void removeleadingzeros(char ttext[], Annotated_Field *tfield);
+void addleadingzeros(char ttext[], Annotated_Field *tfield, int flag=0);
 int fieldlength(char *fieldtext);
 long int filesize(char *filename);
 void stringquotesencloser(char *tstring, int flag=0);
 void stringquotesopener(char *tstring);
 int isinquotes(char tstring[]);
 void limitspaces(char *tstring);
-int isnotempty(char *tstring);
 int numberofdigits(long int n);
 int sgetch(int x_pos=78, int y_pos=24, int sleeptime=250, int showflag=1);
 void cleanstdin();
@@ -43,6 +41,7 @@ void sortfieldsbyxpt(int field_id, vector <int> &fieldxidentities);
 void sortfieldsbyypt(int field_id, vector <int> &fieldyidentities);
 int findfieldege(int flag=0);
 int CalcDayNumFromDate(int y, int m, int d);
+void INThandler(int sig);
 
 // definitions
 #define MAXSTRING 80 // characters in a regular string
@@ -472,7 +471,7 @@ void terminatestringatcharactersend(char *ttext)
 }
 
 // add leading zeros to cover field string length
-void addleadingzeros(char ttext[], Annotated_Field *tfield)
+void addleadingzeros(char ttext[], Annotated_Field *tfield, int flag) // 0 spaces, 1 zeros
 {
   int i, n;
   char ttext2[MAXSTRING];
@@ -483,20 +482,6 @@ void addleadingzeros(char ttext[], Annotated_Field *tfield)
   ttext2[i]='\0';
   strcat(ttext2, ttext);
   strcpy(ttext, ttext2);
-}
-
-// remove leading zeros or spaces from string
-void removeleadingzeros(char ttext[], Annotated_Field *tfield)
-{
-  int i=0, n=0;;
-  char ttext2[MAXSTRING];
-  
-   while (isspace(ttext[i]) || ttext[i]=='0')
-    ++i;
-   for (;i<strlen(ttext);i++)
-    ttext2[n++]=ttext[i];
-   ttext2[n]='\0';
-  strcpy(ttext, ttext2);  
 }
 
 // count text length without spaces
@@ -577,18 +562,6 @@ void limitspaces(char *tstring)
   if (!strlen(ttstring))
    strcpy(ttstring, " ");
   strcpy(tstring, ttstring);
-}
-
-// is string composed solely of spaces ?
-int isnotempty(char *tstring)
-{
-  int i=0;
-  
-   while (*tstring)
-    if (isprintablecharacter(*tstring) && !isspace(*tstring++))
-     ++i;
-    
- return i;
 }
 
 // number of digits
@@ -903,5 +876,20 @@ int CalcDayNumFromDate(int y, int m, int d)
   return dn % 7;
 }
 
+// handle ctrl+c
+void INThandler(int sig)
+{
+     char  c;
 
-
+     signal(sig, SIG_IGN);
+     Show_Menu_Bar(1);
+     Change_Color(1);
+     gotoxy(1,24);
+     printw("really quit ?");
+     c = sgetch();
+     if (tolower(c) == 'y')
+      End_Program();
+     
+     signal(SIGINT, INThandler);
+     Show_Menu_Bar();
+}

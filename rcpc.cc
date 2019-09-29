@@ -184,13 +184,10 @@ int reversepolishcalculatorequalizer(char formula[], int record_id)
       s[i1++]=formula[i];
      s[i1]='\0';
      --i;
-     if (atoi(s)-1==currentfield)
-      strcpy(s, dtoa(tfieldnumber)); 
-     else {
-      if (atoi(s) && atoi(s)<fieldsperrecord+1/* && !record[records[(record_id*fieldsperrecord)+atoi(s)-1].id].type*/)
+      if (atoi(s) && atoi(s)<fieldsperrecord)
        strcpy(s, records[(record_id*fieldsperrecord)+atoi(s)-1].text);
       else 
-     strcpy(s, "0"); }
+       strcpy(s, "0");
      for (i1=0;i1<strlen(s);i1++)
    transformedtext[n++]=s[i1]; } }
    transformedtext[n]='\0';
