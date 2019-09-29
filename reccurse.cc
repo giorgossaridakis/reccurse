@@ -1,4 +1,4 @@
-// reccurse, the filemaker of ncurses, version 0.297
+// reccurse, the filemaker of ncurses, version 0.298
 
 // included libraries
 // C
@@ -36,7 +36,7 @@
 #define MAXSEARCHDEPTH 5
 #define HORIZONTALLY 0
 #define VERTICALLY 1
-#define version 0.297
+#define version 0.298
 
 // keyboard
 #define UP 53
@@ -1366,6 +1366,8 @@ int Show_Record_and_Menu()
      break;
      case PASTE:
       strcpy(records[(currentrecord*fieldsperrecord)+currentfield].text, clipboard);
+      if (autosave)
+       Read_Write_Field(records[(currentrecord*fieldsperrecord)+currentfield], fieldposition(currentrecord, currentfield), 1);
      break;
      // menu 3
      case 'i':

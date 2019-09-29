@@ -115,7 +115,10 @@ code   foreground   background
 
 epilogue
 --------
-well, that's about it. the rest I believe are covered inside reccurse. for suggestions or more, my email address is giorgossaridakis@gmail.com 
+well, that's about it. the rest I believe are covered inside reccurse.
+for suggestions or more, my email address is giorgossaridakis@gmail.com
+
+compile with gcc -oreccurse reccurse.cc -lncurses
 
 reccurse is distributed under the GNU Public Licence.
 

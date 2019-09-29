@@ -327,7 +327,6 @@ char Scan_Input(char istring[MAXSTRING], int x_pos, int y_pos, int color)
         tstring[column-x_pos-1]=SPACE;
         for (i=column-2;i<79;i++)
          tstring[i]=tstring[i+1];
-        tstring[i++]=SPACE;
         tstring[i]='\0';
        --column; }
       break;
