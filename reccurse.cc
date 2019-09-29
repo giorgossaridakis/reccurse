@@ -1,4 +1,4 @@
-// reccurse, the filemaker of ncurses, version 0.295
+// reccurse, the filemaker of ncurses, version 0.296
 
 // included libraries
 // C
@@ -36,7 +36,7 @@
 #define MAXSEARCHDEPTH 5
 #define HORIZONTALLY 0
 #define VERTICALLY 1
-#define version 0.295
+#define version 0.296
 
 // keyboard
 #define UP 53
@@ -1823,7 +1823,7 @@ int Show_Field_ID(Annotated_Field *tfield)
   int trecord=tfield->id;
   int highlightcolor=(record[trecord].color==highlightcolors[1]) ? highlightcolors[0] : highlightcolors[1];
   
-  if (!record[trecord].editable || !record[trecord].active)
+  if (!record[trecord].active)
    return -1;
   
    Change_Color(highlightcolor);
@@ -1845,12 +1845,12 @@ void Generate_Field_String(Annotated_Field *field, char *ttext)
   Field *tfield=&record[field->id];
   switch (tfield->type) {
    case 0:
-    if (strcmp(tfield->automatic_value, "."))
+    if (strcmp(tfield->automatic_value, ".") && !tfield->formula)
      field->number=atof(tfield->automatic_value);
     if (tfield->formula) {
      strcpy(formula, field->text);
      if (strcmp(tfield->automatic_value, "."))
-      strcpy(formula, tfield->automatic_value);   
+      strcpy(formula, tfield->automatic_value);
      i=parenthesesincluderforpolishreversecalculator(formula);
      if (!i) {
       reversepolishcalculatorequalizer(formula, currentrecord);
@@ -1880,11 +1880,11 @@ void Generate_Field_String(Annotated_Field *field, char *ttext)
    case 3:
     strcpy(ttext, field->text);
     if (strcmp(tfield->automatic_value, "."))
-     field->number=atof(tfield->automatic_value);
-    if (tfield->formula && atoi(ttext)) {
-     strcpy(formula, field->text);
+     strcpy(ttext, tfield->automatic_value);
+    if (tfield->formula) {
      if (strcmp(tfield->automatic_value, "."))
-      strcpy(formula, tfield->automatic_value);   
+      strcpy(field->text, tfield->automatic_value);
+     strcpy(formula, field->text);
      i=parenthesesincluderforpolishreversecalculator(formula);
      if (!i) {
       reversepolishcalculatorequalizer(formula, currentrecord);

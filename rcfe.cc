@@ -184,7 +184,7 @@ void Field_Editor()
        break;
        case 14:
         i=Scan_Input(1, 1, 5, 1);
-        if (i && i<6)
+        if (i>-1 && i<6)
          record[fieldshown].decimals=i;
        break;
        case 15:
