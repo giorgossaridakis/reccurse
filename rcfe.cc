@@ -179,7 +179,7 @@ void Field_Editor()
        break;
        case 13:
         i=Scan_Input(1, 0, 3, 1);
-        if (i && i<4)
+        if (i>-1 && i<4)
          record[fieldshown].type=i;
        break;
        case 14:
