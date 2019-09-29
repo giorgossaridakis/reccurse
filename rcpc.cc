@@ -47,7 +47,6 @@ char s[MAXOP];
       op2 = pop();
       if (op2)
        push(pop() / op2);
-      else
      break;
      case '%':
       op2 = pop();
