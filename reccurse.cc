@@ -1,4 +1,4 @@
-// reccurse, the filemaker of ncurses, version 0.237
+// reccurse, the filemaker of ncurses, version 0.238
 
 // included libraries
 // C
@@ -36,7 +36,7 @@
 #define MAXSEARCHDEPTH 5
 #define HORIZONTALLY 0
 #define VERTICALLY 1
-#define version 0.237
+#define version 0.238
 
 // keyboard
 #define UP 53
@@ -812,7 +812,7 @@ void Renumber_Field_References(int startingfield)
     strcpy(s, "#");
     --i;
     if (newreference<fieldsperrecord && newreference!=startingfield+1) {
-     newreference-=(newreference<startingfield) ? 0 : 1;
+     newreference-=(newreference<=startingfield) ? 0 : 1;
     strcat(s, itoa(newreference)); }
      else {
       if (iscalculationsign(record[fieldid].automatic_value[i+1]))
@@ -1223,7 +1223,7 @@ int Show_Record_and_Menu()
       if (recordsdemo)
        break;
       { 
-        vector <int> fieldxidentities;
+        vector<int> fieldxidentities;
         n=0;
         sortfieldsbyxpt(currentfield, fieldxidentities);
         for (i=0;i<fieldxidentities.size();i++) 
