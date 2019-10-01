@@ -1,4 +1,4 @@
-// reccurse, the filemaker of ncurses, version 0.230
+// reccurse, the filemaker of ncurses, version 0.236
 
 // included libraries
 // C
@@ -36,7 +36,7 @@
 #define MAXSEARCHDEPTH 5
 #define HORIZONTALLY 0
 #define VERTICALLY 1
-#define version 0.230
+#define version 0.236
 
 // keyboard
 #define UP 53
@@ -164,6 +164,7 @@ void Generate_Field_String(Annotated_Field *tfield, char *ttext);
 int Export_Database(char *filename);
 int Import_Database(char *filename);
 int Import_External_db_File(char *filename);
+int Clean_Database(char *filename);
 
 // to be compiled together
 #include "rcscr.cc"
@@ -266,9 +267,11 @@ int End_Program(int code)
     c=sgetch();
     if (tolower(c)=='y')
   Read_Write_db_File(4); } }
-   
+  
+  Clean_Database(dbfile); 
+  Read_Write_Current_Parameters(4, 1);
   char tmessage[MAXSTRING];
-  strcpy(tmessage, "exiting reccurse with code ");
+  strcpy(tmessage, "database closed, exiting reccurse with code ");
   strcat(tmessage, itoa(code, 10));
   strcat(tmessage, "...");
     
@@ -412,9 +415,6 @@ int Read_Write_db_File(int mode) // 0 read, 1 write, 2 create from file, 3&4 rec
      i=Read_Write_Field(tfield, fieldserialtofieldposition(i1++));
      if (record[tfield.id].active)
       ++activefields;
-     if (iscorruptstring(tfield.text) || iscorruptstring(tfield.formula)) {
-      Show_Message(1, 24, 1, "corrupt database file!", 1500);
-     End_Program(-3); }
     records.push_back(tfield); }
     s=records.end(); // delete last read
     --s;
@@ -438,7 +438,7 @@ int Read_Write_db_File(int mode) // 0 read, 1 write, 2 create from file, 3&4 rec
     outdbfile.put(ttext3[i1]); }
     outdbfile.put(charcoder('#', 0));
     ++startofrecords;
-   outdbfile.close(); }
+    outdbfile.close(); }
 
    if (mode==4) { // only rewrite rcdata
     char ttext3[MAXSTRING*5];
@@ -458,7 +458,9 @@ int Read_Write_db_File(int mode) // 0 read, 1 write, 2 create from file, 3&4 rec
     case 1:
      for (i=0;i<records.size();i++)
       Read_Write_Field(records[i], fieldserialtofieldposition(i), 1);
-     for (i=0;i<4;i++)
+     if (currentfield<findfieldege() && currentfield<findfieldege(1))
+      currentfield=findfieldege();
+     for (i=0;i<5;i++)
       Read_Write_Current_Parameters(i, 1);
     break;
     case 2:
@@ -485,12 +487,12 @@ int Read_Write_db_File(int mode) // 0 read, 1 write, 2 create from file, 3&4 rec
 }
 
 // read & write current record
-int Read_Write_Current_Parameters(int item, int mode) // item:0 currentrecord, 1 currentmenu, 2 menubar 3 autosave| mode:0 read, 1 write
+int Read_Write_Current_Parameters(int item, int mode) // item:0 currentrecord, 1 currentmenu, 2 menubar 3 autosave 4 currentfield| mode:0 read, 1 write
 {
   int i, tvalue;
   char *ttext=new char[5];
-  int parameterpositions[]={ 0, 4, 5, 6 };
-  int parametersize=(!item) ? 4 : 1;
+  int parameterpositions[]={ 0, 4, 5, 6, 7 };
+  int parametersize=(!item || item==4) ? 4 : 1;
   fstream dbfileaccess(dbfile, ios::in | ios::out | ios::binary);
 
   if (!mode) {
@@ -514,6 +516,9 @@ int Read_Write_Current_Parameters(int item, int mode) // item:0 currentrecord, 1
     break;
     case 3:
      i=autosave;
+    break;
+    case 4:
+     i=currentfield;
    break; }
    strcpy(ttext, itoa(i));
    for (i=strlen(ttext);i<4;i++)
@@ -762,11 +767,11 @@ int Join_Fields(int field_id, int mode)
   vector <int> fieldidentities;
   
   if (mode==HORIZONTALLY)
-   sortfieldsbyxpt(currentfield, fieldidentities);
+   sortfieldsbyxpt(field_id, fieldidentities);
   else
-   sortfieldsbyypt(currentfield, fieldidentities);
+   sortfieldsbyypt(field_id, fieldidentities);
   for (i=0;i<fieldidentities.size();i++) 
-   if (currentfield==fieldidentities[i])
+   if (field_id==fieldidentities[i])
     break;
   if (i==fieldidentities.size()-1)
    return -1;
@@ -777,13 +782,13 @@ int Join_Fields(int field_id, int mode)
   record[fieldidentities[i]].size.x+=record[fieldidentities[i+1]].size.x; }
   else
    record[fieldidentities[i]].size.y+=record[fieldidentities[i+1]].size.y;
-  strcat(records[(currentrecord*fieldsperrecord)+currentfield].text, " ");
-  strcat(records[(currentrecord*fieldsperrecord)+currentfield].text, records[(currentrecord*fieldsperrecord)+fieldidentities[i+1]].text);
+  strcat(records[(currentrecord*fieldsperrecord)+field_id].text, " ");
+  strcat(records[(currentrecord*fieldsperrecord)+field_id].text, records[(currentrecord*fieldsperrecord)+fieldidentities[i+1]].text);
   Delete_Field(fieldidentities[i+1]);
   
   Read_Write_db_File(3);
   Read_Write_db_File(1);
-    
+  
  return fieldidentities[i];
 }
 
@@ -806,15 +811,13 @@ void Renumber_Field_References(int startingfield)
     newreference=atoi(s);
     strcpy(s, "#");
     --i;
-    if (newreference<fieldsperrecord && newreference!=startingfield+1)
-     strcat(s, itoa(newreference-1));
+    if (newreference<fieldsperrecord && newreference!=startingfield+1) {
+     newreference-=(newreference<startingfield) ? 0 : 1;
+    strcat(s, itoa(newreference)); }
      else {
       if (iscalculationsign(record[fieldid].automatic_value[i+1]))
        ++i;
     strcpy(s, " "); }
-   Change_Color(58);
-   gotoxy(1,1);
-   printw("%d:%s                                       ", startingfield, s);
     for (i1=0;i1<strlen(s);i1++)
    transformedtext[n++]=s[i1]; } }
    transformedtext[n]='\0';
@@ -831,20 +834,20 @@ int Divide_Field(int field_id, int mode)
   if (mode==VERTICALLY && record[field_id].size.y<2)
    return -1;
   Add_Field();
-  record[records[records.size()-1].id]=record[currentfield];
+  record[records[records.size()-1].id]=record[field_id];
   if (mode==HORIZONTALLY) {
-   record[currentfield].size.x/=2;
+   record[field_id].size.x/=2;
    record[records[records.size()-1].id].size.x/=2;
-  record[records[records.size()-1].id].pt.x+=record[currentfield].size.x; }
+  record[records[records.size()-1].id].pt.x+=record[field_id].size.x; }
   else {
-   record[currentfield].size.y/=2;
+   record[field_id].size.y/=2;
    record[records[records.size()-1].id].size.y/=2;
-  record[records[records.size()-1].id].pt.y+=record[currentfield].size.y; }
+  record[records[records.size()-1].id].pt.y+=record[field_id].size.y; }
+  
+  Read_Write_db_File(3);
+  Read_Write_db_File(1);
     
-   Read_Write_db_File(3);
-   Read_Write_db_File(1);
-    
-  return records[records.size()-1].id;
+ return records[records.size()-1].id;
 }
 
 // bring current datetime stamp in char array
@@ -875,7 +878,7 @@ int Read_Write_Field(Annotated_Field &tfield, long int field_position, int mode)
   char ttext[FIELDSIZE];
 
   fstream dbfileaccess(dbfile, ios::in | ios::out | ios::binary);
-  if (!mode) 
+  if (!mode)
    dbfileaccess.seekg(field_position, ios::beg);
   else {
    dbfileaccess.seekp(field_position, ios::beg);
@@ -919,7 +922,7 @@ int Read_Write_Field(Annotated_Field &tfield, long int field_position, int mode)
 long int fieldposition(int record_id, int field_id)
 {
   int i;
-  long int position=startofrecords+7; // position after parameters
+  long int position=startofrecords+11; // position after parameters
   
   for (i=0;i<record_id*fieldsperrecord;i++) 
    position+=FIELDSIZE;
@@ -1011,9 +1014,9 @@ int Show_Record_and_Menu()
   
    currentrecord=Read_Write_Current_Parameters(0);
    currentmenu=Read_Write_Current_Parameters(1);
-   currentfield=findfieldege();
    menubar=Read_Write_Current_Parameters(2);
    autosave=Read_Write_Current_Parameters(3);
+   currentfield=Read_Write_Current_Parameters(4);
    while (run) {
     Clear_Screen();
     for (i=0;i<fieldsperrecord;i++)
@@ -2097,17 +2100,28 @@ int Import_External_db_File(char *filename)
  return 0;
 }
 
-// // remove garbage from database file
-// int Clean_Database(char *filename)
-// {
-//   
-//     
-//     
-//     
-//     
-//     
-//  return 0;
-// }
+// remove garbage from database file
+int Clean_Database(char *filename)
+{
+  char t;
+  int i=0;
+    
+   fstream dbfileaccess(dbfile, ios::in | ios::out | ios::binary);
+   if (!dbfileaccess)
+    return -1;
+   dbfileaccess.seekg(0, ios::beg);
+   dbfileaccess.seekp(0, ios::beg);
+    
+    while (dbfileaccess) {
+     t=(charcoder(dbfileaccess.get(), 1));
+     ++i;
+     if (!isprintablecharacter(t) && t!='\n')
+      t=SPACE;
+     dbfileaccess.seekp(i-1, ios::beg);
+    dbfileaccess.put(charcoder(t)); }
+    
+ return 0;
+}
 
 
 
