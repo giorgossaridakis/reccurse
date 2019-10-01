@@ -30,6 +30,7 @@ void replaceunderscoresandbrackets(char dataname[], int flag);
 char *ctos(int t);
 double bringfractionpartofdivision(int param1, int param2, int scale=10);
 int isspace(char t);
+int iscalculationsign(char t);
 int isdecimalseparator(char t);
 int isprintablecharacter(char t);
 int iscorruptstring(char *tstring);
@@ -680,6 +681,14 @@ int isspace(char t)
    return 1;
   
  return 0;
+}
+
+int iscalculationsign(char t)
+{
+   if (t=='+' || t=='-' || t=='*' || t=='/' || t=='%' || t=='^')
+    return 1;
+    
+  return 0;
 }
 
 // isdecimalseparator

@@ -1,4 +1,4 @@
-// reccurse, the filemaker of ncurses, version 0.298
+// reccurse, the filemaker of ncurses, version 0.230
 
 // included libraries
 // C
@@ -31,12 +31,12 @@
 #define MAXSUFFIXCHARS 3 // max string for number suffixes
 #define DEFAULT_DECIMALS 2 // decimal positions
 #define MAXFIELDS 999 // fields per record
-#define MAXRECORDS 9999 // pages limit
+#define MAXRECORDS 9999 // records limit
 #define FIELDSIZE MAXSTRING*2+MAXNUMBERDIGITS+15  // +7 would do
 #define MAXSEARCHDEPTH 5
 #define HORIZONTALLY 0
 #define VERTICALLY 1
-#define version 0.298
+#define version 0.230
 
 // keyboard
 #define UP 53
@@ -141,6 +141,7 @@ void Initialize_Record();
 int Add_Field();
 void Delete_Field(int field_id);
 int Join_Fields(int field_id, int mode);
+void Renumber_Field_References(int startingfield);
 int Divide_Field(int field_id, int mode);
 void Bring_DateTime_Stamp(char tdatetime[MAXSTRING]);
 int ispossibletickbox(int field_id);
@@ -217,7 +218,7 @@ int main(int argc, char *argv[])
     strcat(tmessage, dbfile);
     // read record fields and records from dbfile
     Read_Write_db_File();
-    Show_Message(8, 20, 2, tmessage, 2250);
+    Show_Message(8, 20, 2, tmessage, 1750);
     Show_Record_and_Menu();
    
   End_Program(0);
@@ -748,6 +749,7 @@ void Delete_Field(int field_id)
     for (i=0;i<fieldsperrecord;i++)
      p++->id=i;
    
+   Renumber_Field_References(field_id);
    Read_Write_db_File(3);
    Read_Write_db_File(1);
 }
@@ -783,6 +785,40 @@ int Join_Fields(int field_id, int mode)
   Read_Write_db_File(1);
     
  return fieldidentities[i];
+}
+
+// renumber field references and fieldlists
+void Renumber_Field_References(int startingfield)
+{
+  int i, i1, n, fieldid, newreference;
+  char transformedtext[MAXSTRING], s[MAXSTRING];
+
+  for (fieldid=0;fieldid<fieldsperrecord;fieldid++) {
+   n=0;
+   for (i=0;i<strlen(record[fieldid].automatic_value);i++) {
+    if (record[fieldid].automatic_value[i]!='#')
+     transformedtext[n++]=record[fieldid].automatic_value[i];
+   else {
+    i1=0;
+    while (isdigit(record[fieldid].automatic_value[++i]) && i<strlen(record[fieldid].automatic_value))
+     s[i1++]=record[fieldid].automatic_value[i];
+    s[i1]='\0';
+    newreference=atoi(s);
+    strcpy(s, "#");
+    --i;
+    if (newreference<fieldsperrecord && newreference!=startingfield+1)
+     strcat(s, itoa(newreference-1));
+     else {
+      if (iscalculationsign(record[fieldid].automatic_value[i+1]))
+       ++i;
+    strcpy(s, " "); }
+   Change_Color(58);
+   gotoxy(1,1);
+   printw("%d:%s                                       ", startingfield, s);
+    for (i1=0;i1<strlen(s);i1++)
+   transformedtext[n++]=s[i1]; } }
+   transformedtext[n]='\0';
+  strcpy(record[fieldid].automatic_value, transformedtext); }
 }
 
 // divide a field into two parts
@@ -2060,3 +2096,18 @@ int Import_External_db_File(char *filename)
     
  return 0;
 }
+
+// // remove garbage from database file
+// int Clean_Database(char *filename)
+// {
+//   
+//     
+//     
+//     
+//     
+//     
+//  return 0;
+// }
+
+
+
