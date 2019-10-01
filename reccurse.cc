@@ -1,4 +1,4 @@
-// reccurse, the filemaker of ncurses, version 0.236
+// reccurse, the filemaker of ncurses, version 0.237
 
 // included libraries
 // C
@@ -36,7 +36,7 @@
 #define MAXSEARCHDEPTH 5
 #define HORIZONTALLY 0
 #define VERTICALLY 1
-#define version 0.236
+#define version 0.237
 
 // keyboard
 #define UP 53
@@ -1623,7 +1623,7 @@ void Show_Help_Screen()
 void Show_DB_Information()
 {
   char dbinfo[1000];
-  int i, n, averagerecordsize, averagefieldsize, tfieldsize=0, numericalfields=0, stringfields=0, datestampfields=0, extrawindowlength;
+  int i, n, averagerecordsize, averagefieldsize, tfieldsize=0, numericalfields=0, mixedfields=0, stringfields=0, datestampfields=0, extrawindowlength;
   long int totalrecordssize=0;
 
    for (i=0;i<record.size();i++)
@@ -1636,6 +1636,9 @@ void Show_DB_Information()
      break;
      case 2:
       ++stringfields;
+     break;
+     case 3:
+      ++mixedfields;
     break; }
     
    for (i=0;i<recordsnumber;tfieldsize=0, i++) {
@@ -1671,7 +1674,9 @@ void Show_DB_Information()
    gotoxy(21,16);
    printw("string fields:%d", stringfields);
    gotoxy(21,17);
-   printw("datestamp fields:%d", datestampfields);
+   printw("mixed fields:%d", mixedfields);
+   gotoxy(21,18);
+   printw("calendar fields:%d", datestampfields);
    gotoxy(21,19);
    printw("autosave is:%s", onoff[autosave]);
    refresh();
