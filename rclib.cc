@@ -258,7 +258,7 @@ char Scan_Input(char istring[MAXSTRING], int x_pos, int y_pos, int color)
   char tstring[MAXSTRING], iistring[MAXSTRING];
   
   if (record.size() && records.size()) {
-   if (record[records[(currentrecord*fieldsperrecord)+currentfield].id].fieldlist) {
+   if (record[currentfield].fieldlist) {
    fieldreferenceflag=1;
   fieldreferencelist=record[records[(fieldreferencerecord*fieldsperrecord)+currentfield].id].fieldlist-1; } }
   
@@ -363,13 +363,7 @@ void Scan_Date(int x_pos, int y_pos, char tdate[])
   time_t now = time(0);
   char date[MAXSTRING];
   tm *ltm = localtime(&now);
-  
-//    cout << "Year" << 1900 + ltm->tm_year<<endl;
-//    cout << "Month: "<< 1 + ltm->tm_mon<< endl;
-//    cout << "Day: "<<  ltm->tm_mday << endl;
-//    cout << "Time: "<< 1 + ltm->tm_hour << ":";
-//    cout << 1 + ltm->tm_min << ":";
-//    cout << 1 + ltm->tm_sec << endl;
+
    y=1900 + ltm->tm_year;
    m=1 + ltm->tm_mon;
    d=ltm->tm_mday;
@@ -476,7 +470,7 @@ void addleadingzeros(char ttext[], Annotated_Field *tfield, int flag) // 0 space
   int i, n;
   char ttext2[MAXSTRING];
     
-  n=record[records[(currentrecord*fieldsperrecord)+tfield->id].id].size.x-strlen(ttext);
+  n=record[tfield->id].size.x-strlen(ttext);
   for (i=0;i<n;i++)
    ttext2[i]=' ';
   ttext2[i]='\0';
@@ -713,7 +707,7 @@ int isprintablecharacter(char t)
 int iscorruptstring(char *tstring)
 {
     while (*tstring) {
-     if (!isprintablecharacter(*tstring) && (int)*tstring>0 && *tstring!='\n')
+     if (!isprintablecharacter(*tstring) && *tstring!='\n') 
       return 1;
      ++tstring; }
     
@@ -819,7 +813,7 @@ void sortfieldsbyxpt(int field_id, vector <int> &fieldxidentities)
  int i, t, operation=1;
 
    for (i=0;i<fieldsperrecord;i++)
-    if (record[records[(currentrecord*fieldsperrecord)+field_id].id].pt.y==record[records[(currentrecord*fieldsperrecord)+i].id].pt.y && record[i].editable && record[i].active)
+    if (record[field_id].pt.y==record[i].pt.y && record[i].editable && record[i].active)
      fieldxidentities.push_back(i);
    i=0;
    while (operation) {
@@ -838,7 +832,7 @@ void sortfieldsbyypt(int field_id, vector <int> &fieldyidentities)
  int i, t, operation=1;
 
    for (i=0;i<fieldsperrecord;i++)
-    if (record[records[(currentrecord*fieldsperrecord)+field_id].id].pt.x==record[records[(currentrecord*fieldsperrecord)+i].id].pt.x && record[i].editable && record[i].active)
+    if (record[field_id].pt.x==record[i].pt.x && record[i].editable && record[i].active)
      fieldyidentities.push_back(i);
    i=0;
    while (operation) {
@@ -864,7 +858,7 @@ int findfieldege(int flag) // 0 first, 1 last
    break; } }
    else {
    for (i=fieldsperrecord-1;i>0;i--)
-    if (record[records[(currentrecord*fieldsperrecord)+i].id].editable) {
+    if (record[i].editable) {
      tfield=i;
    break; } }
     

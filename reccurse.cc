@@ -1,4 +1,4 @@
-// reccurse, the filemaker of ncurses, version 0.238
+// reccurse, the filemaker of ncurses, version 0.241
 
 // included libraries
 // C
@@ -36,7 +36,7 @@
 #define MAXSEARCHDEPTH 5
 #define HORIZONTALLY 0
 #define VERTICALLY 1
-#define version 0.238
+#define version 0.241
 
 // keyboard
 #define UP 53
@@ -757,6 +757,7 @@ void Delete_Field(int field_id)
    Renumber_Field_References(field_id);
    Read_Write_db_File(3);
    Read_Write_db_File(1);
+   Read_Write_db_File();  // precaution
 }
 
 // merge logistically and physically a field with it's right next
@@ -1004,7 +1005,7 @@ int Show_Record_and_Menu()
   int i, i1, n, trecordsnumber, run=1, c;
   int findresults[MAXSEARCHDEPTH+1][MAXRECORDS], tsortresults[MAXRECORDS];
   char input_text[MAXSTRING], tattributes[9];
-  const char *alterscreenparameterskeys="/*-+.";
+  const char *alterscreenparameterskeys="/*-+.!@";
   struct FindSchedule {
    int field_id;
   char texttolookfor[MAXSTRING]; } ;
@@ -1175,7 +1176,7 @@ int Show_Record_and_Menu()
          ++currentfield;
          if (currentfield>fieldsperrecord-1)
           currentfield=0;
-         while (!record[records[(currentrecord*fieldsperrecord)+currentfield].id].active || !record[records[(currentrecord*fieldsperrecord)+currentfield].id].editable) {
+         while (!record[currentfield].active || !record[currentfield].editable) {
           ++currentfield;
           if (currentfield>fieldsperrecord-1)
       currentfield=0; } } }
@@ -1184,7 +1185,7 @@ int Show_Record_and_Menu()
       ++currentfield;
       if (currentfield>fieldsperrecord-1)
        currentfield=0;
-      while (!record[records[(currentrecord*fieldsperrecord)+currentfield].id].active || !record[records[(currentrecord*fieldsperrecord)+currentfield].id].editable) {
+      while (!record[currentfield].active || !record[currentfield].editable) {
        ++currentfield;
        if (currentfield>fieldsperrecord-1)
      currentfield=0; }
@@ -1205,7 +1206,7 @@ int Show_Record_and_Menu()
          --currentfield;
          if (currentfield<0)
           currentfield=fieldsperrecord-1;
-         while (!record[records[(currentrecord*fieldsperrecord)+currentfield].id].active || !record[records[(currentrecord*fieldsperrecord)+currentfield].id].editable) {
+         while (!record[currentfield].active || !record[currentfield].editable) {
           --currentfield;
           if (currentfield<0)
       currentfield=fieldsperrecord-1; } } }
@@ -1214,7 +1215,7 @@ int Show_Record_and_Menu()
       --currentfield;
       if (currentfield<0)
        currentfield=fieldsperrecord-1;
-      while (!record[records[(currentrecord*fieldsperrecord)+currentfield].id].active || !record[records[(currentrecord*fieldsperrecord)+currentfield].id].editable) {
+      while (!record[currentfield].active || !record[currentfield].editable) {
         --currentfield;
         if (currentfield<0)
       currentfield=fieldsperrecord-1; }
@@ -1275,6 +1276,7 @@ int Show_Record_and_Menu()
      case 's':
       Show_Menu_Bar(1);
       Read_Write_db_File(1);
+      alteredparameters=0;
       Show_Menu_Bar(1);
       Show_Message(1, 24, 2, "database saved", 1500);
       Show_Menu_Bar(1);
@@ -1296,16 +1298,16 @@ int Show_Record_and_Menu()
      break;
      // from menu 2
      case 'd':
-      if (!strcmp(record[records[(currentrecord*fieldsperrecord)+currentfield].id].automatic_value, ".") /*&& record[records[(currentrecord*fieldsperrecord)+currentfield].id].editable*/ && record[records[(currentrecord*fieldsperrecord)+currentfield].id].type!=1) {
+      if (!strcmp(record[currentfield].automatic_value, ".") && record[currentfield].type!=1) {
        for (i=0;i<fieldsperrecord;i++)
         Show_Field_ID(&records[(currentrecord*fieldsperrecord)+i]);
-       if (record[records[(currentrecord*fieldsperrecord)+currentfield].id].fieldlist) {
+       if (record[currentfield].fieldlist) {
         Show_Message(1, 24, 5, "fieldlist entry. <up> and <down> arrows, <insert> to bring relevant data", 1750);
         attron(A_BLINK);
         Show_Field(&records[(currentrecord*fieldsperrecord)+record[currentfield].fieldlist-1], 1);
         attroff(A_BLINK); }
       Screen_String_Editor(records[(currentrecord*fieldsperrecord)+currentfield]); }
-      if (record[records[(currentrecord*fieldsperrecord)+currentfield].id].type==1) {
+      if (record[currentfield].type==1) {
        strcpy(input_string, records[(currentrecord*fieldsperrecord)+currentfield].text);
        Scan_Date(1, 24, input_string);
        strcpy(records[(currentrecord*fieldsperrecord)+currentfield].text, input_string);
@@ -1318,24 +1320,30 @@ int Show_Record_and_Menu()
       Read_Write_Field(records[(currentrecord*fieldsperrecord)+currentfield], fieldposition(currentrecord, currentfield), 1); }
      break;
      case SPACE:
-      if (record[records[(currentrecord*fieldsperrecord)+currentfield].id].type==2 && !strcmp(record[records[(currentrecord*fieldsperrecord)+currentfield].id].automatic_value, ".") && record[records[(currentrecord*fieldsperrecord)+currentfield].id].editable && ispossibletickbox(records[(currentrecord*fieldsperrecord)+currentfield].id)) {
+      if (record[currentfield].type==2 && !strcmp(record[currentfield].automatic_value, ".") && record[currentfield].editable && ispossibletickbox(records[(currentrecord*fieldsperrecord)+currentfield].id)) {
        records[(currentrecord*fieldsperrecord)+currentfield].text[0]=(records[(currentrecord*fieldsperrecord)+currentfield].text[0]=='X') ? ' ' : 'X';
       Read_Write_Field(records[(currentrecord*fieldsperrecord)+currentfield], fieldposition(currentrecord, currentfield), 1); }
      break;
      case '+':
-      record[records[(currentrecord*fieldsperrecord)+currentfield].id].attributes[6]=(record[records[(currentrecord*fieldsperrecord)+currentfield].id].attributes[6]=='1') ? '0' : '1';
+      record[currentfield].attributes[6]=(record[currentfield].attributes[6]=='1') ? '0' : '1';
      break;
      case '-':
-      record[records[(currentrecord*fieldsperrecord)+currentfield].id].attributes[2]=(record[records[(currentrecord*fieldsperrecord)+currentfield].id].attributes[2]=='1') ? '0' : '1';
+      record[currentfield].attributes[2]=(record[currentfield].attributes[2]=='1') ? '0' : '1';
      break;
      case '*':
-      record[records[(currentrecord*fieldsperrecord)+currentfield].id].attributes[1]=(record[records[(currentrecord*fieldsperrecord)+currentfield].id].attributes[1]=='1') ? '0' : '1';
+      record[currentfield].attributes[1]=(record[currentfield].attributes[1]=='1') ? '0' : '1';
      break;
      case '/':
-      record[records[(currentrecord*fieldsperrecord)+currentfield].id].attributes[4]=(record[records[(currentrecord*fieldsperrecord)+currentfield].id].attributes[4]=='1') ? '0' : '1';
+      record[currentfield].attributes[4]=(record[currentfield].attributes[4]=='1') ? '0' : '1';
      break;
      case '.':
-      record[records[(currentrecord*fieldsperrecord)+currentfield].id].attributes[5]=(record[records[(currentrecord*fieldsperrecord)+currentfield].id].attributes[5]=='1') ? '0' : '1';
+      record[currentfield].attributes[5]=(record[currentfield].attributes[5]=='1') ? '0' : '1';
+     break;
+     case '!':
+      record[currentfield].color+=record[currentfield].color<58 ? 1 : -58;
+     break;
+     case '@':
+      record[currentfield].color-=record[currentfield].color>2 ? 1 : -57;
      break;
      case 'c':
       for (i=0;i<fieldsperrecord;i++)
@@ -1534,7 +1542,7 @@ int Screen_String_Editor(Annotated_Field &tfield)
 int negatekeysforcurrentmenu(int t)
 {
   int i;
-  const char *menukeys[]={ "eot", "alsh", "dcpjv+-*/.", "ifru" }; // m works in all menus
+  const char *menukeys[]={ "eot", "alsh", "dcpjv+-*/.!@", "ifru" }; // m works in all menus
   
   if (t==196) t='>'; // shift+right arrow
   if (t==187) t='<'; // shift+left arrow
@@ -1571,15 +1579,15 @@ void Show_Menu_Bar(int mode) // 0 show, 1 remove
   for (i=0;i<79;i++)
    addch(SPACE);
   
-  if (!mode && menubar==1 && !recordsdemo) {
-   Change_Color(menucolors[currentmenu]);
-   gotoxy(1, menulines[currentmenu]);
-  printw("%s", menutexts[currentmenu]); }
-  if (!mode && menubar==3) {
-   Change_Color(record[records[(currentrecord*fieldsperrecord)+currentfield].id].color);
-   gotoxy(1, menulines[currentmenu]);
-  printw("%s", records[(currentrecord*fieldsperrecord)+currentfield].text);  }
   if (!mode) {
+   if (menubar==1 && !recordsdemo) {
+    Change_Color(menucolors[currentmenu]);
+    gotoxy(1, menulines[currentmenu]);
+   printw("%s", menutexts[currentmenu]); }
+   if (menubar==3) {
+    Change_Color(record[currentfield].color);
+    gotoxy(1, menulines[currentmenu]);
+   printw("%s", records[(currentrecord*fieldsperrecord)+currentfield].text);  }
    gotoxy(1,menulines[currentmenu]);
    if (recordsdemo || menubar==2) {
     recordsize=0;
@@ -1609,7 +1617,7 @@ void Show_Menu_Bar(int mode) // 0 show, 1 remove
 // show a help scren
 void Show_Help_Screen()
 {
-  string helpinfo="                                <help screen>                                   reccurse is a custom design record keeper with advanced functions.              based on the ncurses library, reccurse is a clever tool for terminal use.       instruction keys are usually displayed in the bottom bar, the bottom bar itself can be switched from keyboard hints, to navigation information, to field text,  to disappearance with the <m> key. navigation through fields is done with arrow keys or tab/shift+tab and with home/end. move through records with shift+arrow  keys or < >. <g>o for record number. navigation keys work in all menus.         more keys -> ctrl+e to edit submenu, ctrl+o to options mode, ctrl+t to extra    submenu, ctrl+f find function, ctrl+k copy to clipboard, ctrl+v paste clipboard.+-*/. keys will add/remove attributes in edit submenu, ? for this help screen.  <carriage return> enters edit mode, <space> ticks/unticks tickboxes (1x1fields).when find is selected, user is prompted to enter a field number, then a search  criteria (asterisks denote any text until the next alphanumeric character).     the sequence is repeated until a carriage return is given. this allows for      multiple searches, each sequential will operate on the previous find records    that match the requested criteria.                                              when sort is selected, user is prompted to enter a field number, then           <a>scending or <d>escending order. the sequence is repeated and records are     sorted each time according to the requested sort parameters.                    reccurse will record changes in fields after editing, if autosave is enabled in options submenu (default option). to prevent loss of data, keep a backup.       written in Aug-Sep 2019 by Giorgos Saridakis.                                              reccurse is distributed under the GNU Public Licence. :)";
+  string helpinfo="                                <help screen>                                   reccurse is a custom design record keeper with advanced functions.              based on the ncurses library, reccurse is a clever tool for terminal use.       instruction keys are usually displayed in the bottom bar, the bottom bar itself can be switched from keyboard hints, to navigation information, to field text,  to disappearance with the <m> key. navigation through fields is done with arrow keys or tab/shift+tab and with home/end. move through records with shift+arrow  keys or < >. <g>o for record number. navigation keys work in all menus.         more keys -> ctrl+e to edit submenu, ctrl+o to options mode, ctrl+t to extra    submenu, ctrl+f find function, ctrl+k copy to clipboard, ctrl+v paste clipboard.+-*/. keys will add/remove attributes,!@ keys for color, ? for this help screen.<carriage return> enters edit mode, <space> ticks/unticks tickboxes (1x1fields).when find is selected, user is prompted to enter a field number, then a search  criteria (asterisks denote any text until the next alphanumeric character).     the sequence is repeated until a carriage return is given. this allows for      multiple searches, each sequential will operate on the previous find records    that match the requested criteria.                                              when sort is selected, user is prompted to enter a field number, then           <a>scending or <d>escending order. the sequence is repeated and records are     sorted each time according to the requested sort parameters.                    reccurse will record changes in fields after editing, if autosave is enabled in options submenu (default option). to prevent loss of data, keep a backup.       written in Aug-Sep 2019 by Giorgos Saridakis.                                              reccurse is distributed under the GNU Public Licence. :)";
 
    Clear_Screen();
    Change_Color(58);
@@ -1953,7 +1961,12 @@ int Export_Database(char *filename)
    outfile << endl; }
    outfile.close();
    
-   Show_Message(1, 24, 4, "database records exported", 1500);
+   strcpy(tstring, itoa(recordsnumber));
+   strcat(tstring, " database record");
+   if (recordsnumber>1)
+    strcat(tstring, "s");
+   strcat(tstring, " exported");
+   Show_Message(1, 24, 4, tstring, 1500);
    Show_Menu_Bar();
    
  return 0;
@@ -2016,7 +2029,10 @@ int Import_Database(char *filename)
    Read_Write_db_File(1);
    Read_Write_db_File();
    strcpy(tstring, itoa(trecordsnumber));
-   strcat(tstring, " database records imported");
+   strcat(tstring, " database record");
+   if (trecordsnumber>1)
+    strcat(tstring, "s");
+   strcat(tstring, " imported");
    Show_Message(1, 24, 4, tstring, 1500);
    Show_Menu_Bar();
 
@@ -2127,6 +2143,3 @@ int Clean_Database(char *filename)
     
  return 0;
 }
-
-
-
