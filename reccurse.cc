@@ -1,4 +1,4 @@
-// reccurse, the filemaker of ncurses, version 0.241
+// reccurse, the filemaker of ncurses, version 0.300
 
 // included libraries
 // C
@@ -36,7 +36,7 @@
 #define MAXSEARCHDEPTH 5
 #define HORIZONTALLY 0
 #define VERTICALLY 1
-#define version 0.241
+#define version 0.300
 
 // keyboard
 #define UP 53
@@ -1275,6 +1275,7 @@ int Show_Record_and_Menu()
      break;
      case 's':
       Show_Menu_Bar(1);
+      Read_Write_db_File(3);
       Read_Write_db_File(1);
       alteredparameters=0;
       Show_Menu_Bar(1);
