@@ -14,6 +14,8 @@ void Scan_Date(int x_pos, int y_pos, char tdate[]);
 char *addmissingzeros(char tstring[], int zeros);
 void terminatestringatcharactersend(char *ttext);
 void addleadingzeros(char ttext[], Annotated_Field *tfield, int flag=0);
+void addleadingspaces(char ttext[], int overallsize);
+void cropstring(char ttext[], int noofcharacters, int flag=0);
 int fieldlength(char *fieldtext);
 long int filesize(char *filename);
 void stringquotesencloser(char *tstring, int flag=0);
@@ -254,18 +256,21 @@ int Scan_Input(int flag, int lim_a, int lim_b, int length) // 0 string, 1 intege
 // scan input overloaded
 char Scan_Input(char istring[MAXSTRING], int x_pos, int y_pos, int color)
 {
-  int i, t, column=strlen(istring)-1, fieldreferenceflag=0, fieldreferencelist, fieldreferencerecord=currentrecord;
+  int i, t, column=strlen(istring)-1, fieldreferenceflag=0, fieldreferencelist, dummyfieldreferencelist, fieldreferencerecord=currentrecord;
   char tstring[MAXSTRING], iistring[MAXSTRING];
   
-  if (record.size() && records.size()) {
-   if (record[currentfield].fieldlist) {
+  if (record.size() && records.size() && record[currentfield].fieldlist) {
    fieldreferenceflag=1;
-  fieldreferencelist=record[records[(fieldreferencerecord*fieldsperrecord)+currentfield].id].fieldlist-1; } }
+   if (fieldhasdependancy==2) {
+     fieldreferencerecord=0;
+  dummyfieldreferencelist=relationships[externalreferencedatabase].extFields[1]-1; }
+  else 
+ fieldreferencelist=record[records[(fieldreferencerecord*fieldsperrecord)+currentfield].id].fieldlist-1; }
   
    strcpy(tstring, istring);
    for (i=0;i<79;i++)
     if (i>column || tstring[i]=='\n')
-     tstring[i]=SPACE;
+      tstring[i]=SPACE;
    tstring[i]='\0';
    Change_Color(color);
    column=x_pos;
@@ -273,7 +278,10 @@ char Scan_Input(char istring[MAXSTRING], int x_pos, int y_pos, int color)
     gotoxy(x_pos, y_pos);
     if (fieldreferenceflag==2) {
      fieldreferenceflag=1;
-    strcpy(tstring, records[(fieldreferencerecord*fieldsperrecord)+fieldreferencelist].text); }
+     if (fieldhasdependancy!=2)
+      strcpy(tstring, records[(fieldreferencerecord*fieldsperrecord)+fieldreferencelist].text); 
+     else
+    strcpy(tstring, externalrecords[externalreferencedatabase][(fieldreferencerecord*dummyfieldsperrecord)+dummyfieldreferencelist].text); }
     printw("%s", tstring);
     for (i=strlen(tstring);i<79;i++)
      addch(SPACE);
@@ -307,6 +315,11 @@ char Scan_Input(char istring[MAXSTRING], int x_pos, int y_pos, int color)
        fieldreferenceflag=2; }
       break;
       case DOWN:
+       if (fieldhasdependancy==2) {
+        if (fieldreferenceflag && fieldreferencerecord<dummyrecordsnumber-1) {
+         ++fieldreferencerecord;
+       fieldreferenceflag=2; } } 
+       else
        if (fieldreferenceflag && fieldreferencerecord<recordsnumber-1) {
         ++fieldreferencerecord;
        fieldreferenceflag=2; }
@@ -472,10 +485,38 @@ void addleadingzeros(char ttext[], Annotated_Field *tfield, int flag) // 0 space
     
   n=record[tfield->id].size.x-strlen(ttext);
   for (i=0;i<n;i++)
+   ttext2[i]=(!flag) ? ' ' : '0';
+  ttext2[i]='\0';
+  strcat(ttext2, ttext);
+  strcpy(ttext, ttext2);
+}
+
+// add leading spaces to cover desired string length
+void addleadingspaces(char ttext[], int overallsize)
+{
+  int i;
+  char ttext2[MAXSTRING];
+    
+  for (i=0;i<overallsize-strlen(ttext);i++)
    ttext2[i]=' ';
   ttext2[i]='\0';
   strcat(ttext2, ttext);
   strcpy(ttext, ttext2);
+}
+
+// crop string from it's end or beginning
+void cropstring(char ttext[], int noofcharacters, int flag) // 0 end, 1 beginning
+{
+  int i;
+  char ttext2[MAXSTRING];
+   
+  if (flag) {
+   for (i=noofcharacters;i<strlen(ttext);i++)
+    ttext2[i-noofcharacters]=ttext[i];
+   ttext2[i-noofcharacters]='\0'; 
+  strcpy(ttext, ttext2); }
+  else if (noofcharacters<=strlen(ttext))
+   ttext[noofcharacters]='\0';
 }
 
 // count text length without spaces

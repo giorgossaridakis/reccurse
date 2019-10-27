@@ -1,4 +1,4 @@
-// reccurse, the filemaker of ncurses, version 0.300
+// reccurse, the filemaker of ncurses, version 0.325
 
 // included libraries
 // C
@@ -32,11 +32,15 @@
 #define DEFAULT_DECIMALS 2 // decimal positions
 #define MAXFIELDS 999 // fields per record
 #define MAXRECORDS 9999 // records limit
+#define MAXPAGES 25 // pages limit
 #define FIELDSIZE MAXSTRING*2+MAXNUMBERDIGITS+15  // +7 would do
+#define MAXNAME 20 // max chars in database filenames
+#define RELATIONSHIPSLENGTH 1024 // 1kb of external db files relationship data
+#define MAXRELATIONSHIPS 25 // will fit into above 1kb, same as MAXPAGES
 #define MAXSEARCHDEPTH 5
 #define HORIZONTALLY 0
 #define VERTICALLY 1
-#define version 0.300
+#define version 0.325
 
 // keyboard
 #define UP 53
@@ -61,8 +65,10 @@ using namespace std;
 
 // global variables
 int menubar;
-int autosave=1;
+int autosave;
 int recordsdemo=0;
+int currentpage=0;
+int pagesnumber=0;
 int currentmenu=0;
 int currentfield;
 int recordsnumber=0;
@@ -70,6 +76,10 @@ int currentrecord=0;
 int startofrecords=0;
 int fieldsperrecord=0;
 int alteredparameters=0;
+int dummyfieldsperrecord, dummyrecordsnumber;
+int fieldhasdependancy=0;
+int externalreferencedatabase;
+char pages[MAXPAGES][MAXSTRING];
 char rcfile[MAXSTRING], dbfile[MAXSTRING];
 const char *onoff[]= { "off", "on" };
 char clipboard[MAXSTRING];
@@ -122,8 +132,19 @@ class Annotated_Field {
    Annotated_Field() { } ;
 ~Annotated_Field() { } ; } ;
 
-vector<Field> record, dummyrecord;
-vector<Annotated_Field> records, dummyrecords;
+class Relationship {
+ public:
+  char extDbname[MAXNAME];
+  // will be declared equal, local will reflect external if ext[0]=local[0]. if local field is fieldreference active, relationship will occur anyway
+  int extFields[2]; 
+  int localFields[2];
+  Relationship(char name[MAXNAME], int e1, int e2, int l1, int l2) { strcpy(extDbname, name); extFields[0]=e1; extFields[1]=e2; localFields[0]=l1; localFields[1]=l2; } ;
+  Relationship() { };
+~Relationship() { } ; } ;
+
+vector<Field> record, dummyrecord, externalrecord[MAXRELATIONSHIPS];
+vector<Annotated_Field> records, dummyrecords, externalrecords[MAXRELATIONSHIPS];
+vector<Relationship> relationships;
 
 // functions
 void Intro_Screen();
@@ -132,6 +153,7 @@ void Reccurse_File_Extension(char *filename, int flag=0);
 int Read_rc_File();
 int Write_rc_File(char *file);
 int Read_Write_db_File(int mode=0);
+int Read_External_Database(int externaldatabaseid);
 int Read_Write_Current_Parameters(int item, int mode=0); // 0 read, 1 write
 void Read_Record_Field(ifstream &instream, Field &tfield);
 void Read_Record_Field(istringstream &instream, Field &tfield);
@@ -142,6 +164,7 @@ int Add_Field();
 void Delete_Field(int field_id);
 int Join_Fields(int field_id, int mode);
 void Renumber_Field_References(int startingfield);
+void Renumber_Field_Relationships(int startingfield);
 int Divide_Field(int field_id, int mode);
 void Bring_DateTime_Stamp(char tdatetime[MAXSTRING]);
 int ispossibletickbox(int field_id);
@@ -161,9 +184,14 @@ void Show_DB_Information();
 int Show_Field(Annotated_Field *tfield, int flag=0);
 int Show_Field_ID(Annotated_Field *tfield);
 void Generate_Field_String(Annotated_Field *tfield, char *ttext);
+int Generate_Dependant_Field_String(Annotated_Field *field, char *ttext);
 int Export_Database(char *filename);
 int Import_Database(char *filename);
 int Import_External_db_File(char *filename);
+int Read_Write_Relationships(int mode=0);
+void Initialize_Database_Parameters();
+void Load_Database(int pagenumber);
+int Pages_Selector();
 int Clean_Database(char *filename);
 
 // to be compiled together
@@ -171,7 +199,7 @@ int Clean_Database(char *filename);
 #include "rclib.cc"
 #include "rcpc.cc"
 #include "rcsc.cc"
-#include "rcfe.cc"
+#include "rcfre.cc"
 
 int main(int argc, char *argv[])
 {
@@ -179,7 +207,7 @@ int main(int argc, char *argv[])
   
   Init_Screen();
   Change_Color(58);
-  char tmessage[MAXSTRING];
+  char tmessage[MAXSTRING], tfile[MAXSTRING];
   signal(SIGINT, INThandler);
 
    Intro_Screen();
@@ -216,10 +244,20 @@ int main(int argc, char *argv[])
       outrcfile.close();
       strcpy(tmessage, "created file ");
     Read_rc_File(); } }
+    // setup pages workgroup
+    strcpy(pages[0], dbfile);
+    ++pagesnumber;
+    for (i=2;i<argc;i++) {
+     strcpy(tfile, argv[i]);
+     Reccurse_File_Extension(tfile, 2);
+     if (tryfile(tfile)) {
+      strcpy(pages[i-1], tfile);
+    ++pagesnumber; } }
     strcat(tmessage, dbfile);
     // read record fields and records from dbfile
-    Read_Write_db_File();
-    Show_Message(8, 20, 2, tmessage, 1750);
+    Load_Database(currentpage);
+    if (fieldhasdependancy)
+     Show_Message(8, 20, 2, tmessage, 1750);
     Show_Record_and_Menu();
    
   End_Program(0);
@@ -239,6 +277,7 @@ void Intro_Screen()
     printw("Reccurse version %.3f", version);
     f=fopen("reccurse.pic", "rb");
     if (f) {
+     fieldhasdependancy=1; // use this to signal screen file exists
      attron(A_BLINK);
      gotoxy(1,6);
      while (c!=EOF) {
@@ -250,6 +289,9 @@ void Intro_Screen()
      addch(c); }
      attroff(A_BLINK);
      fclose(f);
+     Change_Color(2);
+     gotoxy(55, 5);
+     printw("multipage edition");
      Change_Color(5);
      gotoxy(8,15);
     printw("the record maker with Linux ncurses"); }
@@ -422,9 +464,10 @@ int Read_Write_db_File(int mode) // 0 read, 1 write, 2 create from file, 3&4 rec
     recordsnumber=records.size()/fieldsperrecord;
     if (!activefields) {
      Show_Message(1, 24, 1, "no active fields in database");
-   End_Program(-2); } }
+    End_Program(-2); }
+   Read_Write_Relationships(); }
    
-   if (mode==3) { // recreate rc data into string and rewrite rcfile & dbfile
+   if (mode==3) { // recreate rc data into string and rewrite dbfile, relationships
     char ttext3[MAXSTRING*5];
     dbfileaccess.close();
     remove(dbfile);
@@ -438,9 +481,10 @@ int Read_Write_db_File(int mode) // 0 read, 1 write, 2 create from file, 3&4 rec
     outdbfile.put(ttext3[i1]); }
     outdbfile.put(charcoder('#', 0));
     ++startofrecords;
-    outdbfile.close(); }
+    outdbfile.close(); 
+   Read_Write_Relationships(1); }
 
-   if (mode==4) { // only rewrite rcdata
+   if (mode==4) { // only rewrite rcdata, relationships
     char ttext3[MAXSTRING*5];
     fstream outdbfile(dbfile, ios::in | ios::out | ios::binary);
     startofrecords=0;
@@ -452,7 +496,8 @@ int Read_Write_db_File(int mode) // 0 read, 1 write, 2 create from file, 3&4 rec
     outdbfile.put(ttext3[i1]); }
     outdbfile.put(charcoder('#', 0));
     ++startofrecords;
-   outdbfile.close(); }
+    outdbfile.close(); 
+   Read_Write_Relationships(1); }
    
    switch (mode) {
     case 1:
@@ -478,11 +523,84 @@ int Read_Write_db_File(int mode) // 0 read, 1 write, 2 create from file, 3&4 rec
       if (c!=EOF) 
      outdbfile.put(charcoder(c, 0)); }
      inrcfile.close();
-     outdbfile.close();      
+     outdbfile.close();
+     Read_Write_Relationships(1);
     break; }
     
    dbfileaccess.close();
   
+ return 0;
+}
+
+// read external .db files to vectors
+int Read_External_Database(int externaldatabaseid)
+{
+  int i, activefields=0, tfieldsperrecord=0, tstartofrecords=0;
+  char c, ttext3[FIELDSIZE];
+  string ttext;
+  Field tfield2;
+  Annotated_Field tfield;
+  vector<Annotated_Field>::iterator s;
+  vector<Field>::iterator p;
+  ifstream externaldatabase(relationships[externaldatabaseid].extDbname, ios::binary);
+  if (!externaldatabase)
+   return -1;
+
+  // clear all relationships, only requested in memory
+  for (i=0;i<relationships.size();i++) {
+   externalrecord[i].clear();
+  externalrecords[i].clear(); }
+   
+    while (c!='#') {
+     externaldatabase.get(c);
+     c=charcoder(c, 1);
+    ttext+=c; }
+    char tttext[ttext.size()+1];
+    for (i=0;i<ttext.size();i++)
+     tttext[i]=ttext[i];
+    tttext[i]='\0';
+    istringstream ttext2(tttext);
+    if (iscorruptstring(tttext)) {
+     Show_Message(1, 24, 1, "corrupt database file!", 1500);
+    End_Program(-3); }
+    while (ttext2) {
+     c=ttext2.peek();
+     if (c=='#' || c==EOF)
+      break;
+     tfield2.id=tfieldsperrecord;
+     Read_Record_Field(ttext2, tfield2);
+     ++tfieldsperrecord;
+    externalrecord[externaldatabaseid].push_back(tfield2); }
+    p=externalrecord[externaldatabaseid].end(); // delete last read
+    --p;
+    externalrecord[externaldatabaseid].erase(p);
+    // now read records
+    for (i=0;i<RELATIONSHIPSLENGTH+11;i++)
+     externaldatabase.get(c);
+    while (externaldatabase) {
+     for (i=0;i<FIELDSIZE;i++) {
+      if (!externaldatabase)
+       break;
+     externaldatabase.get(ttext3[i]);
+     ttext3[i]=charcoder(ttext3[i], 1); }
+     istringstream ttfield(ttext3);
+     ttfield >> tfield.id;
+     ttfield >> tfield.number;
+     ttfield >> tfield.text;
+     ttfield >> tfield.formula; 
+     replaceunderscoresandbrackets(tfield.text, 1);
+     replaceunderscoresandbrackets(tfield.formula, 1);
+     if (externalrecord[externaldatabaseid][tfield.id].active)
+      ++activefields;
+    externalrecords[externaldatabaseid].push_back(tfield); }
+    s=externalrecords[externaldatabaseid].end(); // delete last read
+    --s;
+    externalrecords[externaldatabaseid].erase(s);
+    if (!activefields)
+   return -1;
+    
+   externaldatabase.close();
+    
  return 0;
 }
 
@@ -496,14 +614,14 @@ int Read_Write_Current_Parameters(int item, int mode) // item:0 currentrecord, 1
   fstream dbfileaccess(dbfile, ios::in | ios::out | ios::binary);
 
   if (!mode) {
-   dbfileaccess.seekg(startofrecords+parameterpositions[item], ios::beg);
+   dbfileaccess.seekg(RELATIONSHIPSLENGTH+startofrecords+parameterpositions[item], ios::beg);
    for (i=0;i<parametersize;i++)
     dbfileaccess.get(ttext[i]);
    ttext[i]='\0';
    stringcodedecode(ttext, ttext, 1);
   tvalue=atoi(ttext); }
   else {
-   dbfileaccess.seekp(startofrecords+parameterpositions[item], ios::beg);
+   dbfileaccess.seekp(RELATIONSHIPSLENGTH+startofrecords+parameterpositions[item], ios::beg);
    switch (item) {
     case 0:
      i=currentrecord;
@@ -722,11 +840,14 @@ int Add_Field(/* add parameters */)
    Field tfield(fieldsperrecord, const_cast <char *> ("."), 0, const_cast <char *> ("000000000"), 58, 1, 1, 1, 1, const_cast <char *> ("000000000"), 58, 0, 58, 0, const_cast <char *> ("."), 2, 0, 0, 1, 1, const_cast <char *> ("."));
    record.push_back(tfield);
    Annotated_Field ttfield(fieldsperrecord, 0, " ", " ");
-   for (i=0;i<recordsnumber;i++) {
+   for (i=0;i<recordsnumber-1;i++) {
     p=records.begin();
     p+=(i*(fieldsperrecord+1))+fieldsperrecord;
     records.insert(p, 1, ttfield);
    Generate_Field_String(&records[(i*fieldsperrecord)+fieldsperrecord+1], ttext); }
+   // append to end 
+   records.push_back(ttfield);
+   Generate_Field_String(&records[records.size()-1], ttext);
    ++fieldsperrecord;
    
    Read_Write_db_File(3);
@@ -755,6 +876,7 @@ void Delete_Field(int field_id)
      p++->id=i;
    
    Renumber_Field_References(field_id);
+   Renumber_Field_Relationships(field_id);
    Read_Write_db_File(3);
    Read_Write_db_File(1);
    Read_Write_db_File();  // precaution
@@ -823,6 +945,23 @@ void Renumber_Field_References(int startingfield)
    transformedtext[n++]=s[i1]; } }
    transformedtext[n]='\0';
   strcpy(record[fieldid].automatic_value, transformedtext); }
+}
+
+// renumber field ids in relationships
+void Renumber_Field_Relationships(int startingfield) // autoremove if same field
+{
+  int i;
+  vector<Relationship>::iterator p;
+
+    for (i=0;i<relationships.size();i++) {
+     if (relationships[i].localFields[0]-1==startingfield || relationships[i].localFields[1]-1==startingfield) {
+      p=relationships.begin();
+      p+=i;
+     relationships.erase(p); }
+     if (relationships[i].localFields[0]>startingfield)
+      --relationships[i].localFields[0];
+     if (relationships[i].localFields[1]>startingfield)
+   --relationships[i].localFields[1]; }
 }
 
 // divide a field into two parts
@@ -923,7 +1062,7 @@ int Read_Write_Field(Annotated_Field &tfield, long int field_position, int mode)
 long int fieldposition(int record_id, int field_id)
 {
   int i;
-  long int position=startofrecords+11; // position after parameters
+  long int position=startofrecords+RELATIONSHIPSLENGTH+11; // position after parameters and relationships
   
   for (i=0;i<record_id*fieldsperrecord;i++) 
    position+=FIELDSIZE;
@@ -1013,15 +1152,10 @@ int Show_Record_and_Menu()
   FindSchedule tfindschedule;
   vector <Annotated_Field> trecords;
   
-   currentrecord=Read_Write_Current_Parameters(0);
-   currentmenu=Read_Write_Current_Parameters(1);
-   menubar=Read_Write_Current_Parameters(2);
-   autosave=Read_Write_Current_Parameters(3);
-   currentfield=Read_Write_Current_Parameters(4);
    while (run) {
     Clear_Screen();
     for (i=0;i<fieldsperrecord;i++)
-     Show_Field(&records[(currentrecord*fieldsperrecord)+i]);
+    Show_Field(&records[(currentrecord*fieldsperrecord)+i]);
     if (currentfield>-1 && !recordsdemo)
      Show_Field(&records[(currentrecord*fieldsperrecord)+currentfield], 1);
     if (!recordsdemo)
@@ -1269,16 +1403,34 @@ int Show_Record_and_Menu()
       Read_Write_Current_Parameters(3, 1);
      break;
      case 'l':
-      Read_Write_db_File();
       Show_Menu_Bar(1);
+      strcpy(input_string, dbfile);
+      i=Scan_Input(input_string, 1, 24, 5);
+      if (i==ESC)
+       break;
+      Reccurse_File_Extension(input_string, 2);
+      if (!tryfile(input_string)) {
+       Show_Message(1, 24, 1, "nonexisting file!", 1500);
+      break; }
+      strcpy(dbfile, input_string);
+      strcpy(pages[0], dbfile);
+      currentpage=0;
+      pagesnumber=1;
+      Load_Database(currentpage);
       Show_Message(1, 24, 2, "database loaded", 1500);
      break;
      case 's':
       Show_Menu_Bar(1);
+      Show_Message(1, 24, 5, "filename:", 0);
+      strcpy(input_string, dbfile);
+      i=Scan_Input(input_string, 1, 24, 5);
+      if (i==ESC)
+       break;
+      Reccurse_File_Extension(input_string, 2);
+      strcpy(dbfile, input_string);
       Read_Write_db_File(3);
       Read_Write_db_File(1);
       alteredparameters=0;
-      Show_Menu_Bar(1);
       Show_Message(1, 24, 2, "database saved", 1500);
       Show_Menu_Bar(1);
       Show_Message(1, 24, 5, "export .rc file (y/n):", 0);
@@ -1300,13 +1452,17 @@ int Show_Record_and_Menu()
      // from menu 2
      case 'd':
       if (!strcmp(record[currentfield].automatic_value, ".") && record[currentfield].type!=1) {
-       for (i=0;i<fieldsperrecord;i++)
-        Show_Field_ID(&records[(currentrecord*fieldsperrecord)+i]);
-       if (record[currentfield].fieldlist) {
-        Show_Message(1, 24, 5, "fieldlist entry. <up> and <down> arrows, <insert> to bring relevant data", 1750);
-        attron(A_BLINK);
+       if (!record[currentfield].fieldlist) 
+        for (i=0;i<fieldsperrecord;i++)
+         Show_Field_ID(&records[(currentrecord*fieldsperrecord)+i]);
+       else {
+        Show_Menu_Bar(1);
+        if (menubar==1)
+         Show_Message(1, 24, 5, "fieldlist entry. <up> and <down> arrows, <insert> to bring relevant data", 1750);
+        if (fieldhasdependancy!=2) {
+         attron(A_BLINK);
         Show_Field(&records[(currentrecord*fieldsperrecord)+record[currentfield].fieldlist-1], 1);
-        attroff(A_BLINK); }
+        attroff(A_BLINK); } }
       Screen_String_Editor(records[(currentrecord*fieldsperrecord)+currentfield]); }
       if (record[currentfield].type==1) {
        strcpy(input_string, records[(currentrecord*fieldsperrecord)+currentfield].text);
@@ -1372,7 +1528,7 @@ int Show_Record_and_Menu()
      break;
      case INSERT:
       Show_Menu_Bar(1);
-      Show_Message(1, 24, 4, "d<u>plicate, <d>elete record, <i>mport/e<x>port records, externa<l> .dbfile ?", 0);
+      Show_Message(1, 24, 4, "d<u>plicate, <d>elete record, <i>mport/e<x>port records, externa<l> .dbfiles?", 0);
       cleanstdin();
       c=tolower(sgetch());
       if (c!='u' && c!='d' && c!='x' && c!='i' && c!='l')
@@ -1404,9 +1560,19 @@ int Show_Record_and_Menu()
        break;
        case 'l':
         Show_Menu_Bar(1);
-        Show_Message(1, 24, 4, "external dbfile:", 0);
-        Scan_Input(0, 0, 1, 25);
-        i=Import_External_db_File(input_string);
+        Show_Message(1, 24, 4, "<i>mport records, external <r>eferences editor ?", 0);
+        cleanstdin();
+        c=tolower(sgetch());
+        switch (c) {
+         case 'i':
+          Show_Menu_Bar(1);
+          Show_Message(1, 24, 4, "external dbfile:", 0);
+          Scan_Input(0, 0, 1, 25);
+          i=Import_External_db_File(input_string);
+         break;
+         case 'r':
+          References_Editor();
+        break; }
       break; }
      break;
      case COPY:
@@ -1552,9 +1718,9 @@ int negatekeysforcurrentmenu(int t)
   if (recordsdemo)
    return 0;
   if (t==6) { currentmenu=3; t='f'; return t; } // enter find mode
-  if (t==5 || t==15 || t==20) { // direct menu access with ctrl
+  if (t==5 || t==15 || t==20 || t==23) { // direct menu access with ctrl
    switch (t) {
-     case 5:currentmenu=2; break; break; case 15:currentmenu=1; break; case 20:currentmenu=3; 
+     case 5:currentmenu=2; break; case 15:currentmenu=1; break; case 20:currentmenu=3; break; case 23: Pages_Selector();
    break; }
    Read_Write_Current_Parameters(1, 1);
   return 0; }
@@ -1618,7 +1784,7 @@ void Show_Menu_Bar(int mode) // 0 show, 1 remove
 // show a help scren
 void Show_Help_Screen()
 {
-  string helpinfo="                                <help screen>                                   reccurse is a custom design record keeper with advanced functions.              based on the ncurses library, reccurse is a clever tool for terminal use.       instruction keys are usually displayed in the bottom bar, the bottom bar itself can be switched from keyboard hints, to navigation information, to field text,  to disappearance with the <m> key. navigation through fields is done with arrow keys or tab/shift+tab and with home/end. move through records with shift+arrow  keys or < >. <g>o for record number. navigation keys work in all menus.         more keys -> ctrl+e to edit submenu, ctrl+o to options mode, ctrl+t to extra    submenu, ctrl+f find function, ctrl+k copy to clipboard, ctrl+v paste clipboard.+-*/. keys will add/remove attributes,!@ keys for color, ? for this help screen.<carriage return> enters edit mode, <space> ticks/unticks tickboxes (1x1fields).when find is selected, user is prompted to enter a field number, then a search  criteria (asterisks denote any text until the next alphanumeric character).     the sequence is repeated until a carriage return is given. this allows for      multiple searches, each sequential will operate on the previous find records    that match the requested criteria.                                              when sort is selected, user is prompted to enter a field number, then           <a>scending or <d>escending order. the sequence is repeated and records are     sorted each time according to the requested sort parameters.                    reccurse will record changes in fields after editing, if autosave is enabled in options submenu (default option). to prevent loss of data, keep a backup.       written in Aug-Sep 2019 by Giorgos Saridakis.                                              reccurse is distributed under the GNU Public Licence. :)";
+  string helpinfo="                                <help screen>                                   reccurse is an advanced custom design record keeper for the terminal.           instruction keys are usually displayed in the bottom bar, the bottom bar itself can be switched from keyboard hints, to navigation information, to field text,  to disappearance with the <m> key. navigation through fields is done with arrow keys or tab/shift+tab and with home/end. move through records with shift+arrow  keys or < >. <g>o for record number. navigation keys work in all menus.         more keys -> ctrl+e to edit submenu, ctrl+o to options mode, ctrl+t to extra    submenu, ctrl+f find function, ctrl+k copy to clipboard, ctrl+v paste clipboard.ctrl+w to pages menu, arrow keys, INS, DELETE, HOME, END keys for there.        +-*/. keys will add/remove attributes,!@ keys for color, ? for this help screen.<carriage return> enters edit mode, <space> ticks/unticks tickboxes (1x1fields).when find is selected, user is prompted to enter a field number, then a search  criteria (asterisks denote any text until the next alphanumeric character).     the sequence is repeated until a carriage return is given. this allows for      multiple searches, each sequential will operate on the previous find records    that match the requested criteria.                                              when sort is selected, user is prompted to enter a field number, then           <a>scending or <d>escending order. the sequence is repeated and records are     sorted each time according to the requested sort parameters.                    reccurse will record changes in fields after editing, if autosave is enabled in options submenu (default option). to prevent loss of data, keep a backup.       written in Aug-Oct 2019 by Giorgos Saridakis.                                              reccurse is distributed under the GNU Public Licence. :)";
 
    Clear_Screen();
    Change_Color(58);
@@ -1784,7 +1950,9 @@ int Show_Field(Annotated_Field *field, int flag) // 1 highlight
    attroff(A_INVIS); } }
  
    // field string to field size and lines
-   Generate_Field_String(field, ttext); 
+   fieldhasdependancy=Generate_Dependant_Field_String(field, ttext);
+   if (fieldhasdependancy!=1)
+    Generate_Field_String(field, ttext);
    if (field->number || !record[field->id].type)
     addleadingzeros(ttext, field);
    // add attributes
@@ -1943,6 +2111,48 @@ void Generate_Field_String(Annotated_Field *field, char *ttext)
   strcpy(field->text, ttext);
 }
 
+// generate (if any) dependant field string
+int Generate_Dependant_Field_String(Annotated_Field *field, char *ttext)
+{
+  int i, n;
+  dummyfieldsperrecord=0; 
+  dummyrecordsnumber=0;
+  
+   // see if dependancy occurs
+   for (i=0;i<relationships.size();i++)
+    if (field->id==relationships[i].localFields[1]-1)
+     break;
+   if (i==relationships.size())
+    return 0;
+   Read_External_Database(i);
+   
+   // read external database
+   dummyfieldsperrecord=externalrecord[i].size();
+   dummyrecordsnumber=externalrecords[i].size()/externalrecord[i].size();
+   if (record[relationships[i].localFields[1]-1].fieldlist) {
+    relationships[i].extFields[0]=1;
+   relationships[i].localFields[0]=1; }
+   if (relationships[i].extFields[0]<1 || relationships[i].extFields[1]<1 || relationships[i].localFields[0]<1 || relationships[i].localFields[1]<1 || relationships[i].extFields[0]>dummyfieldsperrecord || relationships[i].extFields[1]>dummyfieldsperrecord || relationships[i].localFields[0]>fieldsperrecord || relationships[i].localFields[1]>fieldsperrecord)
+    return 0;
+   
+   // destination local field is fieldlist, return 0 and keep dummyrecords for reference in Scan_Input
+   if (record[relationships[i].localFields[1]-1].fieldlist) {
+    externalreferencedatabase=i;
+   return 2; }
+   // dependancy check, if localFields[1] is not fieldlist
+   for (n=0;n<dummyrecordsnumber;n++)
+    if (!strcmp(externalrecords[i][(n*dummyfieldsperrecord)+relationships[i].extFields[0]-1].text, records[(currentrecord*fieldsperrecord)+relationships[i].localFields[0]-1].text))
+     break;
+   // no equal field found, return 0
+   if (n==dummyrecordsnumber)
+    return 0;
+   // copy external to local field
+   strcpy(records[(currentrecord*fieldsperrecord)+field->id].text, externalrecords[i][(n*dummyfieldsperrecord)+relationships[i].extFields[1]-1].text);
+   strcpy(ttext, records[(currentrecord*fieldsperrecord)+field->id].text);
+   
+  return 1;
+}
+
 // export to comma separated values file
 int Export_Database(char *filename)
 {
@@ -2043,7 +2253,7 @@ int Import_Database(char *filename)
 // selectively import fields from external dbfile
 int Import_External_db_File(char *filename)
 {
-  int i, fieldshown=0, t, dummyfieldsperrecord, dummyrecordsnumber;
+  int i, fieldshown=0, t;
   char tstring[MAXSTRING];
   strcpy(tstring, dbfile);
   strcpy(dbfile, filename);
@@ -2052,8 +2262,6 @@ int Import_External_db_File(char *filename)
    Show_Message(1, 24, 1, "external database file unreachable", 2000);
   return -1; }
   
-  dummyrecord.clear();
-  dummyrecords.clear();
   Read_Write_db_File();
   dummyrecord=record;
   dummyrecords=records;
@@ -2122,6 +2330,145 @@ int Import_External_db_File(char *filename)
  return 0;
 }
 
+// read-write relationships format dbname ext_field local_field ext_field local_field, first pair equalizes relationship, MAXFIELDS denotes irrelevance
+int Read_Write_Relationships(int mode) // 0 read all, 1 write/add
+{
+  int i;
+  char c, ttext[RELATIONSHIPSLENGTH];
+  Relationship trelationship;
+  fstream dbfileaccess(dbfile, ios::in | ios::out | ios::binary);
+  dbfileaccess.seekg(startofrecords, ios::beg);
+  dbfileaccess.seekp(startofrecords, ios::beg);
+  
+   if (!mode) {
+    relationships.clear();
+    for (i=0;i<RELATIONSHIPSLENGTH;i++) {
+     dbfileaccess.get(c);
+    ttext[i]=charcoder(c, 1); }
+    ttext[i]='\0';
+    istringstream trelationships(ttext);
+    while (trelationships) {
+     trelationships >> trelationship.extDbname;
+     trelationships >> trelationship.extFields[0];
+     trelationships >> trelationship.extFields[1];
+     trelationships >> trelationship.localFields[0];
+     trelationships >> trelationship.localFields[1];
+    relationships.push_back(trelationship); } 
+    vector<Relationship>::iterator p=relationships.end();
+    --p;
+   relationships.erase(p); }
+   
+   else {
+    for (i=0;i<relationships.size();i++) {
+     if (!i)
+      strcpy(ttext, relationships[i].extDbname);
+     else
+      strcat(ttext, relationships[i].extDbname);
+     strcat(ttext, " ");
+     strcat(ttext, itoa(relationships[i].extFields[0]));
+     strcat(ttext, " ");
+     strcat(ttext, itoa(relationships[i].extFields[1]));
+     strcat(ttext, " ");
+     strcat(ttext, itoa(relationships[i].localFields[0]));
+     strcat(ttext, " ");
+     strcat(ttext, itoa(relationships[i].localFields[1]));
+    strcat(ttext, " "); }
+    for (i=strlen(ttext);i<RELATIONSHIPSLENGTH;i++)
+     ttext[i]=SPACE;
+    stringcodedecode(ttext, ttext);
+    for (i=0;i<strlen(ttext);i++)
+   dbfileaccess.put(ttext[i]); }
+    
+  dbfileaccess.close();
+    
+ return 0;
+}
+
+// setup necessary variables
+void Initialize_Database_Parameters()
+{
+  currentrecord=Read_Write_Current_Parameters(0);
+  currentmenu=Read_Write_Current_Parameters(1);
+  menubar=Read_Write_Current_Parameters(2);
+  autosave=Read_Write_Current_Parameters(3);
+  currentfield=Read_Write_Current_Parameters(4);
+}
+
+// load database
+void Load_Database(int pagenumber)
+{
+  strcpy(dbfile, pages[pagenumber]);
+  Read_Write_db_File();
+  Initialize_Database_Parameters();
+}
+
+// pages selector - editor
+int Pages_Selector()
+{
+  int i, t;
+  
+   Change_Color(4);
+   while (t!=ESC && t!='\n') {
+    Show_Menu_Bar(1);
+    Change_Color(4);
+    gotoxy(1, 24);
+    printw("database #%d:%s", currentpage+1, pages[currentpage]);
+    refresh();
+    t=sgetch(); 
+    if (t==RIGHT)
+     t=DOWN;
+    if (t==LEFT)
+     t=UP;
+    switch (t) {
+     case INSERT:
+      memset(input_string, 0, sizeof(input_string));
+      Scan_Input(input_string, 1, 24, 5);
+      Reccurse_File_Extension(input_string, 2);
+      for (i=0;i<pagesnumber;i++) {
+       if (!strcmp(input_string, pages[i])) {
+        Show_Message(1, 24, 1, "database already exists in pages", 1500);
+      break; } }
+      if (i<pagesnumber)
+       break;
+      if (tryfile(input_string) && pagesnumber<MAXPAGES-1) {
+       strcpy(pages[pagesnumber], input_string);
+       ++pagesnumber;
+      Show_Message(1, 24, 1, "page added to databases list", 1500); }
+      else
+       Show_Message(1, 24, 1, "nonexisting database file", 1500);
+     break;
+     case DELETE:
+      if (pagesnumber>1) {
+       for (i=currentpage;i<pagesnumber-1;i++)
+        strcpy(pages[i], pages[i+1]);
+       --pagesnumber;
+       memset(pages[pagesnumber], 0, sizeof(pages[pagesnumber]));
+       if (currentpage>0)
+        --currentpage;
+       Show_Menu_Bar(1);
+      Show_Message(1, 24, 1, "page removed", 1500); }
+     break;
+     case HOME:
+      currentpage=0;
+     break;
+     case END:
+      currentpage=pagesnumber-1;
+     break;
+     case DOWN:
+      if (currentpage<pagesnumber-1)
+       ++currentpage;
+     break;
+     case UP:
+      if (currentpage)
+       --currentpage;
+    break; } }
+    
+  Read_Write_Current_Parameters(4, 1); // write out currentfield in case of change
+  Load_Database(currentpage);
+  
+ return currentpage;
+}
+
 // remove garbage from database file
 int Clean_Database(char *filename)
 {
@@ -2141,6 +2488,7 @@ int Clean_Database(char *filename)
       t=SPACE;
      dbfileaccess.seekp(i-1, ios::beg);
     dbfileaccess.put(charcoder(t)); }
-    
+
  return 0;
 }
+

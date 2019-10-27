@@ -1,4 +1,4 @@
-reccurse manual ~0.285 version
+reccurse manual ~0.325 version
 
 starting up
 -----------
@@ -10,6 +10,8 @@ this will prompt the program to read page structure from a text file with .rc ex
 if you have a ready .db file, the program will read from it directly, it will not look for existing.rc
 3. reccurse nonexisting
 reccurse will open and ask for verification of the filename. consequently, it will create a .rc file with a sample field and the .db file it needs to operate.
+4. reccurse existing1.db existing2.db existing3.db etc
+reccurse will start up with the first existing database file, namely page 1. pages menu is accessed with ctrl+w, insert new and delete selectable database pages is an option as well.
 
 .rc file structure
 ------------------
@@ -35,6 +37,7 @@ the comments above are give or take self-explanatory. a suffix (max 3 chars) wil
 if formula is activated (1) then an entry of (12345+54321)/(1*0.33443) will produce a numerical result in a numerical type field. formula entries can also be given in reverse polish calculator notation, i.e. (12345 12345 +) (1*0.33433) / . A #5 is a reference to the value of the 5th field in the same record as the one being edited. A formula of #5+12345 will calculate <what's in field 5>+12345.
 formulas for string fields are easy. examples: #5 will collect the text value from field 5. no addition sign is required-> field five has #5. string functions are mid$(text or field reference, start character, number of characters) mid$(hello, 1, 2), left$(text, 2), right$(text, 2), toupper$(text) and tolower$(text). leave spaces after each function end.
 a field list entry above 0 means that field can collect values from the fieldlist reference. up and down arrows during editing will summon them. <insert> will copy the value of the fieldlist reference from the same record.
+Your database file can have references to other database files. from edit menu, INS key will bring selection of externa<l> databases. The References Editor is quite simple and things go like this -> you have an external field to be measured for equality with a local field. once this occurs, the local reference field will automatically bring up the external reference field. If the local reference field is a fieldlist, equalized fields will not be taken into account. The local field will collect selectable values from the external reference field, no matter the reference id it has. External database filenames can be up to 25 characters in length, including the suffix .db 3 characters. It's a good idea to have all database pages files in the same directory, to avoid long path in filenames.
 
 navigation tips
 ---------------
@@ -120,6 +123,8 @@ for suggestions or more, my email address is giorgossaridakis@gmail.com
 
 compile with gcc -oreccurse reccurse.cc -lncurses
 
+if you don't have ncurses library installed, your local distro will point you to 
+
 reccurse is distributed under the GNU Public Licence.
 
-written in Aug-Sep 2019 by Giorgos Saridakis.
+written in Aug-Oct 2019 by Giorgos Saridakis.
