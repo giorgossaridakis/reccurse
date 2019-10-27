@@ -1,11 +1,12 @@
 #define MAXOP 100 /* max size of operand or operator */
 #define NUMBER '0' /* signal that a number was found */
-#define MAXCOMMAND 999 /* maximum number of operands etc to calculate */
+#define MAXCOMMAND 9999 /* maximum number of operands etc to calculate */
 #define NUMLIMIT 32767 /* maximum limit in input */
 #define MAXVAL 100 /* maximum depth of val stack */
 
 int parenthesesincluderforpolishreversecalculator(char formula[]);
 int reversepolishcalculatorequalizer(char formula[], int record_id=-1);
+int isformulainpolishcalculatorsyntax(char formula[]);
 double reversepolishcalculator(char formula[]);
 int getop(char s[], char formula[]);
 void push(double f);
@@ -205,14 +206,8 @@ int reversepolishcalculatorequalizer(char formula[], int record_id)
     ++n; }
    transformedtext[n]='\0';
    strcpy(formula, transformedtext);
-   
-   // is string in polish calculator syntax ?
-   pos=0;
-   if ((type=getop(s, formula))==NUMBER && (type=getop(s, formula))==NUMBER) {
-    pos=0;
-   return -1; }
-   if (pos) {
-    pos=0;
+
+   if (!isformulainpolishcalculatorsyntax(formula)) {
     type=getop(s, formula); // read first number
     strcpy(transformedtext, s);
     while ((type = getop(s, formula)) != EOF) {
@@ -227,6 +222,21 @@ int reversepolishcalculatorequalizer(char formula[], int record_id)
      numbers=0; } } 
     strcpy(formula, transformedtext); }
     
+ return 0;
+}
+
+// is string in polish calculator syntax ?
+int isformulainpolishcalculatorsyntax(char formula[])
+{
+  int type;
+  char s[20];
+  pos=0;
+  
+   if ((type=getop(s, formula))==NUMBER && (type=getop(s, formula))==NUMBER) {
+    pos=0;
+   return 1; }
+   pos=0;
+  
  return 0;
 }
 

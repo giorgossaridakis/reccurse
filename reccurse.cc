@@ -1,4 +1,4 @@
-// reccurse, the filemaker of ncurses, version 0.325
+// reccurse, the filemaker of ncurses, version 0.326
 
 // included libraries
 // C
@@ -28,6 +28,7 @@
 #define MAXSTRING 80 // characters in a regular string
 #define MAXTITLE 20 // characters in a a title string
 #define MAXNUMBERDIGITS 18 // digits in a number
+#define LMAXCOMMAND 9999 /* maximum operands etc to calculate for rcpc formula*/
 #define MAXSUFFIXCHARS 3 // max string for number suffixes
 #define DEFAULT_DECIMALS 2 // decimal positions
 #define MAXFIELDS 999 // fields per record
@@ -40,7 +41,7 @@
 #define MAXSEARCHDEPTH 5
 #define HORIZONTALLY 0
 #define VERTICALLY 1
-#define version 0.325
+#define version 0.326
 
 // keyboard
 #define UP 53
@@ -125,7 +126,7 @@ class Annotated_Field {
    int id; // same as Field
    double number;
    char text[MAXSTRING];
-   char formula[MAXSTRING]; 
+   char formula[MAXSTRING];
    // constructors, destructor
    Annotated_Field(int i1, double f1, char s1[MAXSTRING], char s2[MAXSTRING]) { id=i1; number=f1; strcpy(text, s1); strcpy(formula, s2); } ;
    Annotated_Field(int i1, double f1, const char s1[MAXSTRING], const char s2[MAXSTRING]) { id=i1; number=f1; strcpy(text, s1); strcpy(formula, s2); } ;
@@ -2044,7 +2045,7 @@ int Show_Field_ID(Annotated_Field *tfield)
 void Generate_Field_String(Annotated_Field *field, char *ttext)
 {
  int i;
- char formula[MAXSTRING];
+ char formula[LMAXCOMMAND];
      
   Field *tfield=&record[field->id];
   switch (tfield->type) {
