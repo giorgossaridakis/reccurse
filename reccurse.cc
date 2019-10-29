@@ -1,4 +1,4 @@
-// reccurse, the filemaker of ncurses, version 0.326
+// reccurse, the filemaker of ncurses, version 0.328
 
 // included libraries
 // C
@@ -41,7 +41,7 @@
 #define MAXSEARCHDEPTH 5
 #define HORIZONTALLY 0
 #define VERTICALLY 1
-#define version 0.326
+#define version 0.328
 
 // keyboard
 #define UP 53
@@ -2079,8 +2079,9 @@ void Generate_Field_String(Annotated_Field *field, char *ttext)
      if (strcmp(tfield->automatic_value, "."))
       strcpy(formula, tfield->automatic_value);
      i=stringformulacalculator(formula, currentrecord);
-     if (i)
-    strcpy(ttext, formula); }
+     if (i) {
+      cropstring(formula, MAXSTRING);
+    strcpy(ttext, formula); } }
    break; 
    case 3:
     strcpy(ttext, field->text);
@@ -2106,8 +2107,9 @@ void Generate_Field_String(Annotated_Field *field, char *ttext)
      if (strcmp(tfield->automatic_value, "."))
       strcpy(formula, tfield->automatic_value);
      i=stringformulacalculator(formula, currentrecord);
-     if (i)
-    strcpy(ttext, formula); }
+     if (i) {
+      cropstring(formula, MAXSTRING);
+    strcpy(ttext, formula); } }
   break; }
   strcpy(field->text, ttext);
 }
