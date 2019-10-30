@@ -1,4 +1,4 @@
-reccurse manual ~0.325 version
+reccurse manual ~0.328 version
 
 starting up
 -----------
@@ -121,7 +121,7 @@ epilogue
 well, that's about it. the rest I believe are covered inside reccurse.
 for suggestions or more, my email address is giorgossaridakis@gmail.com
 
-compile with gcc -oreccurse reccurse.cc -lncurses
+compile with g++ -oreccurse reccurse.cc -lncurses
 
 if you don't have ncurses library installed, your local distro will point you to 
 
