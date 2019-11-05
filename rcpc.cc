@@ -226,6 +226,7 @@ int parseformulaforfunctions(char formula[])
 int mathfunctionsparser(int function_id, char tcommand[MAXSTRING])
 {
   int i, mpos=0, tp=0, n;
+  double d;
   char tparameter[MAXFUNCTIONPARAMETERS][MAXSTRING];
   
    while (tcommand[mpos]!='(')
@@ -241,6 +242,9 @@ int mathfunctionsparser(int function_id, char tcommand[MAXSTRING])
      break; }
     ++mpos; }
     tparameter[tp][n]='\0';
+    reversepolishcalculatorequalizer(tparameter[tp]);
+    d=reversepolishcalculator(tparameter[tp]);
+    strcpy(tparameter[tp], dtoa(d));
     ++tp; }
     if (tp!=functions[function_id].functionParameters)
      return 0;
