@@ -3,7 +3,12 @@
 #define MAXCOMMAND 9999 /* maximum number of operands etc to calculate */
 #define NUMLIMIT 32767 /* maximum limit in input */
 #define MAXVAL 100 /* maximum depth of val stack */
+#define MAXFUNCTIONMAME 10 // max chars in function names
+#define MAXFUNCTIONPARAMETERS 5 // max parameters in functions, separated with comma
 
+void initiatemathematicalfunctions();
+int parseformulaforfunctions(char formula[]);
+int mathfunctionsparser(int function_id, char tcommand[MAXSTRING]);
 int parenthesesincluderforpolishreversecalculator(char formula[]);
 int reversepolishcalculatorequalizer(char formula[], int record_id=-1);
 int isformulainpolishcalculatorsyntax(char formula[]);
@@ -16,6 +21,20 @@ double pop(void);
 int pos;
 int sp = 0; /* next free stack position */
 double val[MAXVAL]; /* value stack */
+int isfunction=0; // flag to take functions symbols into account
+
+class Function {
+ public:
+  char functionName[MAXFUNCTIONMAME]; // abs, sin, cos etc
+  int functionParameters; // all taken as strings
+  char functionSymbol; 
+  Function(char s[MAXFUNCTIONMAME], int i, char c) { strcpy(functionName, s); functionParameters=i; functionSymbol=c; } ;
+  Function(const char s[MAXFUNCTIONMAME], int i, char c) { strcpy(functionName, s); functionParameters=i; functionSymbol=c; } ;
+  Function() { } ;
+~Function() { }; 
+} ;
+
+vector<Function> functions;
 
 // reverse Polish calculator start
 
@@ -69,6 +88,37 @@ char s[MAXOP];
       op2=op4;
       push(op2);
      break;
+     // new functions
+     case 'a':
+      pop();
+      push(abs((pop())));
+     break;
+     case 's':
+      pop();
+      push(sin(pop()));
+     break;
+     case 'c':
+      pop();
+      push(cos(pop()));
+     break;
+     case 't':
+      pop();
+      push(tan(pop()));
+     break;
+     case 'o':
+      pop();
+      op2=pop();
+      if (op2)
+       push(1/(tan(op2)));
+     break;
+     case 'r':
+      pop();
+      push(sqrt(pop()));
+     break;
+     case 'l':
+      pop();
+      push(log(pop()));
+     break;
      case '\0':
       return pop();
      default:
@@ -118,6 +168,97 @@ double pop(void)
   return 0.0;
 }
 
+// initiate functions
+void initiatemathematicalfunctions()
+{
+  Function tfunction1("abs", 1, 'a');
+  functions.push_back(tfunction1);
+  Function tfunction2("sin", 1, 's');
+  functions.push_back(tfunction2);
+  Function tfunction3("cos", 1, 'c');
+  functions.push_back(tfunction3);
+  Function tfunction4("tan", 1, 't');
+  functions.push_back(tfunction4);
+  Function tfunction5("cotan", 1, 'o');
+  functions.push_back(tfunction5);
+  Function tfunction6("sqrt", 1, 'r');
+  functions.push_back(tfunction6);
+  Function tfunction7("exp", 2, '^');
+  functions.push_back(tfunction7);
+  Function tfunction8("log", 1, 'l');
+  functions.push_back(tfunction8);
+}
+
+// parse formula for functions and replace with symbols
+int parseformulaforfunctions(char formula[])
+{
+  int i, startpt, endpt, findinstructions=1, parseresult;
+  char ttext[MAXSTRING], tcommand[MAXSTRING];
+  strcpy(ttext, formula);
+  
+   while (findinstructions) {
+    findinstructions=0;
+    for (i=0;i<functions.size();i++)
+     if ((startpt=findsimple(ttext, functions[i].functionName)))
+      break;
+     if (i<functions.size()) {
+      findinstructions=1;
+      --startpt;
+      endpt=startpt;
+      while (ttext[endpt]!=')' && endpt<strlen(ttext))
+       ++endpt;
+      if (endpt==strlen(ttext)-1)
+       findinstructions=0;
+      extracttextpart(ttext, tcommand, startpt, endpt);
+      // parse tcommand
+      parseresult=mathfunctionsparser(i, tcommand);
+      // now insert tcommand into startpt
+      if (!parseresult)
+       return 0;
+   inserttextpart(ttext, tcommand, startpt); } }
+   
+  strcpy(formula, ttext);
+      
+ return 1;
+}
+
+// math functions command parser
+int mathfunctionsparser(int function_id, char tcommand[MAXSTRING])
+{
+  int i, mpos=0, tp=0, n;
+  char tparameter[MAXFUNCTIONPARAMETERS][MAXSTRING];
+  
+   while (tcommand[mpos]!='(')
+    ++mpos;
+   ++mpos;
+   for (i=0;i<functions[function_id].functionParameters;i++) {
+    n=0;
+    while ((tcommand[mpos]!=',' || tcommand[mpos]!=')') && mpos<strlen(tcommand)) {
+     if (tcommand[mpos]!=',' && tcommand[mpos]!=')')
+      tparameter[tp][n++]=tcommand[mpos];
+     else {
+      ++mpos;
+     break; }
+    ++mpos; }
+    tparameter[tp][n]='\0';
+    ++tp; }
+    if (tp!=functions[function_id].functionParameters)
+     return 0;
+    // reconstruct tcommand
+    n=functions[function_id].functionParameters;
+    if (n==1) {
+     ++n;
+    strcpy(tparameter[1], "1"); }
+    strcpy(tcommand, " (");
+    for (i=0;i<n;i++) {
+      strcat(tcommand, tparameter[i]);
+    strcat(tcommand, " "); }
+    strcat(tcommand, ctos(functions[function_id].functionSymbol));
+    strcat(tcommand, ")");
+    
+ return 1;
+}
+
 // parentheses clearance
 int parenthesesincluderforpolishreversecalculator(char formula[])
 {
@@ -134,7 +275,7 @@ int parenthesesincluderforpolishreversecalculator(char formula[])
       while (tformula[tpos[0]]!='(')
        --tpos[0];
       if (tpos[0]<0)
-       return -1;
+       return 0;
       operation=1;
       // copy parenthesis content into formula
       for (n=0;n<tpos[1]-tpos[0]-1;n++)
@@ -162,7 +303,7 @@ int parenthesesincluderforpolishreversecalculator(char formula[])
     break; } } }
    strcpy(formula, tformula);
    
-  return 0;
+  return 1;
 }
 
 // equalize text for reversepolishcalculator use
@@ -192,6 +333,14 @@ int reversepolishcalculatorequalizer(char formula[], int record_id)
    transformedtext[n++]=s[i1]; } }
    transformedtext[n]='\0';
    strcpy(formula, transformedtext);
+   
+   // lets see if formula has any digits
+   n=0;
+   for (i=0;i<strlen(formula);i++)
+    if (isdigit(formula[i]))
+     ++n;
+   if (!n) // no numbers, return 0 (this was done done for mixed type formula fields)
+    return 0;
   
    // repair space positions where necessary 
    n=0;
@@ -222,7 +371,7 @@ int reversepolishcalculatorequalizer(char formula[], int record_id)
      numbers=0; } } 
     strcpy(formula, transformedtext); }
     
- return 0;
+ return 1;
 }
 
 // is string in polish calculator syntax ?

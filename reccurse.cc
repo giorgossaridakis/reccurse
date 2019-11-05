@@ -1,4 +1,4 @@
-// reccurse, the filemaker of ncurses, version 0.328
+// reccurse, the filemaker of ncurses, version 0.331
 
 // included libraries
 // C
@@ -41,7 +41,7 @@
 #define MAXSEARCHDEPTH 5
 #define HORIZONTALLY 0
 #define VERTICALLY 1
-#define version 0.328
+#define version 0.331
 
 // keyboard
 #define UP 53
@@ -198,8 +198,8 @@ int Clean_Database(char *filename);
 // to be compiled together
 #include "rcscr.cc"
 #include "rclib.cc"
-#include "rcpc.cc"
 #include "rcsc.cc"
+#include "rcpc.cc"
 #include "rcfre.cc"
 
 int main(int argc, char *argv[])
@@ -210,6 +210,7 @@ int main(int argc, char *argv[])
   Change_Color(58);
   char tmessage[MAXSTRING], tfile[MAXSTRING];
   signal(SIGINT, INThandler);
+  initiatemathematicalfunctions();
 
    Intro_Screen();
    
@@ -1514,6 +1515,8 @@ int Show_Record_and_Menu()
       Show_Message(1, 24, 3, "destination field:", 0);
       Change_Color(4);
       n=Scan_Input(1, 1, 10000, 5);
+      if (!n)
+       break;
       strcpy(records[(currentrecord*fieldsperrecord)+n-1].text, records[(currentrecord*fieldsperrecord)+i-1].text); 
       Read_Write_Field(records[(currentrecord*fieldsperrecord)+n-1], fieldposition(currentrecord, n-1), 1);
      break;
@@ -2056,8 +2059,10 @@ void Generate_Field_String(Annotated_Field *field, char *ttext)
      strcpy(formula, field->text);
      if (strcmp(tfield->automatic_value, "."))
       strcpy(formula, tfield->automatic_value);
-     i=parenthesesincluderforpolishreversecalculator(formula);
-     if (!i) {
+     i=parseformulaforfunctions(formula);
+     if (i)
+      i=parenthesesincluderforpolishreversecalculator(formula);
+     if (i) {
       reversepolishcalculatorequalizer(formula, currentrecord);
      field->number=reversepolishcalculator(formula); }
      else
@@ -2091,10 +2096,13 @@ void Generate_Field_String(Annotated_Field *field, char *ttext)
      if (strcmp(tfield->automatic_value, "."))
       strcpy(field->text, tfield->automatic_value);
      strcpy(formula, field->text);
-     i=parenthesesincluderforpolishreversecalculator(formula);
-     if (!i) {
-      reversepolishcalculatorequalizer(formula, currentrecord);
-     field->number=reversepolishcalculator(formula); }
+     i=parseformulaforfunctions(formula);
+     if (i)
+      i=parenthesesincluderforpolishreversecalculator(formula);
+     if (i)
+      i=reversepolishcalculatorequalizer(formula, currentrecord);
+     if (i)
+      field->number=reversepolishcalculator(formula);
      else
     field->number=0; }
     if (field->number) {

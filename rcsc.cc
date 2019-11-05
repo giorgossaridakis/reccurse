@@ -26,7 +26,7 @@ int stringformulacalculator(char formula[MAXSTRING], int record_id)
      findinstructions=1;
      --startpt;
      endpt=startpt;
-     while (ttext[endpt]!=')')
+     while (ttext[endpt]!=')' && endpt<strlen(ttext))
       ++endpt;
      ++endpt;
      extracttextpart(ttext, tcommand, startpt, endpt);
@@ -94,7 +94,7 @@ void inserttextpart(char text[MAXSTRING], char part[MAXSTRING], int point)
 //    ttext[n++]=SPACE;
    for (i=0;i<strlen(part);i++)
     ttext[n++]=part[i];
-   ttext[n++]=SPACE;
+//    ttext[n++]=SPACE;
    for (i=point;i<strlen(text);i++) {
     ttext[n++]=text[i];
     if (n>MAXSTRING)
