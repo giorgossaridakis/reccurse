@@ -77,7 +77,7 @@ void extracttextpart(char source[MAXSTRING], char dest[MAXSTRING], int startpt, 
    dest[n]='\0';
    n=0;
    for (i=0;i<strlen(source);i++)
-    if (i<startpt || i>endpt)
+    if (i<startpt || i>=endpt)
      ttext[n++]=source[i];
    ttext[n]='\0';
    strcpy(source, ttext);

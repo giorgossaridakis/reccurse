@@ -192,7 +192,7 @@ void initiatemathematicalfunctions()
 // parse formula for functions and replace with symbols
 int parseformulaforfunctions(char formula[])
 {
-  int i, startpt, endpt, findinstructions=1, parseresult;
+  int i, startpt, endpt, findinstructions=1, parseresult, openparentheses=1;
   char ttext[MAXSTRING], tcommand[MAXSTRING];
   strcpy(ttext, formula);
   
@@ -205,8 +205,17 @@ int parseformulaforfunctions(char formula[])
       findinstructions=1;
       --startpt;
       endpt=startpt;
-      while (ttext[endpt]!=')' && endpt<strlen(ttext))
+      while (ttext[endpt]!='(' && endpt<strlen(ttext))
        ++endpt;
+      ++endpt;
+      while (openparentheses && endpt<strlen(ttext)) {
+       if (ttext[endpt]=='(')
+        ++openparentheses;
+       if (ttext[endpt]==')')
+        --openparentheses;
+      ++endpt; }
+      if (openparentheses) // not all parentheses closed
+       return 0;
       if (endpt==strlen(ttext)-1)
        findinstructions=0;
       extracttextpart(ttext, tcommand, startpt, endpt);
@@ -232,21 +241,22 @@ int mathfunctionsparser(int function_id, char tcommand[MAXSTRING])
    while (tcommand[mpos]!='(')
     ++mpos;
    ++mpos;
+   tcommand[strlen(tcommand)-1]=',';
    for (i=0;i<functions[function_id].functionParameters;i++) {
     n=0;
-    while ((tcommand[mpos]!=',' || tcommand[mpos]!=')') && mpos<strlen(tcommand)) {
-     if (tcommand[mpos]!=',' && tcommand[mpos]!=')')
-      tparameter[tp][n++]=tcommand[mpos];
-     else {
+    while (mpos<strlen(tcommand)) {
+     if (tcommand[mpos]==',') {
       ++mpos;
      break; }
+     tparameter[tp][n++]=tcommand[mpos];
     ++mpos; }
     tparameter[tp][n]='\0';
+    parenthesesincluderforpolishreversecalculator(tparameter[tp]);
     reversepolishcalculatorequalizer(tparameter[tp]);
     d=reversepolishcalculator(tparameter[tp]);
     strcpy(tparameter[tp], dtoa(d));
     ++tp; }
-    if (tp!=functions[function_id].functionParameters)
+    if (tp!=functions[function_id].functionParameters) //does this work?
      return 0;
     // reconstruct tcommand
     n=functions[function_id].functionParameters;
