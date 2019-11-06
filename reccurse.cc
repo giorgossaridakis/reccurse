@@ -1,4 +1,4 @@
-// reccurse, the filemaker of ncurses, version 0.333
+// reccurse, the filemaker of ncurses, version 0.335
 
 // included libraries
 // C
@@ -41,7 +41,7 @@
 #define MAXSEARCHDEPTH 5
 #define HORIZONTALLY 0
 #define VERTICALLY 1
-#define version 0.333
+#define version 0.335
 
 // keyboard
 #define UP 53
@@ -2047,7 +2047,7 @@ int Show_Field_ID(Annotated_Field *tfield)
 // arrange string for field text
 void Generate_Field_String(Annotated_Field *field, char *ttext)
 {
- int i;
+ int i, n;
  char formula[LMAXCOMMAND];
      
   Field *tfield=&record[field->id];
@@ -2060,10 +2060,9 @@ void Generate_Field_String(Annotated_Field *field, char *ttext)
      if (strcmp(tfield->automatic_value, "."))
       strcpy(formula, tfield->automatic_value);
      i=parseformulaforfunctions(formula);
-     i=(i>-1) ? 1 : 0;
-     if (i)
+     if (!i)
       i=parenthesesincluderforpolishreversecalculator(formula);
-     if (i) {
+     if (!i) {
       reversepolishcalculatorequalizer(formula, currentrecord);
      field->number=reversepolishcalculator(formula); }
      else
@@ -2098,12 +2097,11 @@ void Generate_Field_String(Annotated_Field *field, char *ttext)
       strcpy(field->text, tfield->automatic_value);
      strcpy(formula, field->text);
      i=parseformulaforfunctions(formula);
-     i=(i>-1) ? 1 : 0;
-     if (i)
+     if (!i)
       i=parenthesesincluderforpolishreversecalculator(formula);
-     if (i)
-      i=reversepolishcalculatorequalizer(formula, currentrecord);
-     if (i)
+     if (!i)
+      n=reversepolishcalculatorequalizer(formula, currentrecord);
+     if (n)
       field->number=reversepolishcalculator(formula);
      else
     field->number=0; }

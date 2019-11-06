@@ -217,20 +217,20 @@ int parseformulaforfunctions(char formula[])
         --openparentheses;
       ++endpt; }
       if (openparentheses) // not all parentheses closed
-       return openparentheses*-1;
+       return openparentheses;
       if (endpt==strlen(ttext)-1)
        findinstructions=0;
       extracttextpart(ttext, tcommand, startpt, endpt);
       // parse tcommand
       parseresult=mathfunctionsparser(i, tcommand);
       // now insert tcommand into startpt
-      if (parseresult<0)
+      if (parseresult)
        return parseresult;
    inserttextpart(ttext, tcommand, startpt); } }
    
   strcpy(formula, ttext);
       
- return 1;
+ return 0;
 }
 
 // math functions command parser
@@ -259,7 +259,7 @@ int mathfunctionsparser(int function_id, char tcommand[MAXSTRING])
     tparameter[tp][n]='\0';
     if (!strlen(tparameter[tp])) { // nonexistant parameter
      tcommand[strlen(tcommand)-1]=')';
-    return tp*-1; }
+    return tp; }
     parenthesesincluderforpolishreversecalculator(tparameter[tp]);
     reversepolishcalculatorequalizer(tparameter[tp]);
     d=reversepolishcalculator(tparameter[tp]);
@@ -267,7 +267,7 @@ int mathfunctionsparser(int function_id, char tcommand[MAXSTRING])
     ++tp; }
     tcommand[strlen(tcommand)-1]=')';
     if (mpos<strlen(tcommand)-1) // still more tcommand when functions have been read
-     return tp*-1;
+     return tp;
     // reconstruct tcommand
     n=functions[function_id].functionParameters;
     if (n==1) {
@@ -280,7 +280,7 @@ int mathfunctionsparser(int function_id, char tcommand[MAXSTRING])
     strcat(tcommand, ctos(functions[function_id].functionSymbol));
     strcat(tcommand, ")");
     
- return 1;
+ return 0;
 }
 
 // parentheses clearance
@@ -290,6 +290,15 @@ int parenthesesincluderforpolishreversecalculator(char formula[])
   int tformula_pos=0, i, i1, n, tpos[2], operation=1;
   double f;
   
+   // check for equal number of parentheses
+   openparentheses=0;
+   for (i=0;i<strlen(formula);i++) {
+    if (formula[i]=='(')
+     ++openparentheses;
+    if (formula[i]==')')
+   --openparentheses; }
+   if (openparentheses) // not all parentheses closed
+    return openparentheses;
    strcpy(tformula, formula);
    while (operation) {
     operation=0;
@@ -298,8 +307,6 @@ int parenthesesincluderforpolishreversecalculator(char formula[])
       tpos[1]=i; tpos[0]=i;
       while (tformula[tpos[0]]!='(')
        --tpos[0];
-      if (tpos[0]<0)
-       return 0;
       operation=1;
       // copy parenthesis content into formula
       for (n=0;n<tpos[1]-tpos[0]-1;n++)
@@ -327,7 +334,7 @@ int parenthesesincluderforpolishreversecalculator(char formula[])
     break; } } }
    strcpy(formula, tformula);
    
-  return 1;
+  return 0;
 }
 
 // equalize text for reversepolishcalculator use
