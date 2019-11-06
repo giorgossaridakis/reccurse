@@ -22,6 +22,7 @@ int pos;
 int sp = 0; /* next free stack position */
 double val[MAXVAL]; /* value stack */
 int isfunction=0; // flag to take functions symbols into account
+int openparentheses; // parentheses open for parser
 
 class Function {
  public:
@@ -192,7 +193,7 @@ void initiatemathematicalfunctions()
 // parse formula for functions and replace with symbols
 int parseformulaforfunctions(char formula[])
 {
-  int i, startpt, endpt, findinstructions=1, parseresult, openparentheses=1;
+  int i, startpt, endpt, findinstructions=1, parseresult;
   char ttext[MAXSTRING], tcommand[MAXSTRING];
   strcpy(ttext, formula);
   
@@ -208,6 +209,7 @@ int parseformulaforfunctions(char formula[])
       while (ttext[endpt]!='(' && endpt<strlen(ttext))
        ++endpt;
       ++endpt;
+      openparentheses=1;
       while (openparentheses && endpt<strlen(ttext)) {
        if (ttext[endpt]=='(')
         ++openparentheses;
@@ -215,15 +217,15 @@ int parseformulaforfunctions(char formula[])
         --openparentheses;
       ++endpt; }
       if (openparentheses) // not all parentheses closed
-       return 0;
+       return openparentheses*-1;
       if (endpt==strlen(ttext)-1)
        findinstructions=0;
       extracttextpart(ttext, tcommand, startpt, endpt);
       // parse tcommand
       parseresult=mathfunctionsparser(i, tcommand);
       // now insert tcommand into startpt
-      if (!parseresult)
-       return 0;
+      if (parseresult<0)
+       return parseresult;
    inserttextpart(ttext, tcommand, startpt); } }
    
   strcpy(formula, ttext);
@@ -248,16 +250,24 @@ int mathfunctionsparser(int function_id, char tcommand[MAXSTRING])
      if (tcommand[mpos]==',') {
       ++mpos;
      break; }
+     if (tcommand[mpos]=='(')  // these were 0 when routine was called
+      ++openparentheses;
+     if (tcommand[mpos]==')')
+      --openparentheses;
      tparameter[tp][n++]=tcommand[mpos];
     ++mpos; }
     tparameter[tp][n]='\0';
+    if (!strlen(tparameter[tp])) { // nonexistant parameter
+     tcommand[strlen(tcommand)-1]=')';
+    return tp*-1; }
     parenthesesincluderforpolishreversecalculator(tparameter[tp]);
     reversepolishcalculatorequalizer(tparameter[tp]);
     d=reversepolishcalculator(tparameter[tp]);
     strcpy(tparameter[tp], dtoa(d));
     ++tp; }
-    if (tp!=functions[function_id].functionParameters) //does this work?
-     return 0;
+    tcommand[strlen(tcommand)-1]=')';
+    if (mpos<strlen(tcommand)-1) // still more tcommand when functions have been read
+     return tp*-1;
     // reconstruct tcommand
     n=functions[function_id].functionParameters;
     if (n==1) {
