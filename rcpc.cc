@@ -70,11 +70,15 @@ char s[MAXOP];
        push(pop() / op2);
      break;
      case '%':
-      op2 = pop();
-      if (op2) {
-       op3=mod(pop(), op2);
-       push(op3); }
+      int iop4, iop5;
+      iop4=(int) pop();
+      iop5=(int) pop();
+      if (iop4) {
+       op3=iop5 % iop4;;
+      push(op3); }
       else
+       push(0);
+     break;
      break;
      case '$':
       double op5;
