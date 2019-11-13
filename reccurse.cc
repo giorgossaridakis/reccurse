@@ -1,4 +1,4 @@
-// reccurse, the filemaker of ncurses, version 0.335
+// reccurse, the filemaker of ncurses, version 0.336
 
 // included libraries
 // C
@@ -41,7 +41,7 @@
 #define MAXSEARCHDEPTH 5
 #define HORIZONTALLY 0
 #define VERTICALLY 1
-#define version 0.335
+#define version 0.336
 
 // keyboard
 #define UP 53
@@ -200,6 +200,7 @@ int Clean_Database(char *filename);
 #include "rclib.cc"
 #include "rcsc.cc"
 #include "rcpc.cc"
+#include "rcpclib.cc"
 #include "rcfre.cc"
 
 int main(int argc, char *argv[])
@@ -2096,6 +2097,7 @@ void Generate_Field_String(Annotated_Field *field, char *ttext)
      if (strcmp(tfield->automatic_value, "."))
       strcpy(field->text, tfield->automatic_value);
      strcpy(formula, field->text);
+      n=0;
      i=parseformulaforfunctions(formula);
      if (!i)
       i=parenthesesincluderforpolishreversecalculator(formula);

@@ -6,9 +6,6 @@
 #define MAXFUNCTIONMAME 10 // max chars in function names
 #define MAXFUNCTIONPARAMETERS 5 // max parameters in functions, separated with comma
 
-void initiatemathematicalfunctions();
-int parseformulaforfunctions(char formula[]);
-int mathfunctionsparser(int function_id, char tcommand[MAXSTRING]);
 int parenthesesincluderforpolishreversecalculator(char formula[]);
 int reversepolishcalculatorequalizer(char formula[], int record_id=-1);
 int isformulainpolishcalculatorsyntax(char formula[]);
@@ -23,19 +20,6 @@ int sp = 0; /* next free stack position */
 double val[MAXVAL]; /* value stack */
 int isfunction=0; // flag to take functions symbols into account
 int openparentheses; // parentheses open for parser
-
-class Function {
- public:
-  char functionName[MAXFUNCTIONMAME]; // abs, sin, cos etc
-  int functionParameters; // all taken as strings
-  char functionSymbol; 
-  Function(char s[MAXFUNCTIONMAME], int i, char c) { strcpy(functionName, s); functionParameters=i; functionSymbol=c; } ;
-  Function(const char s[MAXFUNCTIONMAME], int i, char c) { strcpy(functionName, s); functionParameters=i; functionSymbol=c; } ;
-  Function() { } ;
-~Function() { }; 
-} ;
-
-vector<Function> functions;
 
 // reverse Polish calculator start
 
@@ -52,7 +36,8 @@ char s[MAXOP];
       case NUMBER:
        push(atof(s));
       break;
-      case '+':       push(pop() + pop());
+      case '+':       
+       push(pop() + pop());
       break;
       case '*':
        push(pop() * pop());
@@ -79,11 +64,11 @@ char s[MAXOP];
       else
        push(0);
      break;
-     break;
      case '$':
-      double op5;
+      int op5;
+      pop();
       op5=rand() % 10;
-      push(op5);
+      push(pop()*op5);
      break;
      case '@':
       int op4;
@@ -94,33 +79,35 @@ char s[MAXOP];
       push(op2);
      break;
      // new functions
-     case 'a':
+     case '!':
       pop();
       push(abs((pop())));
      break;
-     case 's':
+     case '[':
       pop();
       push(sin(pop()));
      break;
-     case 'c':
+     case ']':
       pop();
       push(cos(pop()));
      break;
-     case 't':
+     case ';':
       pop();
       push(tan(pop()));
      break;
-     case 'o':
+     case '"':
       pop();
       op2=pop();
       if (op2)
        push(1/(tan(op2)));
+      else
+       push(0);
      break;
-     case 'r':
+     case '?':
       pop();
       push(sqrt(pop()));
      break;
-     case 'l':
+     case ':':
       pop();
       push(log(pop()));
      break;
@@ -171,120 +158,6 @@ double pop(void)
    return val[--sp];
   else
   return 0.0;
-}
-
-// initiate functions
-void initiatemathematicalfunctions()
-{
-  Function tfunction1("abs", 1, 'a');
-  functions.push_back(tfunction1);
-  Function tfunction2("sin", 1, 's');
-  functions.push_back(tfunction2);
-  Function tfunction3("cos", 1, 'c');
-  functions.push_back(tfunction3);
-  Function tfunction4("tan", 1, 't');
-  functions.push_back(tfunction4);
-  Function tfunction5("cotan", 1, 'o');
-  functions.push_back(tfunction5);
-  Function tfunction6("sqrt", 1, 'r');
-  functions.push_back(tfunction6);
-  Function tfunction7("exp", 2, '^');
-  functions.push_back(tfunction7);
-  Function tfunction8("log", 1, 'l');
-  functions.push_back(tfunction8);
-}
-
-// parse formula for functions and replace with symbols
-int parseformulaforfunctions(char formula[])
-{
-  int i, startpt, endpt, findinstructions=1, parseresult;
-  char ttext[MAXSTRING], tcommand[MAXSTRING];
-  strcpy(ttext, formula);
-  
-   while (findinstructions) {
-    findinstructions=0;
-    for (i=0;i<functions.size();i++)
-     if ((startpt=findsimple(ttext, functions[i].functionName)))
-      break;
-     if (i<functions.size()) {
-      findinstructions=1;
-      --startpt;
-      endpt=startpt;
-      while (ttext[endpt]!='(' && endpt<strlen(ttext))
-       ++endpt;
-      ++endpt;
-      openparentheses=1;
-      while (openparentheses && endpt<strlen(ttext)) {
-       if (ttext[endpt]=='(')
-        ++openparentheses;
-       if (ttext[endpt]==')')
-        --openparentheses;
-      ++endpt; }
-      if (openparentheses) // not all parentheses closed
-       return openparentheses;
-      if (endpt==strlen(ttext)-1)
-       findinstructions=0;
-      extracttextpart(ttext, tcommand, startpt, endpt);
-      // parse tcommand
-      parseresult=mathfunctionsparser(i, tcommand);
-      // now insert tcommand into startpt
-      if (parseresult)
-       return parseresult;
-   inserttextpart(ttext, tcommand, startpt); } }
-   
-  strcpy(formula, ttext);
-      
- return 0;
-}
-
-// math functions command parser
-int mathfunctionsparser(int function_id, char tcommand[MAXSTRING])
-{
-  int i, mpos=0, tp=0, n;
-  double d;
-  char tparameter[MAXFUNCTIONPARAMETERS][MAXSTRING];
-  
-   while (tcommand[mpos]!='(')
-    ++mpos;
-   ++mpos;
-   tcommand[strlen(tcommand)-1]=',';
-   for (i=0;i<functions[function_id].functionParameters;i++) {
-    n=0;
-    while (mpos<strlen(tcommand)) {
-     if (tcommand[mpos]==',') {
-      ++mpos;
-     break; }
-     if (tcommand[mpos]=='(')  // these were 0 when routine was called
-      ++openparentheses;
-     if (tcommand[mpos]==')')
-      --openparentheses;
-     tparameter[tp][n++]=tcommand[mpos];
-    ++mpos; }
-    tparameter[tp][n]='\0';
-    if (!strlen(tparameter[tp])) { // nonexistant parameter
-     tcommand[strlen(tcommand)-1]=')';
-    return tp; }
-    parenthesesincluderforpolishreversecalculator(tparameter[tp]);
-    reversepolishcalculatorequalizer(tparameter[tp]);
-    d=reversepolishcalculator(tparameter[tp]);
-    strcpy(tparameter[tp], dtoa(d));
-    ++tp; }
-    tcommand[strlen(tcommand)-1]=')';
-    if (mpos<strlen(tcommand)-1) // still more tcommand when functions have been read
-     return tp;
-    // reconstruct tcommand
-    n=functions[function_id].functionParameters;
-    if (n==1) {
-     ++n;
-    strcpy(tparameter[1], "1"); }
-    strcpy(tcommand, " (");
-    for (i=0;i<n;i++) {
-      strcat(tcommand, tparameter[i]);
-    strcat(tcommand, " "); }
-    strcat(tcommand, ctos(functions[function_id].functionSymbol));
-    strcat(tcommand, ")");
-    
- return 0;
 }
 
 // parentheses clearance
