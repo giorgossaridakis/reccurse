@@ -3,6 +3,7 @@
 void initiatemathematicalfunctions();
 int parseformulaforfunctions(char formula[]);
 int mathfunctionsparser(int function_id, char tcommand[MAXSTRING]);
+int parseformulaforerrors(char formula[]);
 
 class Function {
  public:
@@ -136,6 +137,25 @@ int mathfunctionsparser(int function_id, char tcommand[MAXSTRING])
         tcommand[n-1]=' ';
         tcommand[n]=' ';
     inserttextpart(tcommand, tparameter[i], n-1); } } }
+    
+ return 0;
+}
+
+// parse formula for nondefined functions and too long numbers
+int parseformulaforerrors(char formula[])
+{
+  int i,n;
+
+   for (i=0;i<strlen(formula);i++) {
+    if (isalpha(formula[i]) && (formula[i+1]=='(' || formula[i+1]=='('))
+     return -1; // nondefined function
+    if (isdigit(formula[i])/* && !digitflag*/) {
+     n=0;
+     while ((isdigit(formula[i]) || isdecimalseparator(formula[i])) && i<strlen(formula)) {
+      ++n;
+     ++i; }
+     if (n>MAXOP-1)
+   return -2; } } // too long number
     
  return 0;
 }

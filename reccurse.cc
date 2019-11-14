@@ -1,4 +1,4 @@
-// reccurse, the filemaker of ncurses, version 0.336
+// reccurse, the filemaker of ncurses, version 0.337
 
 // included libraries
 // C
@@ -41,7 +41,7 @@
 #define MAXSEARCHDEPTH 5
 #define HORIZONTALLY 0
 #define VERTICALLY 1
-#define version 0.336
+#define version 0.337
 
 // keyboard
 #define UP 53
@@ -2062,6 +2062,8 @@ void Generate_Field_String(Annotated_Field *field, char *ttext)
       strcpy(formula, tfield->automatic_value);
      i=parseformulaforfunctions(formula);
      if (!i)
+      i=parseformulaforerrors(formula);
+     if (!i)
       i=parenthesesincluderforpolishreversecalculator(formula);
      if (!i) {
       reversepolishcalculatorequalizer(formula, currentrecord);
@@ -2097,8 +2099,10 @@ void Generate_Field_String(Annotated_Field *field, char *ttext)
      if (strcmp(tfield->automatic_value, "."))
       strcpy(field->text, tfield->automatic_value);
      strcpy(formula, field->text);
-      n=0;
+     n=0;
      i=parseformulaforfunctions(formula);
+     if (!i)
+      i=parseformulaforerrors(formula);
      if (!i)
       i=parenthesesincluderforpolishreversecalculator(formula);
      if (!i)

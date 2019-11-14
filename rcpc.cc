@@ -220,7 +220,7 @@ int reversepolishcalculatorequalizer(char formula[], int record_id)
   char transformedtext[MAXCOMMAND], ttransformedtext[MAXCOMMAND];
   int type, i, n, i1, operation=1, numbers=0;
   double f;
-  char tc, s[20];
+  char tc, s[MAXOP];
   
    // replace #id with values from corresponding records
    n=0;
@@ -286,7 +286,7 @@ int reversepolishcalculatorequalizer(char formula[], int record_id)
 int isformulainpolishcalculatorsyntax(char formula[])
 {
   int type;
-  char s[20];
+  char s[MAXOP];
   pos=0;
   
    if ((type=getop(s, formula))==NUMBER && (type=getop(s, formula))==NUMBER) {
