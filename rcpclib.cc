@@ -71,11 +71,11 @@ int parseformulaforfunctions(char formula[])
       ++endpt; }
       if (openparentheses) // not all parentheses closed
        return openparentheses;
-      if (endpt==strlen(ttext)-1)
-       findinstructions=0;
       extracttextpart(ttext, tcommand, startpt, endpt);
       // call routine recursively
-      parseformulaforfunctions(tcommand);
+      n=parseformulaforfunctions(tcommand);
+      if (n)
+       return n;
       // parse tcommand
       parseresult=mathfunctionsparser(i, tcommand);
       // now insert tcommand into startpt
