@@ -67,8 +67,7 @@ char s[MAXOP];
      case '$':
       int op5;
       pop();
-      op5=rand() % 10;
-      push(pop()*op5);
+      push((op5=rand() % (int) pop()));
      break;
      case '@':
       int op4;
