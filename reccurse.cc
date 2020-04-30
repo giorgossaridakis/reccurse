@@ -1,4 +1,4 @@
-// reccurse, the filemaker of ncurses, version 0.337
+// reccurse, the filemaker of ncurses, version 0.338
 
 // included libraries
 // C
@@ -41,7 +41,7 @@
 #define MAXSEARCHDEPTH 5
 #define HORIZONTALLY 0
 #define VERTICALLY 1
-#define version 0.337
+#define version 0.338
 
 // keyboard
 #define UP 53

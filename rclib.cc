@@ -44,6 +44,8 @@ void sortfieldsbyxpt(int field_id, vector <int> &fieldxidentities);
 void sortfieldsbyypt(int field_id, vector <int> &fieldyidentities);
 int findfieldege(int flag=0);
 int CalcDayNumFromDate(int y, int m, int d);
+int isleapyear(int year);
+int daysinmonth(int year, int month);
 void INThandler(int sig);
 
 // definitions
@@ -51,6 +53,7 @@ void INThandler(int sig);
 #define MAXTOKENS 10
 #define QUOTE 34
 #define COMMA 44
+int DAYSINMONTH[]= { 0, 31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31 };
 
 // variables
 char input_string[MAXSTRING];
@@ -141,6 +144,8 @@ int filecodedecode(char *source, char *destination, int mode) // 0 code, 1 decod
   
   while (s) 
    fputc(charcoder(fgetc(s), mode), d);
+
+ return 0;
 }
 
 // use charcoder to encode-decode string
@@ -422,25 +427,39 @@ void Scan_Date(int x_pos, int y_pos, char tdate[])
      case UP:
       switch (highlight) {
        case 0:
-        ++y;
+        if (y<32765)
+         ++y;
        break;
        case 1:
         ++m;
+        if (m>12)
+         m=1;
+        if (d>daysinmonth(y, m))
+         d=daysinmonth(y, m);
        break;
        case 2:
         ++d;
+        if (d>daysinmonth(y, m))
+         d=1;
       break; }
      break;
      case DOWN:
       switch (highlight) {
        case 0:
-        --y;
+        if (y>1)
+         --y;
        break;
        case 1:
         --m;
+        if (m<1)
+         m=12;
+        if (d>daysinmonth(y, m))
+         d=daysinmonth(y, m);
        break;
        case 2:
         --d;
+        if (d<1)
+         d=daysinmonth(y, m);
       break; }
   break; } }
 
@@ -917,6 +936,21 @@ int CalcDayNumFromDate(int y, int m, int d)
   int dn = 365*y + y/4 - y/100 + y/400 + (m*306 + 5)/10 + (d - 1);
 
   return dn % 7;
+}
+
+// return 1 if year is leap
+int isleapyear(int year)
+{ 
+  if ((year%400==0 || year%100!=0) && (year%4==0)) // is a leap year
+   return 1;
+
+ return 0;
+}
+
+// days in month
+int daysinmonth(int year, int month)
+{
+ return (month==2) ? DAYSINMONTH[month]+isleapyear(year) : DAYSINMONTH[month];
 }
 
 // handle ctrl+c
