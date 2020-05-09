@@ -53,7 +53,6 @@ void INThandler(int sig);
 #define MAXTOKENS 10
 #define QUOTE 34
 #define COMMA 44
-int DAYSINMONTH[]= { 0, 31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31 };
 
 // variables
 char input_string[MAXSTRING];
@@ -434,8 +433,6 @@ void Scan_Date(int x_pos, int y_pos, char tdate[])
         ++m;
         if (m>12)
          m=1;
-        if (d>daysinmonth(y, m))
-         d=daysinmonth(y, m);
        break;
        case 2:
         ++d;
@@ -453,15 +450,15 @@ void Scan_Date(int x_pos, int y_pos, char tdate[])
         --m;
         if (m<1)
          m=12;
-        if (d>daysinmonth(y, m))
-         d=daysinmonth(y, m);
        break;
        case 2:
         --d;
         if (d<1)
          d=daysinmonth(y, m);
       break; }
-  break; } }
+   break; }
+   if (d>daysinmonth(y, m))
+  d=daysinmonth(y, m); }
 
   if (c=='\n')
    strcpy(tdate, date);
@@ -950,7 +947,7 @@ int isleapyear(int year)
 // days in month
 int daysinmonth(int year, int month)
 {
- return (month==2) ? DAYSINMONTH[month]+isleapyear(year) : DAYSINMONTH[month];
+ return (month==2) ? (28 + isleapyear(year)) : 31 - (month - 1) % 7 % 2;
 }
 
 // handle ctrl+c
