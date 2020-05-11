@@ -2,10 +2,11 @@ int Init_Screen();
 void End_Screen();
 void Change_Color(int choice);
 void Draw_Box(int color, int x_pos, int x_size, int y_pos, int y_size, int paintcolor=0);
+void Draw_Box(DRAWBOX *tdrawbox);
 void Draw_Box(char t, int color, int x_pos, int x_size, int y_pos, int y_size, int paintcolor=0);
-void Clear_Screen();
+void gotoxy(int x, int y);
 
-WINDOW *win1=newwin(80, 25, 0, 0);
+WINDOW *win1=newwin(80, 24, 1, 1);
 
 #define SPACE 32
 #define UNDERSCORE 95
@@ -17,6 +18,10 @@ int highlightcolors[2]={ 34, 23 };
 int Init_Screen()
 {
   win1=initscr();
+  noecho();
+  cbreak();
+  keypad(win1, TRUE);
+  mousemask(ALL_MOUSE_EVENTS, NULL);
   if (has_colors() == FALSE) {
    endwin();
    printf("Your terminal does not support color\n");
@@ -111,6 +116,10 @@ int Init_Screen()
   // white on COLOR_BLACK  
   init_pair(58, COLOR_WHITE, COLOR_BLACK);
   
+  // set up drawboxes
+  DRAWBOX menu0(0, 5, 30, 18, 7, 9, 58);
+  drawboxes.push_back(menu0);
+  
   attron(COLOR_PAIR(58));  
  return 0;
 }
@@ -119,8 +128,6 @@ int Init_Screen()
 void End_Screen()
 {
   endwin();
-//   curs_set(1);
-  refresh();
 }
 
 // change color
@@ -142,6 +149,49 @@ void Draw_Box(int color, int x_pos, int x_size, int y_pos, int y_size, int paint
   attron(A_ALTCHARSET);
   Change_Color(color);
   
+  gotoxy(x_pos, y_pos);
+  addch(108);
+  gotoxy(x_pos+x_size, y_pos);
+  addch(107);
+  gotoxy(x_pos, y_pos+y_size);
+  addch(109);
+  gotoxy(x_pos+x_size, y_pos+y_size);
+  addch(106);
+  for (i=x_pos+1;i<x_pos+x_size;i++) {
+   gotoxy(i, y_pos);
+   addch(113);
+   gotoxy(i, y_pos+y_size);
+  addch(113); }
+  for (i=y_pos+1;i<y_pos+y_size;i++) {
+   gotoxy(x_pos, i);
+   addch(120);
+   gotoxy(x_pos+x_size, i);
+  addch(120); }
+  attroff(A_ALTCHARSET);
+  if (paintcolor) {
+   Change_Color(paintcolor);
+   int n;
+   for (i=x_pos+1;i<x_pos+x_size;i++) {
+    for (n=y_pos+1;n<y_pos+y_size;n++) {
+     gotoxy(i, n);
+   addch(SPACE); } }
+  Change_Color(58); }
+ refresh();
+}
+
+// drawbox overloaded for class
+void Draw_Box(DRAWBOX *tdrawbox)
+{
+  int i, x_pos, y_pos, x_size, y_size, paintcolor, color;
+  attron(A_ALTCHARSET);  
+  color=tdrawbox->color;
+  paintcolor=tdrawbox->paintcolor;
+  x_pos=tdrawbox->xpos;
+  x_size=tdrawbox->xsize;
+  y_pos=tdrawbox->ypos;
+  y_size=tdrawbox->ysize;
+  
+  Change_Color(color);
   gotoxy(x_pos, y_pos);
   addch(108);
   gotoxy(x_pos+x_size, y_pos);
@@ -200,15 +250,8 @@ void Draw_Box(char t, int color, int x_pos, int x_size, int y_pos, int y_size, i
   refresh();
 }
 
-// clear screen
-void Clear_Screen()
+// // gotoxy
+void gotoxy(int x, int y)
 {
-  int x,y;
-  
-  Change_Color(50);
-  for (x=1;x<81;x++) {
-   for (y=1;y<25;y++) {
-    gotoxy(x,y);
-  addch(SPACE); } }
-  refresh();
-}   
+  move(y-1,x-1);
+}

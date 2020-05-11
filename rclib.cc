@@ -8,8 +8,8 @@ int tryfile(char *file);
 void Show_File_Error(char *filename);
 int Copy_File(char *source, char *dest);
 void checkpoint(int id, int color=58);
-int Scan_Input(int flag=0, int lim_a=0, int lim_b=0, int length=80);
-char Scan_Input(char istring[MAXSTRING], int x_pos, int y_pos, int color);
+int Scan_Input(int flag=0, int lim_a=0, int lim_b=1, int length=0);
+char Scan_Input(char istring[MAXSTRING], int x_pos, int y_pos, int color=58);
 void Scan_Date(int x_pos, int y_pos, char tdate[]);
 char *addmissingzeros(char tstring[], int zeros);
 void terminatestringatcharactersend(char *ttext);
@@ -34,7 +34,7 @@ double bringfractionpartofdivision(int param1, int param2, int scale=10);
 int isspace(char t);
 int iscalculationsign(char t);
 int isdecimalseparator(char t);
-int isprintablecharacter(char t);
+int isprintablecharacter(int t);
 int iscorruptstring(char *tstring);
 int limitsignificantnumbers(char *s, int digits);
 int find(char text[], char token[]);
@@ -42,6 +42,8 @@ int findsimple(char text[], char token[]);
 int sortrecords(int field_id, int recordssequence[], int mode=0);
 void sortfieldsbyxpt(int field_id, vector <int> &fieldxidentities);
 void sortfieldsbyypt(int field_id, vector <int> &fieldyidentities);
+int locatefieldbymouseclick();
+bool rightmousebuttonclicked();
 int findfieldege(int flag=0);
 int CalcDayNumFromDate(int y, int m, int d);
 int isleapyear(int year);
@@ -216,44 +218,26 @@ void checkpoint(int id, int color)
 // scan integer and string
 int Scan_Input(int flag, int lim_a, int lim_b, int length) // 0 string, 1 integer
 {
-  int i, x, y;
-  char c;
-  int res=-32765;
+  int x, y, c;
+  int res=NUMERICALLIMIT;
   getyx(win1, y, x);
   
-  for (i=0;i<MAXSTRING;i++)
-   input_string[i]=SPACE;
-  while (res<lim_a || res>lim_b) {
-   i=0;
-   while (i<length) {
-    c=getch();
-    if (isprintablecharacter(c) && c!='\n')
-     addch(c);
-    if (isspace(input_string[i+1])) {
-     addch(UNDERSCORE);
-    gotoxy(x+i+2, y+1); }
-    refresh();
-    if (c==0 || c==254) {
-     c=getch();
-     if (c==BACKSPACE && i) {
-      gotoxy(x+i, y+1);
-      printw("  ");
-      --i;
-     gotoxy(x+i+1,y+1); } }
-    else   
-     input_string[i++]=c;
-    if (c=='\n' || c==ESC) {
-     input_string[--i]='\0';
-     i=length;
+   while (res<lim_a || res>lim_b) {
+    memset(input_string, 0, sizeof(input_string));
+    Scan_Input(input_string, x+1, y+1);
+    if (!strlen(input_string)) {
+     res=(lim_b>NUMERICALLIMIT) ? lim_b+1 : lim_b;
+    return res; }
+    switch (flag) {
+     case 0:
+      if (strlen(input_string)<=length)
+       res=lim_a;
+     break;
+     case 1:
+      res=atoi(input_string);
+      refresh(); // had to do that as routine stuck in illogical loop
     break; } }
-    if (flag)
-     res=atoi(input_string);
-    else 
-     res=lim_a; 
-    if (c=='\n')
-   break; }
-   terminatestringatcharactersend(input_string);
-  
+
  return res;
 }
 
@@ -272,9 +256,8 @@ char Scan_Input(char istring[MAXSTRING], int x_pos, int y_pos, int color)
  fieldreferencelist=record[records[(fieldreferencerecord*fieldsperrecord)+currentfield].id].fieldlist-1; }
   
    strcpy(tstring, istring);
-   for (i=0;i<79;i++)
-    if (i>column || tstring[i]=='\n')
-      tstring[i]=SPACE;
+   for (i=column+1;i<79;i++)
+    tstring[i]=SPACE;
    tstring[i]='\0';
    Change_Color(color);
    column=x_pos;
@@ -287,8 +270,7 @@ char Scan_Input(char istring[MAXSTRING], int x_pos, int y_pos, int color)
      else
     strcpy(tstring, externalrecords[externalreferencedatabase][(fieldreferencerecord*dummyfieldsperrecord)+dummyfieldreferencelist].text); }
     printw("%s", tstring);
-    for (i=strlen(tstring);i<79;i++)
-     addch(SPACE);
+    clrtoeol();
     gotoxy(column, y_pos);
     if (tstring[column-x_pos-1]==SPACE)
      addch(UNDERSCORE);
@@ -302,8 +284,6 @@ char Scan_Input(char istring[MAXSTRING], int x_pos, int y_pos, int color)
      tstring[column-x_pos]=t;
      if (column<79)
     ++column; }
-    if (t==0 || t==254) {
-     t=getch();
      switch (t) {
       case LEFT:
        if (column>x_pos) {
@@ -363,7 +343,7 @@ char Scan_Input(char istring[MAXSTRING], int x_pos, int y_pos, int color)
           tstring[i]=tstring[i+1];
         tstring[i++]=SPACE;
        tstring[i]='\0'; }
-    break; } } }
+    break; } }
     
     terminatestringatcharactersend(tstring);
     if (t=='\n')
@@ -633,6 +613,11 @@ int sgetch(int x_pos, int y_pos, int sleeptime, int showflag)
   int t;
   
   t=getch();
+  // mouse activity
+  if (t==KEY_MOUSE) {
+   if(getmouse(&mouse) == OK)
+  return KEY_MOUSE; }
+  // character
   if (isalpha(t)) {
    if (menubar && showflag) {
     printw(".%c", t);
@@ -640,11 +625,8 @@ int sgetch(int x_pos, int y_pos, int sleeptime, int showflag)
     refresh(); 
    Sleep(sleeptime); }
   return tolower(t); }
-  if (t==0 || t==254) {
-   t=getch();
-   if (t==-109) // possible SHIFT_TAB
-  t=SHIFT_TAB; }
   
+  // movement or otherwise
  return t;
 }
 
@@ -752,7 +734,7 @@ int isdecimalseparator(char t)
 }
 
 // is printable character
-int isprintablecharacter(char t)
+int isprintablecharacter(int t)
 {
   if (t>31 && t<127)
    return 1;
@@ -920,6 +902,29 @@ int findfieldege(int flag) // 0 first, 1 last
    break; } }
     
  return tfield;
+}
+
+int locatefieldbymouseclick()
+{
+   int x, y, i, field=currentfield;
+   
+    for (i=0;i<fieldsperrecord;i++)
+     for (x=record[i].pt.x;x<record[i].pt.x+record[i].size.x;x++)
+      for (y=record[i].pt.y;y<record[i].pt.y+record[i].size.y;y++)
+       if (mouse.x+1==x && mouse.y+1==y) {
+        field=i;
+    break; }
+
+  return field;
+}
+
+// right mouse button clicked
+bool rightmousebuttonclicked()
+{
+  if (mouse.bstate & BUTTON3_CLICKED)
+   return true;
+
+ return false;       
 }
 
 // ----------------------------------------------------------------------

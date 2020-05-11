@@ -1,11 +1,10 @@
-// reccurse, the filemaker of ncurses, version 0.338
+// reccurse, the filemaker of ncurses, version 0.343
 
 // included libraries
 // C
 #include <unistd.h>
-#include <conio.h>
+#include <ncurses.h>
 #include <stdlib.h>
-#include <stdio.h>
 #include <string.h>
 #include <math.h>
 #include <ctype.h>
@@ -41,26 +40,29 @@
 #define MAXSEARCHDEPTH 5
 #define HORIZONTALLY 0
 #define VERTICALLY 1
-#define version 0.338
+#define version 0.343
 
 // keyboard
-#define UP 53
-#define LEFT 54
-#define RIGHT 55
-#define DOWN 52
+#define DOWN 258
+#define UP 259
+#define LEFT 260
+#define RIGHT 261
+#define SHIFT_LEFT 393
+#define SHIFT_RIGHT 402
 #define ESC 27
 #define SPACE 32
-#define BACKSPACE 57 // 0 first
-#define DELETE 124 // 0 first
-#define INSERT 125 // 0 first
-#define HOME 56 // 0 first
-#define END 154 // 0 first
-#define COPY 11 // 0 first
-#define PASTE 22 // 0 first
+#define BACKSPACE 263 
+#define DELETE 330
+#define INSERT 331
+#define HOME 262
+#define END 360
+#define COPY 11
+#define PASTE 22
 #define TAB 9
-#define SHIFT_TAB 147
-#define END_OF_RECORDS 130
-#define START_OF_RECORDS 131
+#define SHIFT_TAB 353
+#define END_OF_RECORDS 336
+#define START_OF_RECORDS 337
+#define NUMERICALLIMIT 32765
 
 using namespace std;
 
@@ -80,6 +82,7 @@ int alteredparameters=0;
 int dummyfieldsperrecord, dummyrecordsnumber;
 int fieldhasdependancy=0;
 int externalreferencedatabase;
+int mousemenucommand=0;
 char pages[MAXPAGES][MAXSTRING];
 char rcfile[MAXSTRING], dbfile[MAXSTRING];
 const char *onoff[]= { "off", "on" };
@@ -87,6 +90,9 @@ char clipboard[MAXSTRING];
 int menucolors[5]={ 5, 6, 4, 3, 1 };
 int menulines[5]={ 24, 24, 24, 24, 24 };
 char infotext[MAXSTRING];
+MEVENT mouse;
+const char *menunames[]= { "main menu", "options etc", "edit fields", "extra functions", "quit Reccurse" };
+const char *optionsmenutexts[]={ "autosave on/off", "load database", "save database", "help page" };
 const char *menutexts[]={ "<tabshiftarrows|< >|home&end|<g>|<e>dit|<o>ptions|ex<t>ra|<m>enubar|<ESC>quit", "<a>utosave on/off|<l>oad database|<s>ave database|<h>elp page|<ESC>main menu", "e<d>it|<c>opy|<DEL>ete|<j>oin|di<v>ide|datestam<p>|<INS>more|<ESC>main menu", "database <i>nformation|<f>ind|so<r>t records|set<u>p database|<ESC>main menu", "really quit ?" };  //main, options, edit, extra, quit
 
 struct Points {
@@ -143,6 +149,20 @@ class Relationship {
   Relationship() { };
 ~Relationship() { } ; } ;
 
+class DRAWBOX {
+ public:
+  int id; // use for menus
+  int color;
+  int xpos;
+  int xsize;
+  int ypos;
+  int ysize;
+  int paintcolor;
+  DRAWBOX(int i1, int i2, int i3, int i4, int i5, int i6, int i7) { id=i1; color=i2; xpos=i3; xsize=i4; ypos=i5; ysize=i6; paintcolor=i7; };
+  DRAWBOX() { };
+~DRAWBOX() { }; };
+
+vector<DRAWBOX> drawboxes;
 vector<Field> record, dummyrecord, externalrecord[MAXRELATIONSHIPS];
 vector<Annotated_Field> records, dummyrecords, externalrecords[MAXRELATIONSHIPS];
 vector<Relationship> relationships;
@@ -202,6 +222,7 @@ int Clean_Database(char *filename);
 #include "rcpc.cc"
 #include "rcpclib.cc"
 #include "rcfre.cc"
+#include "rcmenusel.cc"
 
 int main(int argc, char *argv[])
 {
@@ -324,7 +345,7 @@ int End_Program(int code)
   Show_Message(1, 24, 1, tmessage, 1500);
   End_Screen();
   
- exit(0);
+ exit(EXIT_SUCCESS);
 }
 
 // filename extension add/remove
@@ -530,6 +551,7 @@ int Read_Write_db_File(int mode) // 0 read, 1 write, 2 create from file, 3&4 rec
      Read_Write_Relationships(1);
     break; }
     
+   dbfileaccess.flush();
    dbfileaccess.close();
   
  return 0;
@@ -1156,7 +1178,7 @@ int Show_Record_and_Menu()
   vector <Annotated_Field> trecords;
   
    while (run) {
-    Clear_Screen();
+    clear();
     for (i=0;i<fieldsperrecord;i++)
     Show_Field(&records[(currentrecord*fieldsperrecord)+i]);
     if (currentfield>-1 && !recordsdemo)
@@ -1180,8 +1202,11 @@ int Show_Record_and_Menu()
     if (menubar==3)
      i=strlen(records[(currentrecord*fieldsperrecord)+currentfield].text)+1;
     gotoxy(i, menulines[currentmenu]);
-    c=sgetch();
-    c=negatekeysforcurrentmenu(c);
+    if (!mousemenucommand) {
+     c=sgetch();
+    c=negatekeysforcurrentmenu(c); }
+    else
+     mousemenucommand=0;
     if (!alteredparameters)
      for (i=0;i<strlen(alterscreenparameterskeys);i++)
       if (c==alterscreenparameterskeys[i])
@@ -1383,6 +1408,14 @@ int Show_Record_and_Menu()
         if (i)
        currentfield=fieldxidentities[i-1]; }
      break;
+     case KEY_MOUSE:
+      if (recordsdemo)
+       break;
+      if (rightmousebuttonclicked())
+       Menu_Selector();
+      else
+       currentfield=locatefieldbymouseclick();
+     break;
      case 'g': // from all menus
       if (recordsdemo)
        break;
@@ -1390,7 +1423,7 @@ int Show_Record_and_Menu()
       Change_Color(58);
       gotoxy(1, 24);
       printw("jump to record:");
-      i=Scan_Input(1, 1, recordsnumber, 4)-1;
+      i=Scan_Input(1, 1, recordsnumber)-1;
       if (i>-1 && i<recordsnumber)
        currentrecord=i;
      break;
@@ -1441,7 +1474,7 @@ int Show_Record_and_Menu()
       if (c=='y') {
        Show_Menu_Bar(1);
        Show_Message(1, 24, 5, "filename:", 0);
-       Scan_Input(0, 0, 1, 25);
+       Scan_Input(0);
        i=Write_rc_File(input_string);
        Reccurse_File_Extension(input_string, 1);
        Show_Menu_Bar(1);
@@ -1511,11 +1544,11 @@ int Show_Record_and_Menu()
       Show_Menu_Bar(1);
       Show_Message(1, 24, 3, "source field:", 0);
       Change_Color(4);
-      i=Scan_Input(1, 1, 10000, 5);
+      i=Scan_Input(1, 1, MAXFIELDS);
       Show_Menu_Bar(1);
       Show_Message(1, 24, 3, "destination field:", 0);
       Change_Color(4);
-      n=Scan_Input(1, 1, 10000, 5);
+      n=Scan_Input(1, 1, MAXFIELDS);
       if (!n)
        break;
       strcpy(records[(currentrecord*fieldsperrecord)+n-1].text, records[(currentrecord*fieldsperrecord)+i-1].text); 
@@ -1554,13 +1587,13 @@ int Show_Record_and_Menu()
        case 'i':
         Show_Menu_Bar(1);
         Show_Message(1, 24, 5, "filename:", 0);
-        Scan_Input(0, 0, 1, 25);
+        Scan_Input(0);
         Import_Database(input_string);
        break;
        case 'x':
         Show_Menu_Bar(1);
         Show_Message(1, 24, 5, "filename:", 0);
-        Scan_Input(0, 0, 1, 25);
+        Scan_Input(0);
         Export_Database(input_string);
        break;
        case 'l':
@@ -1572,7 +1605,7 @@ int Show_Record_and_Menu()
          case 'i':
           Show_Menu_Bar(1);
           Show_Message(1, 24, 4, "external dbfile:", 0);
-          Scan_Input(0, 0, 1, 25);
+          Scan_Input(0);
           i=Import_External_db_File(input_string);
          break;
          case 'r':
@@ -1604,14 +1637,14 @@ int Show_Record_and_Menu()
        Show_Menu_Bar(1);
        Change_Color(4);
        gotoxy(1, 24);
-       tfindschedule.field_id=Scan_Input(1, 1, 10000, 5);
+       tfindschedule.field_id=Scan_Input(1, 1, MAXFIELDS);
        if (!tfindschedule.field_id)
         break;
        --tfindschedule.field_id;
        Show_Menu_Bar(1);
        Change_Color(4);
        gotoxy(1, 24);
-       Scan_Input(0, 0, 1, 80);
+       Scan_Input(0);
        if (!strlen(input_string))
         break;
        strcpy(tfindschedule.texttolookfor, input_string);
@@ -1643,14 +1676,14 @@ int Show_Record_and_Menu()
        Show_Menu_Bar(1);
        Change_Color(4);
        gotoxy(1, 24);
-       tfindschedule.field_id=Scan_Input(1, 1, 10000, 5);
+       tfindschedule.field_id=Scan_Input(1, 1, MAXFIELDS);
        if (!tfindschedule.field_id)
         break;
        --tfindschedule.field_id;
        Show_Menu_Bar(1);
        Change_Color(4);
        gotoxy(1, 24);
-       Scan_Input(0, 0, 1, 80);
+       Scan_Input(0);
        if (!strlen(input_string))
         break;
        strcpy(tfindschedule.texttolookfor, input_string);
@@ -1716,9 +1749,9 @@ int negatekeysforcurrentmenu(int t)
   int i;
   const char *menukeys[]={ "eot", "alsh", "dcpjv+-*/.!@", "ifru" }; // m works in all menus
   
-  if (t==196) t='>'; // shift+right arrow
-  if (t==187) t='<'; // shift+left arrow
-  if (t==ESC || t==LEFT || t==RIGHT || t==UP || t==DOWN || t==TAB || t==SHIFT_TAB || t=='m' || t=='g' || t=='?' || t==HOME || t==END || t=='<' || t=='>' || t==START_OF_RECORDS || t==END_OF_RECORDS)
+  if (t==SHIFT_RIGHT) t='>'; // shift+right arrow
+  if (t==SHIFT_LEFT) t='<'; // shift+left arrow
+  if (t==ESC || t==LEFT || t==RIGHT || t==UP || t==DOWN || t==TAB || t==SHIFT_TAB || t=='m' || t=='g' || t=='?' || t==HOME || t==END || t=='<' || t=='>' || t==START_OF_RECORDS || t==END_OF_RECORDS || t==KEY_MOUSE)
    return t;
   if (recordsdemo)
    return 0;
@@ -1791,12 +1824,13 @@ void Show_Help_Screen()
 {
   string helpinfo="                                <help screen>                                   reccurse is an advanced custom design record keeper for the terminal.           instruction keys are usually displayed in the bottom bar, the bottom bar itself can be switched from keyboard hints, to navigation information, to field text,  to disappearance with the <m> key. navigation through fields is done with arrow keys or tab/shift+tab and with home/end. move through records with shift+arrow  keys or < >. <g>o for record number. navigation keys work in all menus.         more keys -> ctrl+e to edit submenu, ctrl+o to options mode, ctrl+t to extra    submenu, ctrl+f find function, ctrl+k copy to clipboard, ctrl+v paste clipboard.ctrl+w to pages menu, arrow keys, INS, DELETE, HOME, END keys for there.        +-*/. keys will add/remove attributes,!@ keys for color, ? for this help screen.<carriage return> enters edit mode, <space> ticks/unticks tickboxes (1x1fields).when find is selected, user is prompted to enter a field number, then a search  criteria (asterisks denote any text until the next alphanumeric character).     the sequence is repeated until a carriage return is given. this allows for      multiple searches, each sequential will operate on the previous find records    that match the requested criteria.                                              when sort is selected, user is prompted to enter a field number, then           <a>scending or <d>escending order. the sequence is repeated and records are     sorted each time according to the requested sort parameters.                    reccurse will record changes in fields after editing, if autosave is enabled in options submenu (default option). to prevent loss of data, keep a backup.       written in Aug-Oct 2019 by Giorgos Saridakis.                                              reccurse is distributed under the GNU Public Licence. :)";
 
-   Clear_Screen();
+   clear();
    Change_Color(58);
    gotoxy(1,1);
    printw("%s", helpinfo.c_str());
    refresh();
    getch();
+   clear();
 }
 
 // show database information screen
@@ -2203,7 +2237,7 @@ int Export_Database(char *filename)
 // import from comma separated values file
 int Import_Database(char *filename)
 {
-  int i1, i, fieldsreadperline=0, trecordsnumber=0, recordid=0;
+  int i1, i, n, fieldsreadperline=0, trecordsnumber=0, recordid=0;
   char t, tstring[MAXSTRING*2];
   vector <Annotated_Field> trecords;
   ifstream infile(filename);
@@ -2323,7 +2357,7 @@ int Import_External_db_File(char *filename)
      Show_Field_ID(&records[(currentrecord*fieldsperrecord)+i]);
     Show_Menu_Bar(1);
     Show_Message(1, 24, 4, "to local field id:", 0);
-    chosendestinationfield=Scan_Input(1, 1, fieldsperrecord, 4);
+    chosendestinationfield=Scan_Input(1, 1, fieldsperrecord);
     if (chosendestinationfield<1 || chosendestinationfield>fieldsperrecord)
      return -1;
     --chosendestinationfield;

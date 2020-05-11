@@ -6,8 +6,8 @@ void Field_Editor();
 // field editor and setup routine
 void Field_Editor()
 {
-  int i, selection, fieldshown=0;
-  char t, ttext[MAXSTRING];
+  int i, selection, fieldshown=0, t;
+  char ttext[MAXSTRING];
   
   while (t!=ESC) {
    Draw_Box(BOXCHAR, 6, 17, 33, 5, 16, 3);
@@ -73,18 +73,18 @@ void Field_Editor()
    printw("<j>ump <insert> <delete>");
    Change_Color(3);
    gotoxy(18,20);
-   t=tolower(sgetch(18,20));
+   t=sgetch(18,20);
    cleanstdin();
    if (t!=SPACE && t!=LEFT && t!=RIGHT && t!=ESC && t!=INSERT && t!=DELETE && t!='j' && t!='*')
     t='\n';
    switch (t) {
     case SPACE:
-     Clear_Screen();
+     clear();
      Show_Field(&records[fieldshown]);
      getch();
     break;
     case '*':
-     Clear_Screen();
+     clear();
      for (i=0;i<fieldsperrecord;i++) {
       Show_Field(&records[(currentrecord*fieldsperrecord)+i]);
       Show_Field_ID(&records[(currentrecord*fieldsperrecord)+i]); }
