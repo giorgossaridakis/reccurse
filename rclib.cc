@@ -49,6 +49,7 @@ int CalcDayNumFromDate(int y, int m, int d);
 int isleapyear(int year);
 int daysinmonth(int year, int month);
 void INThandler(int sig);
+char* bringstringtomiddle(char *text, int width);
 
 // definitions
 #define MAXSTRING 80 // characters in a regular string
@@ -225,18 +226,10 @@ int Scan_Input(int flag, int lim_a, int lim_b, int length) // 0 string, 1 intege
    while (res<lim_a || res>lim_b) {
     memset(input_string, 0, sizeof(input_string));
     Scan_Input(input_string, x+1, y+1);
-    if (!strlen(input_string)) {
-     res=(lim_b>NUMERICALLIMIT) ? lim_b+1 : lim_b;
-    return res; }
-    switch (flag) {
-     case 0:
-      if (strlen(input_string)<=length)
-       res=lim_a;
-     break;
-     case 1:
-      res=atoi(input_string);
-      refresh(); // had to do that as routine stuck in illogical loop
-    break; } }
+    if (!flag)
+     return 0;
+    res=atoi(input_string);
+   refresh(); } // had to do that as routine stuck in illogical loop 
 
  return res;
 }
@@ -926,7 +919,6 @@ bool rightmousebuttonclicked()
 
  return false;       
 }
-
 // ----------------------------------------------------------------------
 // Given the year, month and day, return the day number.
 // (see: https://alcor.concordia.ca/~gpkatch/gdate-method.html)
@@ -971,4 +963,26 @@ void INThandler(int sig)
      
      signal(SIGINT, INThandler);
      Show_Menu_Bar();
+}
+
+
+// add spaces to bring text in the middle of width
+char* bringstringtomiddle(char *text, int width)
+{
+ int i, spacesneeded=0;
+ static char newtext[MAXSTRING];
+
+  if (strlen(text)>=width)
+   return &text[0];
+  spacesneeded=((width-strlen(text))/2)-1;
+  
+   strcpy(newtext, " \b");
+   for (i=0;i<spacesneeded;i++)
+    strcat(newtext, " ");
+   strcat(newtext, text);
+   for (i=strlen(newtext);i<width+1;i++)
+    strcat(newtext, " ");
+   strcpy(text, newtext);
+    
+ return &newtext[0];   
 }

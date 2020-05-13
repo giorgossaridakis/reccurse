@@ -1,4 +1,4 @@
-// reccurse, the filemaker of ncurses, version 0.343
+// reccurse, the filemaker of ncurses, version 0.349
 
 // included libraries
 // C
@@ -21,6 +21,7 @@
 #include <vector>
 #include <string>
 #include <cstring>
+#include <array>
 
 // definitions
 // numericals
@@ -35,12 +36,13 @@
 #define MAXPAGES 25 // pages limit
 #define FIELDSIZE MAXSTRING*2+MAXNUMBERDIGITS+15  // +7 would do
 #define MAXNAME 20 // max chars in database filenames
+#define MAXMENUS 10 // mouse menus
 #define RELATIONSHIPSLENGTH 1024 // 1kb of external db files relationship data
 #define MAXRELATIONSHIPS 25 // will fit into above 1kb, same as MAXPAGES
 #define MAXSEARCHDEPTH 5
 #define HORIZONTALLY 0
 #define VERTICALLY 1
-#define version 0.343
+#define version 0.349
 
 // keyboard
 #define DOWN 258
@@ -82,7 +84,8 @@ int alteredparameters=0;
 int dummyfieldsperrecord, dummyrecordsnumber;
 int fieldhasdependancy=0;
 int externalreferencedatabase;
-int mousemenucommand=0;
+vector<int> mousemenucommands;
+MEVENT mouse;
 char pages[MAXPAGES][MAXSTRING];
 char rcfile[MAXSTRING], dbfile[MAXSTRING];
 const char *onoff[]= { "off", "on" };
@@ -90,9 +93,6 @@ char clipboard[MAXSTRING];
 int menucolors[5]={ 5, 6, 4, 3, 1 };
 int menulines[5]={ 24, 24, 24, 24, 24 };
 char infotext[MAXSTRING];
-MEVENT mouse;
-const char *menunames[]= { "main menu", "options etc", "edit fields", "extra functions", "quit Reccurse" };
-const char *optionsmenutexts[]={ "autosave on/off", "load database", "save database", "help page" };
 const char *menutexts[]={ "<tabshiftarrows|< >|home&end|<g>|<e>dit|<o>ptions|ex<t>ra|<m>enubar|<ESC>quit", "<a>utosave on/off|<l>oad database|<s>ave database|<h>elp page|<ESC>main menu", "e<d>it|<c>opy|<DEL>ete|<j>oin|di<v>ide|datestam<p>|<INS>more|<ESC>main menu", "database <i>nformation|<f>ind|so<r>t records|set<u>p database|<ESC>main menu", "really quit ?" };  //main, options, edit, extra, quit
 
 struct Points {
@@ -149,27 +149,49 @@ class Relationship {
   Relationship() { };
 ~Relationship() { } ; } ;
 
-class DRAWBOX {
+class MenuEntry {
  public:
-  int id; // use for menus
-  int color;
-  int xpos;
-  int xsize;
-  int ypos;
-  int ysize;
-  int paintcolor;
-  DRAWBOX(int i1, int i2, int i3, int i4, int i5, int i6, int i7) { id=i1; color=i2; xpos=i3; xsize=i4; ypos=i5; ysize=i6; paintcolor=i7; };
-  DRAWBOX() { };
-~DRAWBOX() { }; };
+  char entryText[MAXSTRING];
+  vector<int> returnCommands;
+  int menuDirectionId;
+  MenuEntry(char *text, vector<int> commands, int directionid) { strcpy(entryText, text); returnCommands=commands; menuDirectionId=directionid; };
+  MenuEntry(const char *text, vector<int> commands, int directionid) { strcpy(entryText, text); returnCommands=commands; menuDirectionId=directionid; };
+  MenuEntry() { };
+~MenuEntry() { }; };
+ 
+class Menu {
+ public:
+  int menuId;
+  int menuReference;
+  int fatherMenuId;
+  int fatherMenuPosition;
+  char menuTitle[MAXNAME];
+  vector<MenuEntry> menuEntries;
+  Menu(int id, int reference, int fatherid, int fatherposition, char *title) { menuId=id; menuReference=reference; fatherMenuId=fatherid; fatherMenuPosition=fatherposition; strcpy(menuTitle, title); };
+  Menu(int id, int reference, int fatherid, int fatherposition, const char *title) { menuId=id; menuReference=reference; fatherMenuId=fatherid;  fatherMenuPosition=fatherposition; strcpy(menuTitle, title); };
+  Menu() { };
+~Menu() { }; };
 
-vector<DRAWBOX> drawboxes;
+class Drawbox {
+ public:
+  int menuId;
+  int drawcolor;
+  int paintcolor;
+  struct Points pt;
+  struct Points size;
+  Drawbox(int id, int color1, int color2, int ptx, int pty, int sizex, int sizey) { menuId=id; drawcolor=color1; paintcolor=color2; pt.x=ptx; pt.y=pty; size.x=sizex; size.y=sizey; };
+  Drawbox() { };
+~Drawbox() { }; };
+ 
+vector<Menu> mousemenus;
+vector<Drawbox> mousemenuboxes;
 vector<Field> record, dummyrecord, externalrecord[MAXRELATIONSHIPS];
 vector<Annotated_Field> records, dummyrecords, externalrecords[MAXRELATIONSHIPS];
 vector<Relationship> relationships;
 
 // functions
 void Intro_Screen();
-int End_Program(int code=0);;
+int End_Program(int code=0);
 void Reccurse_File_Extension(char *filename, int flag=0);
 int Read_rc_File();
 int Write_rc_File(char *file);
@@ -214,6 +236,8 @@ void Initialize_Database_Parameters();
 void Load_Database(int pagenumber);
 int Pages_Selector();
 int Clean_Database(char *filename);
+void Set_Mouse_Menus();
+int fetchmousemenucommand();
 
 // to be compiled together
 #include "rcscr.cc"
@@ -233,6 +257,7 @@ int main(int argc, char *argv[])
   char tmessage[MAXSTRING], tfile[MAXSTRING];
   signal(SIGINT, INThandler);
   initiatemathematicalfunctions();
+  Set_Mouse_Menus();
 
    Intro_Screen();
    
@@ -256,7 +281,7 @@ int main(int argc, char *argv[])
      Reccurse_File_Extension(rcfile, 1); 
     Reccurse_File_Extension(dbfile, 2); }
     // try to find .dbfile, if not read_rc_file routine
-    strcpy(tmessage, "loaded file ");
+    strcpy(tmessage, "loaded file: ");
     if (!tryfile(dbfile)) {
      i=Read_rc_File();
      if (i==-1) {
@@ -266,18 +291,22 @@ int main(int argc, char *argv[])
       ofstream outrcfile(rcfile);
       outrcfile << "#date&time 0 000000000 3 10 5 10 2 000000000 5 1 1 1 2 $ 0 0 1 1 . " << endl << "#";
       outrcfile.close();
-      strcpy(tmessage, "created file ");
+      strcpy(tmessage, "created file: ");
     Read_rc_File(); } }
     // setup pages workgroup
     strcpy(pages[0], dbfile);
     ++pagesnumber;
+    strcat(tmessage, dbfile);
     for (i=2;i<argc;i++) {
      strcpy(tfile, argv[i]);
      Reccurse_File_Extension(tfile, 2);
      if (tryfile(tfile)) {
       strcpy(pages[i-1], tfile);
     ++pagesnumber; } }
-    strcat(tmessage, dbfile);
+    if (pagesnumber>1) {
+     strcat(tmessage, " and ");
+     strcat(tmessage, itoa(pagesnumber-1));
+    strcat(tmessage, " more"); }
     // read record fields and records from dbfile
     Load_Database(currentpage);
     if (fieldhasdependancy)
@@ -1175,7 +1204,8 @@ int Show_Record_and_Menu()
   char texttolookfor[MAXSTRING]; } ;
   vector <FindSchedule> findschedule;
   FindSchedule tfindschedule;
-  vector <Annotated_Field> trecords;
+  vector<Annotated_Field> trecords;
+  vector<int>::iterator p;
   
    while (run) {
     clear();
@@ -1202,11 +1232,11 @@ int Show_Record_and_Menu()
     if (menubar==3)
      i=strlen(records[(currentrecord*fieldsperrecord)+currentfield].text)+1;
     gotoxy(i, menulines[currentmenu]);
-    if (!mousemenucommand) {
-     c=sgetch();
-    c=negatekeysforcurrentmenu(c); }
+    if (mousemenucommands.size())
+     c=fetchmousemenucommand();
     else
-     mousemenucommand=0;
+     c=sgetch();
+    c=negatekeysforcurrentmenu(c);
     if (!alteredparameters)
      for (i=0;i<strlen(alterscreenparameterskeys);i++)
       if (c==alterscreenparameterskeys[i])
@@ -1408,6 +1438,9 @@ int Show_Record_and_Menu()
         if (i)
        currentfield=fieldxidentities[i-1]; }
      break;
+     case ']': // imitate mouse
+      Menu_Selector();
+     break;
      case KEY_MOUSE:
       if (recordsdemo)
        break;
@@ -1470,11 +1503,11 @@ int Show_Record_and_Menu()
       Show_Message(1, 24, 2, "database saved", 1500);
       Show_Menu_Bar(1);
       Show_Message(1, 24, 5, "export .rc file (y/n):", 0);
-      c=tolower(sgetch());
+      c=sgetch();
       if (c=='y') {
        Show_Menu_Bar(1);
        Show_Message(1, 24, 5, "filename:", 0);
-       Scan_Input(0);
+       Scan_Input();
        i=Write_rc_File(input_string);
        Reccurse_File_Extension(input_string, 1);
        Show_Menu_Bar(1);
@@ -1567,8 +1600,12 @@ int Show_Record_and_Menu()
      case INSERT:
       Show_Menu_Bar(1);
       Show_Message(1, 24, 4, "d<u>plicate, <d>elete record, <i>mport/e<x>port records, externa<l> .dbfiles?", 0);
-      cleanstdin();
-      c=tolower(sgetch());
+      // call fetchmousemenucommand if necessary
+      if (mousemenucommands.size())
+       c=fetchmousemenucommand();
+      else {
+       cleanstdin();
+      c=sgetch(); }
       if (c!='u' && c!='d' && c!='x' && c!='i' && c!='l')
        break;
       switch (c) {
@@ -1587,25 +1624,28 @@ int Show_Record_and_Menu()
        case 'i':
         Show_Menu_Bar(1);
         Show_Message(1, 24, 5, "filename:", 0);
-        Scan_Input(0);
+        Scan_Input();
         Import_Database(input_string);
        break;
        case 'x':
         Show_Menu_Bar(1);
         Show_Message(1, 24, 5, "filename:", 0);
-        Scan_Input(0);
+        Scan_Input();
         Export_Database(input_string);
        break;
        case 'l':
         Show_Menu_Bar(1);
         Show_Message(1, 24, 4, "<i>mport records, external <r>eferences editor ?", 0);
-        cleanstdin();
-        c=tolower(sgetch());
+        if (mousemenucommands.size())
+         c=fetchmousemenucommand();
+        else {
+         cleanstdin();
+        c=sgetch(); }
         switch (c) {
          case 'i':
           Show_Menu_Bar(1);
           Show_Message(1, 24, 4, "external dbfile:", 0);
-          Scan_Input(0);
+          Scan_Input();
           i=Import_External_db_File(input_string);
          break;
          case 'r':
@@ -1644,7 +1684,7 @@ int Show_Record_and_Menu()
        Show_Menu_Bar(1);
        Change_Color(4);
        gotoxy(1, 24);
-       Scan_Input(0);
+       Scan_Input();
        if (!strlen(input_string))
         break;
        strcpy(tfindschedule.texttolookfor, input_string);
@@ -1683,7 +1723,7 @@ int Show_Record_and_Menu()
        Show_Menu_Bar(1);
        Change_Color(4);
        gotoxy(1, 24);
-       Scan_Input(0);
+       Scan_Input();
        if (!strlen(input_string))
         break;
        strcpy(tfindschedule.texttolookfor, input_string);
@@ -1751,7 +1791,7 @@ int negatekeysforcurrentmenu(int t)
   
   if (t==SHIFT_RIGHT) t='>'; // shift+right arrow
   if (t==SHIFT_LEFT) t='<'; // shift+left arrow
-  if (t==ESC || t==LEFT || t==RIGHT || t==UP || t==DOWN || t==TAB || t==SHIFT_TAB || t=='m' || t=='g' || t=='?' || t==HOME || t==END || t=='<' || t=='>' || t==START_OF_RECORDS || t==END_OF_RECORDS || t==KEY_MOUSE)
+  if (t==ESC || t==LEFT || t==RIGHT || t==UP || t==DOWN || t==TAB || t==SHIFT_TAB || t=='m' || t=='g' || t=='?' || t==HOME || t==END || t=='<' || t=='>' || t==']' ||  t==START_OF_RECORDS || t==END_OF_RECORDS || t==KEY_MOUSE)
    return t;
   if (recordsdemo)
    return 0;
@@ -2276,7 +2316,7 @@ int Import_Database(char *filename)
     fieldsreadperline=0;
     recordid=0;
    ++trecordsnumber; } }
-   vector <Annotated_Field>::iterator p=trecords.end();
+   vector<Annotated_Field>::iterator p=trecords.end();
    --p;
    trecords.erase(p); // erase last created
    --fieldsreadperline;
@@ -2364,7 +2404,7 @@ int Import_External_db_File(char *filename)
     if (dummyrecordsnumber>recordsnumber) {
      Show_Menu_Bar(1);
      Show_Message(1, 24, 1, "external .db file has more records than current. append (y/n):", 0);
-     t=tolower(sgetch());
+     t=sgetch();
      if (t=='y') {
       endofappend=dummyrecordsnumber; 
       for (i=recordsnumber;i<dummyrecordsnumber;i++)
@@ -2543,3 +2583,95 @@ int Clean_Database(char *filename)
  return 0;
 }
 
+// setup mouse menus
+void Set_Mouse_Menus()
+{  
+  // menus
+  Menu menu0(mousemenus.size(), 0, 0, 0, "main menu");
+  Menu menu1(1, 1, 0, 0, "options menu");
+  Menu menu2(2, 2, 0, 1, "edit menu");
+  Menu menu3(3, 3, 0, 2, "extra menu");
+  // menu boxes
+  Drawbox mousebox0(0, menucolors[0], 58, 25, 5, 22, 6);
+  Drawbox mousebox1(1, menucolors[1], 58, 27, 7, 22, 6);
+  Drawbox mousebox2(2, menucolors[2], 58, 29, 9, 22, 6);
+  Drawbox mousebox3(3, menucolors[3], 58, 31, 11, 22, 6);
+  mousemenuboxes.push_back(mousebox0);
+  mousemenuboxes.push_back(mousebox1);
+  mousemenuboxes.push_back(mousebox2);
+  mousemenuboxes.push_back(mousebox3);
+  // entries
+  vector<int> vzero;
+  MenuEntry entry00("options etc", vzero, 1);
+  menu0.menuEntries.push_back(entry00);
+  MenuEntry entry01("edit fields", vzero, 2);
+  menu0.menuEntries.push_back(entry01);
+  MenuEntry entry02("extras menu", vzero, 3);
+  menu0.menuEntries.push_back(entry02);
+  vector<int> e03{ 23 };
+  MenuEntry entry03("pages selection", e03, 0);
+  menu0.menuEntries.push_back(entry03);
+  vector<int> e04{ ESC };
+  MenuEntry entry04("quit Reccurse", e04, 0);
+  menu0.menuEntries.push_back(entry04);
+  mousemenus.push_back(menu0);
+  vector<int> e10{ 'a' };
+  MenuEntry entry10("autosave on/off", e10, 1); // use same direction as id for commands that intend to end menu
+  menu1.menuEntries.push_back(entry10);
+  vector<int> e11{ 'l'};
+  MenuEntry entry11("load database", e11, 1);
+  menu1.menuEntries.push_back(entry11);
+  vector<int> e12{ 's' };
+  MenuEntry entry12("save database", e12, 1);
+  menu1.menuEntries.push_back(entry12);
+  vector<int> e13{ '?' };
+  MenuEntry entry13("help page", e13, 1);
+  menu1.menuEntries.push_back(entry13);
+  MenuEntry entry14("back to main", vzero, 0);
+  menu1.menuEntries.push_back(entry14);
+  mousemenus.push_back(menu1);
+  vector<int> e20{ INSERT, 'i' };
+  MenuEntry entry20("import records", e20, 2);
+  menu2.menuEntries.push_back(entry20);
+  vector<int> e21{ INSERT, 'x' };
+  MenuEntry entry21("export records", e21, 2);
+  menu2.menuEntries.push_back(entry21);
+  vector<int> e22{ INSERT, 'l', 'i' };
+  MenuEntry entry22("import external .db", e22, 2);
+  menu2.menuEntries.push_back(entry22);
+  vector<int> e23{ INSERT, 'l', 'r' };
+  MenuEntry entry23("edit references", e23, 2);
+  refresh(); // again bug and had to call refresh
+  menu2.menuEntries.push_back(entry23);
+  MenuEntry entry24("back to main", vzero, 0);
+  menu2.menuEntries.push_back(entry24);
+  mousemenus.push_back(menu2);
+  vector<int> e30{ 'i' };
+  MenuEntry entry30("database information", e30, 3);  
+  menu3.menuEntries.push_back(entry30);
+  vector<int> e31{ 'f' };
+  MenuEntry entry31("find records", e31, 3);
+  menu3.menuEntries.push_back(entry31);
+  vector<int> e32{ 'r' };
+  MenuEntry entry32("sort records", e32, 3);
+  menu3.menuEntries.push_back(entry32);
+  vector<int> e33{ 'i' };
+  MenuEntry entry33("setup database", e33, 3);
+  menu3.menuEntries.push_back(entry33);
+  MenuEntry entry34("back to main", vzero, 0);
+  menu3.menuEntries.push_back(entry34);
+  mousemenus.push_back(menu3);
+}
+
+// parse mousemenucommands vector for commands
+int fetchmousemenucommand()
+{
+  vector<int>::iterator p;
+  int command;
+  
+   p=mousemenucommands.begin();
+   command=*p;
+   mousemenucommands.erase(p);
+    
+ return command;
+}

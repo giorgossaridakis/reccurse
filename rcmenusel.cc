@@ -1,49 +1,99 @@
 // reccurse menu selector
 int Menu_Selector();
+int Draw_Mouse_Box(int menuid);
 
+int startx, starty, width, height;
+  
 // menu selector main
 int Menu_Selector()
 {
-  int i, t, selection=currentmenu, menu=0;
+  int i, i1, t, selection=0, cmenu=currentmenu, fathermenuid, ccommand=0; // cmenu is pos in vector, turn ccommand to array
   Show_Menu_Bar(1);
+  mousemenucommands.clear();
   curs_set(0);
-  
+  Draw_Mouse_Box(mousemenus[cmenu].menuId);
   while (t!=ESC) {
-   Draw_Box(&drawboxes[menu]);
-   Change_Color(6);
-   gotoxy(32, 8);
-   printw("Menu Selector");
-   for (i=0;i<5;i++) {
+
+   for (i=0;i<mousemenus[cmenu].menuEntries.size();i++) {
     Change_Color(2);
     if (selection==i)
      Change_Color(highlightcolors[0]);
-    gotoxy(32, 10+i);
-   printw("%s", menunames[i]); }
+    gotoxy(startx+1, starty+1+i);
+    // place string in the middle of width
+   printw("%s", bringstringtomiddle(mousemenus[cmenu].menuEntries[i].entryText, width)); }
    refresh();
    t=sgetch();
    switch (t) {
     case KEY_MOUSE:
-     if (rightmousebuttonclicked())
-      t=ESC;  // add selection for menus
+     if (rightmousebuttonclicked()) {
+      t=ESC;
+     break; }
+     for (i=0;i<mousemenus[cmenu].menuEntries.size()+1;i++)
+      for (i1=0;i1<width;i1++)
+       if (mouse.x+1==startx+i1 && mouse.y+1==starty+i)
+        selection=i-1;
     break;
     case '\n':
-     currentmenu=selection;
-     t=ESC;
+     if (mousemenus[cmenu].menuEntries[selection].returnCommands.size()) {
+      for (int x:mousemenus[cmenu].menuEntries[selection].returnCommands)
+      mousemenucommands.push_back(x);
+      if (mousemenus[cmenu].menuEntries[selection].menuDirectionId==mousemenus[cmenu].menuId) { // if menuDirectionId is the same as current menu, send vector to main
+      ccommand=mousemenucommands[mousemenucommands.size()-1];
+     break; } }
+     i1=mousemenus[cmenu].fatherMenuPosition;
+     fathermenuid=mousemenus[cmenu].fatherMenuId;
+     for (i=0;i<mousemenus.size();i++)
+      if (mousemenus[i].menuId==mousemenus[cmenu].menuEntries[selection].menuDirectionId) {
+       Draw_Mouse_Box(mousemenus[cmenu].menuId);
+       cmenu=i;
+     Draw_Mouse_Box(mousemenus[cmenu].menuId); }
+     if (mousemenus[cmenu].menuReference>-1) // if menu has reference to program menu, change to that
+      currentmenu=mousemenus[cmenu].menuReference;
+     selection=0;
+     // if new menu is the same as father of previous, go to it's selection position
+     if (mousemenus[cmenu].fatherMenuId==fathermenuid);
+    selection=i1;
     break;
     case UP:
+     if (!selection) {
+      selection=mousemenus[cmenu].menuEntries.size()-1;
+     break; }
      if (selection)
       --selection;
     break;
     case DOWN:
-     if (selection<4)
+     if (selection==mousemenus[cmenu].menuEntries.size()-1) {
+      selection=0;
+     break; }
+     if (selection<mousemenus[cmenu].menuEntries.size()-1)
       ++selection;
-   break; } }
+   break; }
+   if (ccommand)   
+  break; }
 
-  if (currentmenu==4) // quit
-   End_Program();
   if (menubar)
    Show_Menu_Bar();
   curs_set(1);
   
- return t;
+ return ccommand;
+}
+
+// draw mouse box 
+int Draw_Mouse_Box(int menuid)
+{
+  int i, i1, boxposition=-1;  
+  
+   for (i=0;i<mousemenuboxes.size();i++)
+    if (mousemenuboxes[i].menuId==menuid) {
+     boxposition=i;
+   break; }
+   if (boxposition<0 || boxposition>mousemenuboxes.size()-1)
+   return 0;
+   Draw_Box(mousemenuboxes[boxposition]);
+   startx=mousemenuboxes[boxposition].pt.x;
+   starty=mousemenuboxes[boxposition].pt.y;
+   width=mousemenuboxes[boxposition].size.x;
+   height=mousemenuboxes[boxposition].size.y;
+    
+ return 1;
 }
