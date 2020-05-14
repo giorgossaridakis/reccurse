@@ -23,6 +23,8 @@ int Menu_Selector()
    printw("%s", bringstringtomiddle(mousemenus[cmenu].menuEntries[i].entryText, width)); }
    refresh();
    t=sgetch();
+   if (t==']') // imitate right mouse button
+    t=ESC;
    switch (t) {
     case KEY_MOUSE:
      if (rightmousebuttonclicked()) {
@@ -32,6 +34,8 @@ int Menu_Selector()
       for (i1=0;i1<width;i1++)
        if (mouse.x+1==startx+i1 && mouse.y+1==starty+i)
         selection=i-1;
+     if (mouse.x<startx || mouse.x>(startx+width)-1 || mouse.y<starty || mouse.y>(starty+height)-1)
+      t=ESC;
     break;
     case '\n':
      if (mousemenus[cmenu].menuEntries[selection].returnCommands.size()) {

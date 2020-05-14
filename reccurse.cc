@@ -1,4 +1,4 @@
-// reccurse, the filemaker of ncurses, version 0.349
+// reccurse, the filemaker of ncurses, version 0.350
 
 // included libraries
 // C
@@ -42,7 +42,7 @@
 #define MAXSEARCHDEPTH 5
 #define HORIZONTALLY 0
 #define VERTICALLY 1
-#define version 0.349
+#define version 0.350
 
 // keyboard
 #define DOWN 258
@@ -2655,7 +2655,7 @@ void Set_Mouse_Menus()
   vector<int> e32{ 'r' };
   MenuEntry entry32("sort records", e32, 3);
   menu3.menuEntries.push_back(entry32);
-  vector<int> e33{ 'i' };
+  vector<int> e33{ 'u' };
   MenuEntry entry33("setup database", e33, 3);
   menu3.menuEntries.push_back(entry33);
   MenuEntry entry34("back to main", vzero, 0);
