@@ -38,6 +38,7 @@ int Menu_Selector()
       t=ESC;
     break;
     case '\n':
+     // copy commands to external vector
      if (mousemenus[cmenu].menuEntries[selection].returnCommands.size()) {
       for (int x:mousemenus[cmenu].menuEntries[selection].returnCommands)
       mousemenucommands.push_back(x);

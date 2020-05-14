@@ -1,4 +1,4 @@
-// reccurse, the filemaker of ncurses, version 0.350
+// reccurse, the filemaker of ncurses, version 0.351
 
 // included libraries
 // C
@@ -42,7 +42,8 @@
 #define MAXSEARCHDEPTH 5
 #define HORIZONTALLY 0
 #define VERTICALLY 1
-#define version 0.350
+#define NUMERICALLIMIT 32765
+#define version 0.351
 
 // keyboard
 #define DOWN 258
@@ -64,7 +65,7 @@
 #define SHIFT_TAB 353
 #define END_OF_RECORDS 336
 #define START_OF_RECORDS 337
-#define NUMERICALLIMIT 32765
+#define PAGES_SELECTOR_KEY 23
 
 using namespace std;
 
@@ -1796,9 +1797,9 @@ int negatekeysforcurrentmenu(int t)
   if (recordsdemo)
    return 0;
   if (t==6) { currentmenu=3; t='f'; return t; } // enter find mode
-  if (t==5 || t==15 || t==20 || t==23) { // direct menu access with ctrl
+  if (t==5 || t==15 || t==20 || t==PAGES_SELECTOR_KEY) { // direct menu access with ctrl
    switch (t) {
-     case 5:currentmenu=2; break; case 15:currentmenu=1; break; case 20:currentmenu=3; break; case 23: Pages_Selector();
+       case 5:currentmenu=2; break; case 15:currentmenu=1; break; case 20:currentmenu=3; break; case PAGES_SELECTOR_KEY: Pages_Selector();
    break; }
    Read_Write_Current_Parameters(1, 1);
   return 0; }
@@ -2608,7 +2609,7 @@ void Set_Mouse_Menus()
   menu0.menuEntries.push_back(entry01);
   MenuEntry entry02("extras menu", vzero, 3);
   menu0.menuEntries.push_back(entry02);
-  vector<int> e03{ 23 };
+  vector<int> e03{ PAGES_SELECTOR_KEY };
   MenuEntry entry03("pages selection", e03, 0);
   menu0.menuEntries.push_back(entry03);
   vector<int> e04{ ESC };
