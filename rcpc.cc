@@ -1,18 +1,10 @@
-#define MAXOP 100 /* max size of operand or operator */
-#define NUMBER '0' /* signal that a number was found */
-#define MAXCOMMAND 9999 /* maximum number of operands etc to calculate */
-#define NUMLIMIT 32767 /* maximum limit in input */
-#define MAXVAL 100 /* maximum depth of val stack */
-#define MAXFUNCTIONMAME 10 // max chars in function names
-#define MAXFUNCTIONPARAMETERS 5 // max parameters in functions, separated with comma
-
-int parenthesesincluderforpolishreversecalculator(char formula[]);
-int reversepolishcalculatorequalizer(char formula[], int record_id=-1);
-int isformulainpolishcalculatorsyntax(char formula[]);
-double reversepolishcalculator(char formula[]);
-int getop(char s[], char formula[]);
-void push(double f);
-double pop(void);
+const int MAXOP=100; /* max size of operand or operator */
+const char NUMBER='0'; /* signal that a number was found */
+const int MAXCOMMAND=9999; /* maximum number of operands etc to calculate */
+const int NUMLIMIT=32767; /* maximum limit in input */
+const int MAXVAL=100; /* maximum depth of val stack */
+const int MAXFUNCTIONMAME=10; // max chars in function names
+const int MAXFUNCTIONPARAMETERS=5; // max parameters in functions, separated with comma
 
 // char formula[MAXCOMMAND];
 int pos;
@@ -136,7 +128,8 @@ int i, c;
   i = 0;
   if (isdigit(c)) /* collect integer part */
   while (isdigit(s[++i] = c = formula[pos++]));
-   if (c == '.') { /* collect fraction part */
+  if (isdecimalseparator(c)) { /* collect fraction part */
+   s[i]='.';
   while (isdigit(s[++i] = c = formula[pos++])); }
   s[i] = '\0';
 

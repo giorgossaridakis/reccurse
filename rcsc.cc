@@ -1,11 +1,5 @@
 // string formula parser
 
-int stringformulacalculator(char formula[MAXSTRING], int record_id);
-void replacepartoftextwithcorrespondingvalue(char ttext[MAXSTRING], int record_id);
-void extracttextpart(char source[MAXSTRING], char dest[MAXSTRING], int startpt, int endpt);
-void inserttextpart(char text[MAXSTRING], char part[MAXSTRING], int point);
-int commandparser(int reference, char tcommand[MAXSTRING]);
-
 const char *commands[]={ "mid$(", "left$(", "right$(", "toupper$(", "tolower$(" };
 
 int stringformulacalculator(char formula[MAXSTRING], int record_id)

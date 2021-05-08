@@ -1,6 +1,4 @@
 // reccurse menu selector
-int Menu_Selector();
-int Draw_Mouse_Box(int menuid);
 
 int startx, starty, width, height;
   

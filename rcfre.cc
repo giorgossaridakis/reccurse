@@ -1,8 +1,5 @@
 // reccurse field&references editor
 
-int References_Editor();
-void Field_Editor();
-
 // field editor and setup routine
 void Field_Editor()
 {
@@ -186,8 +183,10 @@ void Field_Editor()
          record[fieldshown].box_color=i;
        break;
        case 13:
-        i=Scan_Input(1, 0, 3, 1);
-        if (i>-1 && i<4)
+        i=Scan_Input(1, 0, 4, 1);
+        if (record[fieldshown].type==VARIABLE && i<VARIABLE && (record[fieldshown].pt.x<1 || record[fieldshown].pt.x>79 || record[fieldshown].pt.y<1 || record[fieldshown].pt.y>23))
+         break;
+        if (i>-1 && i<5)
          record[fieldshown].type=i;
        break;
        case 14:

@@ -1,10 +1,5 @@
 // reverse Polish calculator library
 
-void initiatemathematicalfunctions();
-int parseformulaforfunctions(char formula[]);
-int mathfunctionsparser(int function_id, char tcommand[MAXSTRING]);
-int parseformulaforerrors(char formula[]);
-
 class Function {
  public:
   char functionName[MAXSTRING];
@@ -31,7 +26,7 @@ void initiatemathematicalfunctions()
   functions.push_back(tfunction4);
   Function tfunction5("cotan", "(#a 1 \")", 1, 1);
   functions.push_back(tfunction5);
-  Function tfunction6("sqrt", "(#a 1 ?)", 1, 1);
+  Function tfunction6("sqr", "(#a 1 ?)", 1, 1);
   functions.push_back(tfunction6);
   Function tfunction7("log", "(#a 1 :)", 1, 1);
   functions.push_back(tfunction7);

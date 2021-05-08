@@ -1,61 +1,7 @@
-int ctoi(char c);
-char *dtoa(long double val);
-char *itoa(long int val, int base=10);
-char charcoder(char d, int mode=0);
-int filecodedecode(char *source, char *destination, int mode=0);
-void stringcodedecode(char *source, char *destination, int mode=0);
-int tryfile(char *file);
-void Show_File_Error(char *filename);
-int Copy_File(char *source, char *dest);
-void checkpoint(int id, int color=58);
-int Scan_Input(int flag=0, int lim_a=0, int lim_b=1, int length=0);
-char Scan_Input(char istring[MAXSTRING], int x_pos, int y_pos, int color=58);
-void Scan_Date(int x_pos, int y_pos, char tdate[]);
-char *addmissingzeros(char tstring[], int zeros);
-void terminatestringatcharactersend(char *ttext);
-void addleadingzeros(char ttext[], Annotated_Field *tfield, int flag=0);
-void addleadingspaces(char ttext[], int overallsize);
-void cropstring(char ttext[], int noofcharacters, int flag=0);
-int fieldlength(char *fieldtext);
-long int filesize(char *filename);
-void stringquotesencloser(char *tstring, int flag=0);
-void stringquotesopener(char *tstring);
-int isinquotes(char tstring[]);
-void limitspaces(char *tstring);
-int numberofdigits(long int n);
-int sgetch(int x_pos=78, int y_pos=24, int sleeptime=250, int showflag=1);
-void cleanstdin();
-void Show_Message(int x_pos, int y_pos, int color, char *message, int sleeptime=1500);
-void Show_Message(int x_pos, int y_pos, int color, const char *message, int sleeptime=1500);
-void Sleep(int sleepMs) { usleep(sleepMs*1000); } // sleep routine;=)
-void replaceunderscoresandbrackets(char dataname[], int flag);
-char *ctos(int t);
-double bringfractionpartofdivision(int param1, int param2, int scale=10);
-int isspace(char t);
-int iscalculationsign(char t);
-int isdecimalseparator(char t);
-int isprintablecharacter(int t);
-int iscorruptstring(char *tstring);
-int limitsignificantnumbers(char *s, int digits);
-int find(char text[], char token[]);
-int findsimple(char text[], char token[]);
-int sortrecords(int field_id, int recordssequence[], int mode=0);
-void sortfieldsbyxpt(int field_id, vector <int> &fieldxidentities);
-void sortfieldsbyypt(int field_id, vector <int> &fieldyidentities);
-int locatefieldbymouseclick();
-bool rightmousebuttonclicked();
-int findfieldege(int flag=0);
-int CalcDayNumFromDate(int y, int m, int d);
-int isleapyear(int year);
-int daysinmonth(int year, int month);
-void INThandler(int sig);
-char* bringstringtomiddle(char *text, int width);
-
 // definitions
-#define MAXSTRING 80 // characters in a regular string
-#define MAXTOKENS 10
-#define QUOTE 34
-#define COMMA 44
+const int MAXTOKENS=10;
+const int QUOTE=34;
+const int COMMA=44;
 
 // variables
 char input_string[MAXSTRING];
@@ -226,9 +172,9 @@ int Scan_Input(int flag, int lim_a, int lim_b, int length) // 0 string, 1 intege
    while (res<lim_a || res>lim_b) {
     memset(input_string, 0, sizeof(input_string));
     Scan_Input(input_string, x+1, y+1);
-    if (!flag)
-     return 0;
     res=atoi(input_string);
+    if (!flag || !res) // res==0 is a non-numerical input_string, if in limits ok to return
+     return 0;
    refresh(); } // had to do that as routine stuck in illogical loop 
 
  return res;
@@ -605,6 +551,13 @@ int sgetch(int x_pos, int y_pos, int sleeptime, int showflag)
 {
   int t;
   
+  // are keys for next loops stored in vector ?
+  if (keyonnextloop.size()) {
+   t=keyonnextloop[0];
+   vector<int>::iterator p=keyonnextloop.begin();
+   keyonnextloop.erase(p);
+  return t; }
+  
   t=getch();
   // mouse activity
   if (t==KEY_MOUSE) {
@@ -643,7 +596,10 @@ void Show_Message(int x_pos, int y_pos, int color, char *message, int sleeptime)
    gotoxy(i, y_pos);
   addch(message[n++]); }
   refresh();
-  Sleep(sleeptime);
+  if (sleeptime>-1)
+   Sleep(sleeptime);
+  else
+   getch();
 }
 
 // show a message, const char
@@ -656,7 +612,10 @@ void Show_Message(int x_pos, int y_pos, int color, const char *message, int slee
    gotoxy(i, y_pos);
   addch(message[n++]); }
   refresh();
-  Sleep(sleeptime);
+  if (sleeptime>-1)
+   Sleep(sleeptime);
+  else
+   getch();
 }
 
 // replace underscores with spaces
@@ -723,6 +682,15 @@ int isdecimalseparator(char t)
   if (t==',' || t=='.')
    return 1;
   
+ return 0;
+}
+
+// parenthesis
+int isparenthesis(char t)
+{
+  if (t=='(' || t==')')
+   return 1;
+ 
  return 0;
 }
 
@@ -798,10 +766,10 @@ int findsimple(char text[], char token[])
   char ttoken[MAXSTRING];
   
    for (i=0;i<strlen(text);i++) {
-    if (tolower(text[i])==token[0]) {
+    if (text[i]==token[0]) {
      hit=i+1;
      for (n=0;n<strlen(token);n++)
-      ttoken[n]=tolower(text[i+n]);
+      ttoken[n]=text[i+n];
      ttoken[n]='\0';
      if (strcmp(ttoken, token))
       hit=0; 
@@ -897,6 +865,7 @@ int findfieldege(int flag) // 0 first, 1 last
  return tfield;
 }
 
+// locate field by mouse click
 int locatefieldbymouseclick()
 {
    int x, y, i, field=currentfield;
@@ -919,6 +888,7 @@ bool rightmousebuttonclicked()
 
  return false;       
 }
+
 // ----------------------------------------------------------------------
 // Given the year, month and day, return the day number.
 // (see: https://alcor.concordia.ca/~gpkatch/gdate-method.html)
@@ -985,4 +955,120 @@ char* bringstringtomiddle(char *text, int width)
    strcpy(text, newtext);
     
  return &newtext[0];   
+}
+
+// scan text for command
+int scantextforcommand(char *text, char *command, char separator)
+{
+   char s[2]= { separator, '\0' };
+   char *firstpart, *tcommand;
+   tcommand=firstpart=NULL; // empty pointer
+   int result=0;
+   
+// get the first part
+   firstpart = strtok(text, s);
+   
+// obtain command 
+   tcommand = strtok(NULL, s);
+   
+   if (tcommand!=NULL) {
+    strcpy(command, tcommand);
+   result=1; }
+
+ return result;
+}
+
+// kbhit from old and wise
+int kbhit(void) {
+    static int initialized = 0;
+
+    if (! initialized) {
+        // Use termios to turn off line buffering
+        struct termios term;
+        tcgetattr(STDIN_FILENO, &term);
+        term.c_lflag &= ~ICANON;
+        tcsetattr(STDIN_FILENO, TCSANOW, &term);
+        setbuf(stdin, NULL);
+        initialized = 1;
+    }
+
+    int bytesWaiting;
+    ioctl(STDIN_FILENO, FIONREAD, &bytesWaiting);
+    return bytesWaiting;
+}
+
+// decimate string to key
+int decimatestringtokey(char *text)
+{
+  int key=0, i;
+  char ttext[MAXSTRING];
+  strcpy(ttext, text);
+  
+  for (i=0;i<strlen(ttext);i++)
+   ttext[i]=tolower(ttext[i]);
+  
+   if (!strcmp(ttext, "down"))
+    key=DOWN;
+   if (!strcmp(ttext, "up"))
+    key=UP;
+   if (!strcmp(ttext, "left"))
+    key=LEFT;
+   if (!strcmp(ttext, "right"))
+    key=RIGHT;
+   if (!strcmp(ttext, "shift_left"))
+    key=SHIFT_LEFT;
+   if (!strcmp(ttext, "shit_right"))
+    key=SHIFT_RIGHT;
+   if (!strcmp(ttext, "escape") || !strcmp(ttext, "esc"))
+    key=ESC;
+   if (!strcmp(ttext, "enter"))
+    key=ENTER;
+   if (!strcmp(ttext, "backspace") || !strcmp(ttext, "bs"))
+    key=BACKSPACE;
+   if (!strcmp(ttext, "delete") || !strcmp(ttext, "del"))
+    key=DELETE;
+   if (!strcmp(ttext, "insert") || !strcmp(ttext, "ins"))
+    key=INSERT;
+   if (!strcmp(ttext, "home"))
+    key=HOME;
+   if (!strcmp(ttext, "end"))
+    key=END;
+   if (!strcmp(ttext, "copy"))
+    key=COPY;
+   if (!strcmp(ttext, "paste"))
+    key=PASTE;
+   if (!strcmp(ttext, "tab"))
+    key=TAB;
+   if (!strcmp(ttext, "shit_tab"))
+    key=SHIFT_TAB;
+   
+   // no string found
+   if (!key)
+    key=(int) tolower(ttext[0]);
+
+ return key;
+}
+
+
+// break text into parts, add to keys vector if suitable
+int breaktexttokeys(char *text)
+{
+  int i;
+  char ttext[MAXSTRING];
+  const char s[2] = "-";
+  char *token;
+   
+   strcpy(ttext, text);
+   /* get the first token */
+   token = strtok(ttext, s);
+   
+   /* walk through other tokens */
+   while( token != NULL ) {
+    if ((i=decimatestringtokey(token)))
+     keyonnextloop.push_back(i);
+    
+    token = strtok(NULL, s);
+   } 
+    
+ return keyonnextloop.size();
 }

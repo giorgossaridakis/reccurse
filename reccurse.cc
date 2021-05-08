@@ -1,253 +1,7 @@
-// reccurse, the filemaker of ncurses, version 0.351
+// reccurse, the filemaker of ncurses
+#include "reccurse.h"
 
-// included libraries
-// C
-#include <unistd.h>
-#include <ncurses.h>
-#include <stdlib.h>
-#include <string.h>
-#include <math.h>
-#include <ctype.h>
-#include <termios.h>
-#include <sys/stat.h>
-#include <signal.h>
-// C++ 
-#include <iostream>
-#include <iomanip>
-#include <fstream>
-#include <sstream>
-#include <cstdlib>
-// stl
-#include <vector>
-#include <string>
-#include <cstring>
-#include <array>
-
-// definitions
-// numericals
-#define MAXSTRING 80 // characters in a regular string
-#define MAXTITLE 20 // characters in a a title string
-#define MAXNUMBERDIGITS 18 // digits in a number
-#define LMAXCOMMAND 9999 /* maximum operands etc to calculate for rcpc formula*/
-#define MAXSUFFIXCHARS 3 // max string for number suffixes
-#define DEFAULT_DECIMALS 2 // decimal positions
-#define MAXFIELDS 999 // fields per record
-#define MAXRECORDS 9999 // records limit
-#define MAXPAGES 25 // pages limit
-#define FIELDSIZE MAXSTRING*2+MAXNUMBERDIGITS+15  // +7 would do
-#define MAXNAME 20 // max chars in database filenames
-#define MAXMENUS 10 // mouse menus
-#define RELATIONSHIPSLENGTH 1024 // 1kb of external db files relationship data
-#define MAXRELATIONSHIPS 25 // will fit into above 1kb, same as MAXPAGES
-#define MAXSEARCHDEPTH 5
-#define HORIZONTALLY 0
-#define VERTICALLY 1
-#define NUMERICALLIMIT 32765
-#define version 0.351
-
-// keyboard
-#define DOWN 258
-#define UP 259
-#define LEFT 260
-#define RIGHT 261
-#define SHIFT_LEFT 393
-#define SHIFT_RIGHT 402
-#define ESC 27
-#define SPACE 32
-#define BACKSPACE 263 
-#define DELETE 330
-#define INSERT 331
-#define HOME 262
-#define END 360
-#define COPY 11
-#define PASTE 22
-#define TAB 9
-#define SHIFT_TAB 353
-#define END_OF_RECORDS 336
-#define START_OF_RECORDS 337
-#define PAGES_SELECTOR_KEY 23
-
-using namespace std;
-
-// global variables
-int menubar;
-int autosave;
-int recordsdemo=0;
-int currentpage=0;
-int pagesnumber=0;
-int currentmenu=0;
-int currentfield;
-int recordsnumber=0;
-int currentrecord=0;
-int startofrecords=0;
-int fieldsperrecord=0;
-int alteredparameters=0;
-int dummyfieldsperrecord, dummyrecordsnumber;
-int fieldhasdependancy=0;
-int externalreferencedatabase;
-vector<int> mousemenucommands;
-MEVENT mouse;
-char pages[MAXPAGES][MAXSTRING];
-char rcfile[MAXSTRING], dbfile[MAXSTRING];
-const char *onoff[]= { "off", "on" };
-char clipboard[MAXSTRING];
-int menucolors[5]={ 5, 6, 4, 3, 1 };
-int menulines[5]={ 24, 24, 24, 24, 24 };
-char infotext[MAXSTRING];
-const char *menutexts[]={ "<tabshiftarrows|< >|home&end|<g>|<e>dit|<o>ptions|ex<t>ra|<m>enubar|<ESC>quit", "<a>utosave on/off|<l>oad database|<s>ave database|<h>elp page|<ESC>main menu", "e<d>it|<c>opy|<DEL>ete|<j>oin|di<v>ide|datestam<p>|<INS>more|<ESC>main menu", "database <i>nformation|<f>ind|so<r>t records|set<u>p database|<ESC>main menu", "really quit ?" };  //main, options, edit, extra, quit
-
-struct Points {
- int x;
-int y; } ;
-
-class Field {
- public:
-  // from .rc file
-  int id;
-  char title[MAXTITLE];
-  int title_position;
-  char title_attributes[9];
-  int title_color;
-  struct Points pt;
-  struct Points size;
-  char attributes[9];
-  int color;
-  int box;
-  int box_color;
-  int type; // 0 number, 1 date&time, 2 string
-  int decimals;
-  char suffix[MAXSUFFIXCHARS];
-  int formula;
-  int fieldlist;
-  int editable;
-  int active;
-  char automatic_value[MAXSTRING];
-  // constructors, destructor
-  Field(int i1, char s1[MAXSTRING], int i2, char s2[9], int i3, int i4, int i5, int i6, int i7, char s3[9], int i8, int i9, int i10, int i11, char s4[MAXSUFFIXCHARS], int i12, int i13, int i14, int i15, int i16, char s5[MAXSTRING]) { id=i1; strcpy(title,s1); title_position=i2; strcpy(title_attributes,s2); title_color=i3; pt.x=i4; pt.y=i5; size.x=i6; size.y=i7; strcpy(attributes, s3); color=i8; box=i9; box_color=i10; type=i11; strcpy(suffix, s4);  decimals=i12, formula=i13; fieldlist=i14; editable=i15; active=i16;  strcpy(automatic_value, s5); } ;
-  Field() { } ;
-~Field() { } ; } ;
-
-class Annotated_Field {
-  // to be annotated in each record
-  public:
-   int id; // same as Field
-   double number;
-   char text[MAXSTRING];
-   char formula[MAXSTRING];
-   // constructors, destructor
-   Annotated_Field(int i1, double f1, char s1[MAXSTRING], char s2[MAXSTRING]) { id=i1; number=f1; strcpy(text, s1); strcpy(formula, s2); } ;
-   Annotated_Field(int i1, double f1, const char s1[MAXSTRING], const char s2[MAXSTRING]) { id=i1; number=f1; strcpy(text, s1); strcpy(formula, s2); } ;
-   Annotated_Field() { } ;
-~Annotated_Field() { } ; } ;
-
-class Relationship {
- public:
-  char extDbname[MAXNAME];
-  // will be declared equal, local will reflect external if ext[0]=local[0]. if local field is fieldreference active, relationship will occur anyway
-  int extFields[2]; 
-  int localFields[2];
-  Relationship(char name[MAXNAME], int e1, int e2, int l1, int l2) { strcpy(extDbname, name); extFields[0]=e1; extFields[1]=e2; localFields[0]=l1; localFields[1]=l2; } ;
-  Relationship() { };
-~Relationship() { } ; } ;
-
-class MenuEntry {
- public:
-  char entryText[MAXSTRING];
-  vector<int> returnCommands;
-  int menuDirectionId;
-  MenuEntry(char *text, vector<int> commands, int directionid) { strcpy(entryText, text); returnCommands=commands; menuDirectionId=directionid; };
-  MenuEntry(const char *text, vector<int> commands, int directionid) { strcpy(entryText, text); returnCommands=commands; menuDirectionId=directionid; };
-  MenuEntry() { };
-~MenuEntry() { }; };
- 
-class Menu {
- public:
-  int menuId;
-  int menuReference;
-  int fatherMenuId;
-  int fatherMenuPosition;
-  char menuTitle[MAXNAME];
-  vector<MenuEntry> menuEntries;
-  Menu(int id, int reference, int fatherid, int fatherposition, char *title) { menuId=id; menuReference=reference; fatherMenuId=fatherid; fatherMenuPosition=fatherposition; strcpy(menuTitle, title); };
-  Menu(int id, int reference, int fatherid, int fatherposition, const char *title) { menuId=id; menuReference=reference; fatherMenuId=fatherid;  fatherMenuPosition=fatherposition; strcpy(menuTitle, title); };
-  Menu() { };
-~Menu() { }; };
-
-class Drawbox {
- public:
-  int menuId;
-  int drawcolor;
-  int paintcolor;
-  struct Points pt;
-  struct Points size;
-  Drawbox(int id, int color1, int color2, int ptx, int pty, int sizex, int sizey) { menuId=id; drawcolor=color1; paintcolor=color2; pt.x=ptx; pt.y=pty; size.x=sizex; size.y=sizey; };
-  Drawbox() { };
-~Drawbox() { }; };
- 
-vector<Menu> mousemenus;
-vector<Drawbox> mousemenuboxes;
-vector<Field> record, dummyrecord, externalrecord[MAXRELATIONSHIPS];
-vector<Annotated_Field> records, dummyrecords, externalrecords[MAXRELATIONSHIPS];
-vector<Relationship> relationships;
-
-// functions
-void Intro_Screen();
-int End_Program(int code=0);
-void Reccurse_File_Extension(char *filename, int flag=0);
-int Read_rc_File();
-int Write_rc_File(char *file);
-int Read_Write_db_File(int mode=0);
-int Read_External_Database(int externaldatabaseid);
-int Read_Write_Current_Parameters(int item, int mode=0); // 0 read, 1 write
-void Read_Record_Field(ifstream &instream, Field &tfield);
-void Read_Record_Field(istringstream &instream, Field &tfield);
-void Write_Record_Field(ofstream &outstream, Field &tfield);
-void Write_Record_Field(char *ttext, Field &tfield);
-void Initialize_Record();
-int Add_Field();
-void Delete_Field(int field_id);
-int Join_Fields(int field_id, int mode);
-void Renumber_Field_References(int startingfield);
-void Renumber_Field_Relationships(int startingfield);
-int Divide_Field(int field_id, int mode);
-void Bring_DateTime_Stamp(char tdatetime[MAXSTRING]);
-int ispossibletickbox(int field_id);
-int Read_Write_Field(Annotated_Field &tfield, long int field_position, int mode=0);
-long int fieldposition(int record_id, int field_id);
-long int fieldserialtofieldposition(int position);
-void fieldserialtoparameters(int position, int &record_id, int &field_id);
-int fieldparameterstoserial(int record_id, int field_id);
-void Delete_Record(int record_id);
-void Duplicate_Record(int record_id);
-int Show_Record_and_Menu();
-int Screen_String_Editor(Annotated_Field &tfield);
-int negatekeysforcurrentmenu(int t);
-void Show_Menu_Bar(int mode=0);
-void Show_Help_Screen();
-void Show_DB_Information();
-int Show_Field(Annotated_Field *tfield, int flag=0);
-int Show_Field_ID(Annotated_Field *tfield);
-void Generate_Field_String(Annotated_Field *tfield, char *ttext);
-int Generate_Dependant_Field_String(Annotated_Field *field, char *ttext);
-int Export_Database(char *filename);
-int Import_Database(char *filename);
-int Import_External_db_File(char *filename);
-int Read_Write_Relationships(int mode=0);
-void Initialize_Database_Parameters();
-void Load_Database(int pagenumber);
-int Pages_Selector();
-int Clean_Database(char *filename);
-void Set_Mouse_Menus();
-int fetchmousemenucommand();
-
-// to be compiled together
-#include "rcscr.cc"
-#include "rclib.cc"
-#include "rcsc.cc"
-#include "rcpc.cc"
-#include "rcpclib.cc"
-#include "rcfre.cc"
-#include "rcmenusel.cc"
+const double version=0.391;
 
 int main(int argc, char *argv[])
 {
@@ -872,7 +626,7 @@ void Initialize_Record()
   
   for (i=0;i<fieldsperrecord;i++) {
    Annotated_Field tfield(i, 0, " ", " ");
-  if (record[tfield.id].type==1)
+  if (record[tfield.id].type==CALENDAR)
    strcpy(tfield.text, tdatetime);
   records.push_back(tfield); }
   ++recordsnumber;
@@ -882,23 +636,35 @@ void Initialize_Record()
 }
 
 // add a field
-int Add_Field(/* add parameters */)
+int Add_Field(int type, char *name, char *textvalue)
 {
-  int i;
+  int i, tx=1, ty=1;
   vector <Annotated_Field>::iterator p;
   char ttext[MAXSTRING]; // for Generate_Field_String
+  char autovalue[MAXSTRING];
+  strcpy(autovalue, EMPTYSTRING);
   
    if (!recordsnumber) // initialization precaution
     return -1;
    if (fieldsperrecord>MAXFIELDS-1)
     return -1;
-   Field tfield(fieldsperrecord, const_cast <char *> ("."), 0, const_cast <char *> ("000000000"), 58, 1, 1, 1, 1, const_cast <char *> ("000000000"), 58, 0, 58, 0, const_cast <char *> ("."), 2, 0, 0, 1, 1, const_cast <char *> ("."));
-   record.push_back(tfield);
-   Annotated_Field ttfield(fieldsperrecord, 0, " ", " ");
-   for (i=0;i<recordsnumber-1;i++) {
-    p=records.begin();
-    p+=(i*(fieldsperrecord+1))+fieldsperrecord;
-    records.insert(p, 1, ttfield);
+   
+    if (name==NULL) {
+     name=(char *) malloc(MAXSTRING);
+    strcpy(name, EMPTYSTRING); }
+    if (textvalue==NULL) {
+     textvalue=(char *) malloc(MAXSTRING);
+    strcpy(textvalue, EMPTYSTRING); }
+    if (type==VARIABLE) {
+     strcpy(autovalue, textvalue);
+    tx=99; ty=99; }
+    Field tfield(fieldsperrecord, name, 0, const_cast <char *> ("000000000"), 58, tx, ty, 1, 1, const_cast <char *> ("000000000"), 58, 0, 58, type, const_cast <char *> (EMPTYSTRING), 2, 0, 0, 1, 1, (type==VARIABLE) ? textvalue : const_cast <char *> (EMPTYSTRING));
+    record.push_back(tfield);
+    Annotated_Field ttfield(fieldsperrecord, atof(textvalue), textvalue, " ");
+    for (i=0;i<recordsnumber-1;i++) {
+     p=records.begin();
+     p+=(i*(fieldsperrecord+1))+fieldsperrecord;
+     records.insert(p, 1, ttfield);
    Generate_Field_String(&records[(i*fieldsperrecord)+fieldsperrecord+1], ttext); }
    // append to end 
    records.push_back(ttfield);
@@ -934,7 +700,6 @@ void Delete_Field(int field_id)
    Renumber_Field_Relationships(field_id);
    Read_Write_db_File(3);
    Read_Write_db_File(1);
-   Read_Write_db_File();  // precaution
 }
 
 // merge logistically and physically a field with it's right next
@@ -957,7 +722,7 @@ int Join_Fields(int field_id, int mode)
   if (mode==HORIZONTALLY) {
    n=(record[fieldidentities[i]].size.y>record[fieldidentities[i+1]].size.y) ? record[fieldidentities[i]].size.y : record[fieldidentities[i+1]].size.y;
    record[fieldidentities[i]].size.y=n;
-  record[fieldidentities[i]].size.x+=record[fieldidentities[i+1]].size.x; }
+  record[fieldidentities[i]].size.x+=record[fieldidentities[i+1]].size.x+1; }
   else
    record[fieldidentities[i]].size.y+=record[fieldidentities[i+1]].size.y;
   strcat(records[(currentrecord*fieldsperrecord)+field_id].text, " ");
@@ -1055,15 +820,6 @@ void Bring_DateTime_Stamp(char tdatetime[MAXSTRING])
   for (i=0;i<strlen(tdatetime);i++)
    if (tdatetime[i]=='\n')
     tdatetime[i]=SPACE;    
-}
-
-// possible tick-box if field is type string and size 1x1
-int ispossibletickbox(int field_id)
-{
-  if (record[field_id].size.x==1 && record[field_id].size.y==1)
-   return 1;
-    
-  return 0;
 }
     
 // read-write record from-to dbfile
@@ -1198,12 +954,7 @@ int Show_Record_and_Menu()
 {
   int i, i1, n, trecordsnumber, run=1, c;
   int findresults[MAXSEARCHDEPTH+1][MAXRECORDS], tsortresults[MAXRECORDS];
-  char input_text[MAXSTRING], tattributes[9];
-  const char *alterscreenparameterskeys="/*-+.!@";
-  struct FindSchedule {
-   int field_id;
-  char texttolookfor[MAXSTRING]; } ;
-  vector <FindSchedule> findschedule;
+  char input_text[MAXSTRING], ttext[MAXSTRING], tattributes[9];
   FindSchedule tfindschedule;
   vector<Annotated_Field> trecords;
   vector<int>::iterator p;
@@ -1211,7 +962,7 @@ int Show_Record_and_Menu()
    while (run) {
     clear();
     for (i=0;i<fieldsperrecord;i++)
-    Show_Field(&records[(currentrecord*fieldsperrecord)+i]);
+     Show_Field(&records[(currentrecord*fieldsperrecord)+i]);
     if (currentfield>-1 && !recordsdemo)
      Show_Field(&records[(currentrecord*fieldsperrecord)+currentfield], 1);
     if (!recordsdemo)
@@ -1233,261 +984,283 @@ int Show_Record_and_Menu()
     if (menubar==3)
      i=strlen(records[(currentrecord*fieldsperrecord)+currentfield].text)+1;
     gotoxy(i, menulines[currentmenu]);
-    if (mousemenucommands.size())
-     c=fetchmousemenucommand();
-    else
-     c=sgetch();
-    c=negatekeysforcurrentmenu(c);
-    if (!alteredparameters)
-     for (i=0;i<strlen(alterscreenparameterskeys);i++)
-      if (c==alterscreenparameterskeys[i])
-       alteredparameters=1;
-    switch (c) {
-     // from menu 0
-     case 'e':
-      currentmenu=2;
-      Read_Write_Current_Parameters(1, 1);
-     break;
-     case 'o':
-      currentmenu=1;
-      Read_Write_Current_Parameters(1, 1);
-     break;
-     case 't':
-      currentmenu=3;
-      Read_Write_Current_Parameters(1, 1);
-     break;
-     case 'm': // from all menus
-      ++menubar;
-      menubar=(menubar==4) ? 0 : menubar;
-      Read_Write_Current_Parameters(2, 1);
-     break;
-     case ESC: // from all menus
-      if (recordsdemo) {
-       recordsdemo=0;
-       currentrecord=trecordsnumber; // restore currentrecord before find
-      break; }
-      if (!currentmenu) {
-       currentmenu=4;
-       menubar=1;
-       Show_Menu_Bar();
-       gotoxy(strlen(menutexts[currentmenu])+1, menulines[currentmenu]);
-       c=sgetch();
-       if (c==ESC || c=='y')
-        run=0;
-       else
-        currentmenu=0; }
-      else {
-       currentmenu=0;
-     Read_Write_Current_Parameters(1, 1); }
-     break;
-     case '>': // from all menus
-      for (i=0;i<recordsnumber+1;i++) 
-       if (findresults[0][i]>currentrecord) {
-        currentrecord=findresults[0][i];
-      break; }
-      if (currentrecord>recordsnumber-1 && currentrecord+1<MAXRECORDS) {
+    
+    if (runscript) {
+     runscript=commandparser(scriptcommand);
+     Sleep(scriptsleeptime); 
+    }
+    
+    if (kbhit() && runscript) {
+     strcpy(scriptcommand, "stop");
+    runscript=commandparser(scriptcommand);
+    }
+    
+    if (!runscript || (keyonnextloop.size() && keyonnextloop[keyonnextloop.size()-1]!=SPACE)) { // also process keyonnextloop from scripts, but not space
+     if (mousemenucommands.size())
+      c=fetchmousemenucommand();
+     else
+      c=sgetch();
+     c=negatekeysforcurrentmenu(c);
+     if (!alteredparameters && currentmenu!=5)
+      for (i=0;i<strlen(alterscreenparameterskeys);i++)
+       if (c==alterscreenparameterskeys[i])
+        alteredparameters=1;
+      
+     switch (c) {
+      // from menu 0
+      case 'e':
+       currentmenu=2;
+       Read_Write_Current_Parameters(1, 1);
+      break;
+      case 'o':
+       currentmenu=1;
+       Read_Write_Current_Parameters(1, 1);
+      break;
+      case 't':
+       currentmenu=3;
+       Read_Write_Current_Parameters(1, 1);
+      break;
+      case '`': {
+       // any buttons and screens for need to go to calculator mode ?
+       int buttons=0, screens=0;
+       for (i1=0;i1<fieldsperrecord;i1++) {
+        if (record[i1].buttonbox==BUTTONBOX)
+         ++buttons;
+        if (record[i1].buttonbox=BUTTONSCREEN)
+       ++screens; }
+       if (!(buttons+screens))
+        break;
+       currentmenu=5;
+       Read_Write_Current_Parameters(1, 1); }
+      break;
+      case 'm': // from all menus
+       ++menubar;
+       menubar=(menubar==4) ? 0 : menubar;
+       Read_Write_Current_Parameters(2, 1);
+      break;
+      case ESC: // from all menus
        if (recordsdemo) {
-        --currentrecord;
+        recordsdemo=0;
+        currentrecord=trecordsnumber; // restore currentrecord before find
        break; }
-       Show_Menu_Bar(1);
-       Change_Color(1);
-       gotoxy(1,24);
-       printw("initiate record (y/n):");
-       c=sgetch();
-       if (tolower(c)=='y') {
-        Initialize_Record();
+       if (!currentmenu) {
+        currentmenu=4;
+        menubar=1;
+        Show_Menu_Bar();
+        gotoxy(strlen(menutexts[currentmenu])+1, menulines[currentmenu]);
+        c=sgetch();
+        if (c==ESC || c=='y')
+         run=0;
+        else
+         currentmenu=0; }
+       else {
+        currentmenu=0;
+      Read_Write_Current_Parameters(1, 1); }
+      break;
+      case '>': // from all menus
+       for (i=0;i<recordsnumber+1;i++) 
+        if (findresults[0][i]>currentrecord) {
+         currentrecord=findresults[0][i];
+       break; }
+       if (currentrecord>recordsnumber-1 && currentrecord+1<MAXRECORDS) {
+        if (recordsdemo) {
+         --currentrecord;
+        break; }
+        Show_Menu_Bar(1);
+        Change_Color(1);
+        gotoxy(1,24);
+        printw("initiate record (y/n):");
+        c=sgetch();
+        if (tolower(c)=='y') {
+         Initialize_Record();
+        --currentrecord; }
+        else
        --currentrecord; }
-       else
-      --currentrecord; }
-      if (!recordsdemo) 
+       if (!recordsdemo) 
+        Read_Write_Current_Parameters(0, 1);
+       Show_Menu_Bar();
+      break;
+      case '<': // from all menus
+       for (i=currentrecord;i>-1;i--) 
+        if (findresults[0][i]<currentrecord && findresults[0][i]>-1) {
+         currentrecord=findresults[0][i];
+       break; }
+       if (!recordsdemo) 
+        Read_Write_Current_Parameters(0, 1);
+      break;
+      case HOME:
+       currentfield=findfieldege();
+      break;
+      case END:
+       currentfield=findfieldege(1);
+      break;
+      case START_OF_RECORDS: // from all menus
+       currentrecord=findresults[0][0];
        Read_Write_Current_Parameters(0, 1);
-      Show_Menu_Bar();
-     break;
-     case '<': // from all menus
-      for (i=currentrecord;i>-1;i--) 
-       if (findresults[0][i]<currentrecord && findresults[0][i]>-1) {
-        currentrecord=findresults[0][i];
-      break; }
-      if (!recordsdemo) 
+      break;
+      case END_OF_RECORDS: // from all menus
+       currentrecord=findresults[0][recordsnumber-1];
        Read_Write_Current_Parameters(0, 1);
-     break;
-     case HOME:
-      currentfield=findfieldege();
-     break;
-     case END:
-      currentfield=findfieldege(1);
-     break;
-     case START_OF_RECORDS: // from all menus
-      currentrecord=findresults[0][0];
-      Read_Write_Current_Parameters(0, 1);
-     break;
-     case END_OF_RECORDS: // from all menus
-      currentrecord=findresults[0][recordsnumber-1];
-      Read_Write_Current_Parameters(0, 1);
-     break;
-     case 'j':
-      Show_Menu_Bar(1);
-      Show_Message(1, 24, 5, "join field with it's <r>ight or <b>elow field (r/b):", 0);
-      c=sgetch();
-      if (c!='r' && c!='b')
-       break;
-      switch (c) {
-       case 'r':
-        Join_Fields(currentfield, HORIZONTALLY);
-       break;
-       case 'b':
-        Join_Fields(currentfield, VERTICALLY);
-      break; }
-     break;
-     case 'v':
-      Show_Menu_Bar(1);
-      Show_Message(1, 24, 5, "divide field <h>orizontically or <v>ertically (h/v):", 0);
-      c=sgetch();
-      if (c!='h' && c!='v')
-       break;
-      switch (c) {
-       case 'h':
-        Divide_Field(currentfield, HORIZONTALLY);
-       break;
-       case 'v':
-        Divide_Field(currentfield, VERTICALLY);
-      break; }
-     break;
-     case DOWN: // from all menus
-      if (recordsdemo)
-       break;
-      { 
-        vector <int> fieldyidentities;
-        n=0;
-        sortfieldsbyypt(currentfield, fieldyidentities);
-        for (i=0;i<fieldyidentities.size();i++) 
-         if (currentfield==fieldyidentities[i])
-          break;
-        if (i<fieldyidentities.size()-1)
-         currentfield=fieldyidentities[i+1];
-        else {
-         ++currentfield;
-         if (currentfield>fieldsperrecord-1)
-          currentfield=0;
-         while (!record[currentfield].active || !record[currentfield].editable) {
+      break;
+      case 'j':
+       Show_Menu_Bar(1);
+       Show_Message(1, 24, 5, "join field with it's <r>ight or <b>elow field (r/b):", 0);
+       c=sgetch();
+       if (c!='r' && c!='b')
+        break;
+       switch (c) {
+        case 'r':
+         Join_Fields(currentfield, HORIZONTALLY);
+        break;
+        case 'b':
+         Join_Fields(currentfield, VERTICALLY);
+       break; }
+      break;
+      case 'v':
+       Show_Menu_Bar(1);
+       Show_Message(1, 24, 5, "divide field <h>orizontically or <v>ertically (h/v):", 0);
+       c=sgetch();
+       if (c!='h' && c!='v')
+        break;
+       switch (c) {
+        case 'h':
+         Divide_Field(currentfield, HORIZONTALLY);
+        break;
+        case 'v':
+         Divide_Field(currentfield, VERTICALLY);
+       break; }
+      break;
+      case DOWN: // from all menus
+       if (recordsdemo)
+        break;
+       { 
+         vector <int> fieldyidentities;
+         n=0;
+         sortfieldsbyypt(currentfield, fieldyidentities);
+         for (i=0;i<fieldyidentities.size();i++) 
+          if (currentfield==fieldyidentities[i])
+           break;
+         if (i<fieldyidentities.size()-1)
+          currentfield=fieldyidentities[i+1];
+         else {
           ++currentfield;
           if (currentfield>fieldsperrecord-1)
-      currentfield=0; } } }
-     break;
-     case TAB: // keep a simple navigational button
-      ++currentfield;
-      if (currentfield>fieldsperrecord-1)
-       currentfield=0;
-      while (!record[currentfield].active || !record[currentfield].editable) {
+           currentfield=0;
+          while (!record[currentfield].active || !record[currentfield].editable) {
+           ++currentfield;
+           if (currentfield>fieldsperrecord-1)
+       currentfield=0; } } }
+      break;
+      case TAB: // keep a simple navigational button
        ++currentfield;
        if (currentfield>fieldsperrecord-1)
-     currentfield=0; }
-     break;
-     case UP:// from all menus
-      if (recordsdemo)
-       break;
-      { 
-        vector <int> fieldyidentities;
-        n=0;
-        sortfieldsbyypt(currentfield, fieldyidentities);
-        for (i=0;i<fieldyidentities.size();i++) 
-         if (currentfield==fieldyidentities[i])
-          break;
-        if (i)
-         currentfield=fieldyidentities[i-1];
-        else {
-         --currentfield;
-         if (currentfield<0)
-          currentfield=fieldsperrecord-1;
-         while (!record[currentfield].active || !record[currentfield].editable) {
+        currentfield=0;
+       while (!record[currentfield].active || !record[currentfield].editable) {
+        ++currentfield;
+        if (currentfield>fieldsperrecord-1)
+      currentfield=0; }
+      break;
+      case UP:// from all menus
+       if (recordsdemo)
+        break;
+       { 
+         vector <int> fieldyidentities;
+         n=0;
+         sortfieldsbyypt(currentfield, fieldyidentities);
+         for (i=0;i<fieldyidentities.size();i++) 
+          if (currentfield==fieldyidentities[i])
+           break;
+         if (i)
+          currentfield=fieldyidentities[i-1];
+         else {
           --currentfield;
           if (currentfield<0)
-      currentfield=fieldsperrecord-1; } } }
-     break;
-     case SHIFT_TAB: // one more simple navigational button
-      --currentfield;
-      if (currentfield<0)
-       currentfield=fieldsperrecord-1;
-      while (!record[currentfield].active || !record[currentfield].editable) {
-        --currentfield;
-        if (currentfield<0)
-      currentfield=fieldsperrecord-1; }
-     break;
-     case RIGHT:
-      if (recordsdemo)
-       break;
-      { 
-        vector<int> fieldxidentities;
-        n=0;
-        sortfieldsbyxpt(currentfield, fieldxidentities);
-        for (i=0;i<fieldxidentities.size();i++) 
-         if (currentfield==fieldxidentities[i])
-          break;
-        if (i<fieldxidentities.size()-1)
-       currentfield=fieldxidentities[i+1]; }
-     break;
-     case LEFT:
-      if (recordsdemo)
-       break;
-      { 
-        vector <int> fieldxidentities;
-        n=0;
-        sortfieldsbyxpt(currentfield, fieldxidentities);
-        for (i=0;i<fieldxidentities.size();i++) 
-         if (currentfield==fieldxidentities[i])
-          break;
-        if (i)
-       currentfield=fieldxidentities[i-1]; }
-     break;
-     case ']': // imitate mouse
-      Menu_Selector();
-     break;
-     case KEY_MOUSE:
-      if (recordsdemo)
-       break;
-      if (rightmousebuttonclicked())
+           currentfield=fieldsperrecord-1;
+          while (!record[currentfield].active || !record[currentfield].editable) {
+           --currentfield;
+           if (currentfield<0)
+       currentfield=fieldsperrecord-1; } } }
+      break;
+      case SHIFT_TAB: // one more simple navigational button
+       --currentfield;
+       if (currentfield<0)
+        currentfield=fieldsperrecord-1;
+       while (!record[currentfield].active || !record[currentfield].editable) {
+         --currentfield;
+         if (currentfield<0)
+       currentfield=fieldsperrecord-1; }
+      break;
+      case RIGHT:
+       if (recordsdemo)
+        break;
+       { 
+         vector<int> fieldxidentities;
+         n=0;
+         sortfieldsbyxpt(currentfield, fieldxidentities);
+         for (i=0;i<fieldxidentities.size();i++) 
+          if (currentfield==fieldxidentities[i])
+           break;
+         if (i<fieldxidentities.size()-1)
+        currentfield=fieldxidentities[i+1]; }
+      break;
+      case LEFT:
+       if (recordsdemo)
+        break;
+       { 
+         vector <int> fieldxidentities;
+         n=0;
+         sortfieldsbyxpt(currentfield, fieldxidentities);
+         for (i=0;i<fieldxidentities.size();i++) 
+          if (currentfield==fieldxidentities[i])
+           break;
+         if (i)
+        currentfield=fieldxidentities[i-1]; }
+      break;
+      case ']': // imitate mouse
        Menu_Selector();
-      else
-       currentfield=locatefieldbymouseclick();
-     break;
-     case 'g': // from all menus
-      if (recordsdemo)
-       break;
-      Show_Menu_Bar(1);
-      Change_Color(58);
-      gotoxy(1, 24);
-      printw("jump to record:");
-      i=Scan_Input(1, 1, recordsnumber)-1;
-      if (i>-1 && i<recordsnumber)
-       currentrecord=i;
-     break;
-     case '?': // from all menus
-      Show_Help_Screen();
-     break;
-     // from menu 1
-     case 'a':
-      autosave=(autosave) ? 0 : 1;
-      Show_Menu_Bar(1);
-      Show_Message(1, 24, 2, "autosave:", 0);
-      Show_Message(10, 24, 2, onoff[autosave], 1500);
-      Read_Write_Current_Parameters(3, 1);
-     break;
-     case 'l':
-      Show_Menu_Bar(1);
-      strcpy(input_string, dbfile);
-      i=Scan_Input(input_string, 1, 24, 5);
-      if (i==ESC)
-       break;
-      Reccurse_File_Extension(input_string, 2);
-      if (!tryfile(input_string)) {
-       Show_Message(1, 24, 1, "nonexisting file!", 1500);
-      break; }
-      strcpy(dbfile, input_string);
-      strcpy(pages[0], dbfile);
-      currentpage=0;
-      pagesnumber=1;
-      Load_Database(currentpage);
-      Show_Message(1, 24, 2, "database loaded", 1500);
+      break;
+      case KEY_MOUSE:
+       if (recordsdemo)
+        break;
+       if (rightmousebuttonclicked())
+        Menu_Selector();
+       else
+        currentfield=locatefieldbymouseclick();
+      break;
+      case 'g': // from all menus
+       if (recordsdemo)
+        break;
+       Show_Menu_Bar(1);
+       Change_Color(58);
+       gotoxy(1, 24);
+       printw("jump to record:");
+       i=Scan_Input(1, 1, recordsnumber)-1;
+       if (i>-1 && i<recordsnumber)
+        currentrecord=i;
+      break;
+      case '?': // from all menus
+       Show_Help_Screen();
+      break;
+      // from menu 1
+      case 'a':
+       toggleautosave();
+      break;
+      case 'l':
+       Show_Menu_Bar(1);
+       strcpy(input_string, dbfile);
+       i=Scan_Input(input_string, 1, 24, 5);
+       if (i==ESC)
+        break;
+       Reccurse_File_Extension(input_string, 2);
+       if (!tryfile(input_string)) {
+        Show_Message(1, 24, 1, "nonexisting file!", 1500);
+       break; }
+       strcpy(dbfile, input_string);
+       strcpy(pages[0], dbfile);
+       currentpage=0;
+       pagesnumber=1;
+       Load_Database(currentpage);
+       Show_Message(1, 24, 2, "database loaded", 1500);
      break;
      case 's':
       Show_Menu_Bar(1);
@@ -1521,7 +1294,9 @@ int Show_Record_and_Menu()
      break;
      // from menu 2
      case 'd':
-      if (!strcmp(record[currentfield].automatic_value, ".") && record[currentfield].type!=1) {
+      if (!strcmp(record[currentfield].automatic_value, EMPTYSTRING) && record[currentfield].type!=CALENDAR) {
+       if (record[currentfield].buttonbox==BUTTONSCREEN)
+        record[currentfield].type=NUMERICAL; // trick to bring reversepolishcalculator
        if (!record[currentfield].fieldlist) 
         for (i=0;i<fieldsperrecord;i++)
          Show_Field_ID(&records[(currentrecord*fieldsperrecord)+i]);
@@ -1534,12 +1309,16 @@ int Show_Record_and_Menu()
         Show_Field(&records[(currentrecord*fieldsperrecord)+record[currentfield].fieldlist-1], 1);
         attroff(A_BLINK); } }
       Screen_String_Editor(records[(currentrecord*fieldsperrecord)+currentfield]); }
-      if (record[currentfield].type==1) {
+      if (record[currentfield].type==CALENDAR) {
        strcpy(input_string, records[(currentrecord*fieldsperrecord)+currentfield].text);
        Scan_Date(1, 24, input_string);
        strcpy(records[(currentrecord*fieldsperrecord)+currentfield].text, input_string);
        if (autosave)
       Read_Write_Field(records[(currentrecord*fieldsperrecord)+currentfield], fieldposition(currentrecord, currentfield), 1); }
+      // jump to next BUTTONCOMMAND script, if any
+      if (record[currentfield].fieldlist && record[record[currentfield].fieldlist-1].buttonbox==BUTTONCOMMAND) {
+       currentfield=record[currentfield].fieldlist-1;
+      pushspaceonfield(); }
      break;
      case 'p':
       if (record[records[(currentrecord*fieldsperrecord)+currentfield].id].type && record[records[(currentrecord*fieldsperrecord)+currentfield].id].editable) {
@@ -1547,30 +1326,35 @@ int Show_Record_and_Menu()
       Read_Write_Field(records[(currentrecord*fieldsperrecord)+currentfield], fieldposition(currentrecord, currentfield), 1); }
      break;
      case SPACE:
-      if (record[currentfield].type==2 && !strcmp(record[currentfield].automatic_value, ".") && record[currentfield].editable && ispossibletickbox(records[(currentrecord*fieldsperrecord)+currentfield].id)) {
-       records[(currentrecord*fieldsperrecord)+currentfield].text[0]=(records[(currentrecord*fieldsperrecord)+currentfield].text[0]=='X') ? ' ' : 'X';
-      Read_Write_Field(records[(currentrecord*fieldsperrecord)+currentfield], fieldposition(currentrecord, currentfield), 1); }
+      pushspaceonfield();
      break;
      case '+':
-      record[currentfield].attributes[6]=(record[currentfield].attributes[6]=='1') ? '0' : '1';
+      if (currentmenu!=5)
+       record[currentfield].attributes[6]=(record[currentfield].attributes[6]=='1') ? '0' : '1';
      break;
      case '-':
-      record[currentfield].attributes[2]=(record[currentfield].attributes[2]=='1') ? '0' : '1';
+      if (currentmenu!=5)
+       record[currentfield].attributes[2]=(record[currentfield].attributes[2]=='1') ? '0' : '1';
      break;
      case '*':
-      record[currentfield].attributes[1]=(record[currentfield].attributes[1]=='1') ? '0' : '1';
+      if (currentmenu!=5)
+       record[currentfield].attributes[1]=(record[currentfield].attributes[1]=='1') ? '0' : '1';
      break;
      case '/':
-      record[currentfield].attributes[4]=(record[currentfield].attributes[4]=='1') ? '0' : '1';
+      if (currentmenu!=5)
+       record[currentfield].attributes[4]=(record[currentfield].attributes[4]=='1') ? '0' : '1';
      break;
      case '.':
+     if (currentmenu!=5)
       record[currentfield].attributes[5]=(record[currentfield].attributes[5]=='1') ? '0' : '1';
      break;
      case '!':
-      record[currentfield].color+=record[currentfield].color<58 ? 1 : -58;
+      if (currentmenu!=5)
+       record[currentfield].color+=record[currentfield].color<58 ? 1 : -58;
      break;
      case '@':
-      record[currentfield].color-=record[currentfield].color>2 ? 1 : -57;
+      if (currentmenu!=5)
+       record[currentfield].color-=record[currentfield].color>2 ? 1 : -57;
      break;
      case 'c':
       for (i=0;i<fieldsperrecord;i++)
@@ -1593,9 +1377,7 @@ int Show_Record_and_Menu()
       currentrecord=Read_Write_Current_Parameters(0);
      break;
      case DELETE:
-      strcpy(records[(currentrecord*fieldsperrecord)+currentfield].text, " ");
-      terminatestringatcharactersend(records[(currentrecord*fieldsperrecord)+currentfield].text);
-      records[(currentrecord*fieldsperrecord)+currentfield].number=0;
+      Delete_Field_Entry(currentfield);
       Read_Write_Field(records[(currentrecord*fieldsperrecord)+currentfield], fieldposition(currentrecord, currentfield), 1);
      break;
      case INSERT:
@@ -1655,12 +1437,10 @@ int Show_Record_and_Menu()
       break; }
      break;
      case COPY:
-      strcpy(clipboard, records[(currentrecord*fieldsperrecord)+currentfield].text);
+      copytoclipboard();
      break;
      case PASTE:
-      strcpy(records[(currentrecord*fieldsperrecord)+currentfield].text, clipboard);
-      if (autosave)
-       Read_Write_Field(records[(currentrecord*fieldsperrecord)+currentfield], fieldposition(currentrecord, currentfield), 1);
+      pastefromclipboard();
      break;
      // menu 3
      case 'i':
@@ -1686,8 +1466,6 @@ int Show_Record_and_Menu()
        Change_Color(4);
        gotoxy(1, 24);
        Scan_Input();
-       if (!strlen(input_string))
-        break;
        strcpy(tfindschedule.texttolookfor, input_string);
       findschedule.push_back(tfindschedule); }
       for (i=0;i<findschedule.size();i++) {
@@ -1718,15 +1496,13 @@ int Show_Record_and_Menu()
        Change_Color(4);
        gotoxy(1, 24);
        tfindschedule.field_id=Scan_Input(1, 1, MAXFIELDS);
-       if (!tfindschedule.field_id)
+       if (!tfindschedule.field_id) // return or non-numerical input_string
         break;
        --tfindschedule.field_id;
        Show_Menu_Bar(1);
        Change_Color(4);
        gotoxy(1, 24);
        Scan_Input();
-       if (!strlen(input_string))
-        break;
        strcpy(tfindschedule.texttolookfor, input_string);
       findschedule.push_back(tfindschedule); }
       // now run find for all findschedule size
@@ -1755,7 +1531,28 @@ int Show_Record_and_Menu()
        Show_Message(1, 24, 4, input_string, 1500);
        trecordsnumber=currentrecord; // keep value of currentrecord
        currentrecord=findresults[0][0];
-    break; } }
+    break; } 
+       
+    // calculator keys
+    if (currentmenu==5 && c) {
+     ttext[0]=c;
+     ttext[1]='\0';
+     switch (c) {
+      case ENTER:
+       strcpy(ttext, "EXEC");
+      break;
+      case DELETE:
+       strcpy(ttext, "AC");
+      break;
+      case BACKSPACE:
+       strcpy(ttext, "DEL");
+     break; }
+     for (i=0;i<fieldsperrecord;i++) 
+      if (record[i].buttonbox==BUTTONBOX && !strcmp(ttext, record[i].automatic_value))
+       pushspaceonfield(i);
+     }
+    }
+   }
   
  return 0;
 }
@@ -1776,8 +1573,6 @@ int Screen_String_Editor(Annotated_Field &tfield)
      return -1;
     strcpy(tfield.text, tstring);
     tfield.number=atof(tfield.text);
-    if (record[records[(currentrecord*fieldsperrecord)+tfield.id].id].formula)
-     strcpy(tfield.formula, tfield.text);
     if (autosave)
      Read_Write_Field(tfield, tfieldposition, 1);
 
@@ -1788,8 +1583,7 @@ int Screen_String_Editor(Annotated_Field &tfield)
 int negatekeysforcurrentmenu(int t)
 {
   int i;
-  const char *menukeys[]={ "eot", "alsh", "dcpjv+-*/.!@", "ifru" }; // m works in all menus
-  
+    
   if (t==SHIFT_RIGHT) t='>'; // shift+right arrow
   if (t==SHIFT_LEFT) t='<'; // shift+left arrow
   if (t==ESC || t==LEFT || t==RIGHT || t==UP || t==DOWN || t==TAB || t==SHIFT_TAB || t=='m' || t=='g' || t=='?' || t==HOME || t==END || t=='<' || t=='>' || t==']' ||  t==START_OF_RECORDS || t==END_OF_RECORDS || t==KEY_MOUSE)
@@ -1799,7 +1593,7 @@ int negatekeysforcurrentmenu(int t)
   if (t==6) { currentmenu=3; t='f'; return t; } // enter find mode
   if (t==5 || t==15 || t==20 || t==PAGES_SELECTOR_KEY) { // direct menu access with ctrl
    switch (t) {
-       case 5:currentmenu=2; break; case 15:currentmenu=1; break; case 20:currentmenu=3; break; case PAGES_SELECTOR_KEY: Pages_Selector();
+    case 5:currentmenu=2; break; case 15:currentmenu=1; break; case 20:currentmenu=3; break; case PAGES_SELECTOR_KEY: Pages_Selector();
    break; }
    Read_Write_Current_Parameters(1, 1);
   return 0; }
@@ -1808,6 +1602,9 @@ int negatekeysforcurrentmenu(int t)
     return t;
   if (currentmenu==2 && t=='\n')
    return 'd';
+  if (currentmenu==5)
+   if (t==ENTER || t==BACKSPACE || t==DELETE || t==SPACE)
+    return t;
   for (i=0;i<strlen(menukeys[currentmenu]);i++)
    if (t==menukeys[currentmenu][i])
     return t;
@@ -1824,7 +1621,7 @@ void Show_Menu_Bar(int mode) // 0 show, 1 remove
   gotoxy(1, menulines[currentmenu]);
   for (i=0;i<79;i++)
    addch(SPACE);
-  
+
   if (!mode) {
    if (menubar==1 && !recordsdemo) {
     Change_Color(menucolors[currentmenu]);
@@ -1878,22 +1675,25 @@ void Show_Help_Screen()
 void Show_DB_Information()
 {
   char dbinfo[1000];
-  int i, n, averagerecordsize, averagefieldsize, tfieldsize=0, numericalfields=0, mixedfields=0, stringfields=0, datestampfields=0, extrawindowlength;
+  int i, n, averagerecordsize, averagefieldsize, tfieldsize=0, numericalfields=0, mixedfields=0, stringfields=0, datestampfields=0, variablefields=0, extrawindowlength;
   long int totalrecordssize=0;
 
    for (i=0;i<record.size();i++)
     switch (record[i].type) {
-     case 0:
+     case NUMERICAL:
       ++numericalfields;
      break;
-     case 1:
+     case CALENDAR:
       ++datestampfields;
      break;
-     case 2:
+     case STRING:
       ++stringfields;
      break;
-     case 3:
+     case MIXEDTYPE:
       ++mixedfields;
+     break;
+     case VARIABLE:
+      ++variablefields;
     break; }
     
    for (i=0;i<recordsnumber;tfieldsize=0, i++) {
@@ -1904,7 +1704,7 @@ void Show_DB_Information()
    averagerecordsize=totalrecordssize/recordsnumber;
   
    extrawindowlength=(numberofdigits(totalrecordssize)<5) ? 0 : numberofdigits(totalrecordssize)-5;  
-   Draw_Box(BOXCHAR, 6, 17, 32+extrawindowlength, 5, 15, 36);
+   Draw_Box(BOXCHAR, 6, 17, 32+extrawindowlength, 5, 16, 36);
    Change_Color(36);
    gotoxy(21,6);
    printw("Database Information");
@@ -1933,6 +1733,8 @@ void Show_DB_Information()
    gotoxy(21,18);
    printw("calendar fields:%d", datestampfields);
    gotoxy(21,19);
+   printw("variable fields:%d", variablefields);   
+   gotoxy(21,20);
    printw("autosave is:%s", onoff[autosave]);
    refresh();
    getch();   
@@ -1946,7 +1748,7 @@ int Show_Field(Annotated_Field *field, int flag) // 1 highlight
   char ttext[MAXSTRING];
   int attributestable[9]; // normal, standout, underline, reverse, blink, dim, bold, protect, invisible
 
-  if (!tfield->active)
+  if (!tfield->active || tfield->type==VARIABLE)
    return -1;
   lima=(tfield->box) ? 80 : 81;
   limb=(tfield->box) ? 23 : 24;
@@ -1961,7 +1763,7 @@ int Show_Field(Annotated_Field *field, int flag) // 1 highlight
   // contents
   
   //title
-  if (strcmp(tfield->title, ".")) {
+  if (strcmp(tfield->title, EMPTYSTRING)) {
    switch (tfield->title_position) {
     case 0:
      tposx=tfield->pt.x;
@@ -1983,7 +1785,7 @@ int Show_Field(Annotated_Field *field, int flag) // 1 highlight
      tposx=tfield->pt.x;
      tposy=tfield->pt.y;
    break; }
-   if (tposx>0 && tposx<80 && tposy>0 && tposy<24 && strcmp(tfield->title, ".")) {
+   if (tposx>0 && tposx<80 && tposy>0 && tposy<24 && strcmp(tfield->title, EMPTYSTRING)) {
    for (i=0;i<9;i++)
     attributestable[i]=ctoi(record[tfield->id].title_attributes[i]);
     for (i=0;i<9;i++) {
@@ -2033,7 +1835,7 @@ int Show_Field(Annotated_Field *field, int flag) // 1 highlight
    fieldhasdependancy=Generate_Dependant_Field_String(field, ttext);
    if (fieldhasdependancy!=1)
     Generate_Field_String(field, ttext);
-   if (field->number || !record[field->id].type)
+   if (field->number || record[field->id].type==NUMERICAL || record[field->id].type==MIXEDTYPE || record[field->id].buttonbox==BUTTONSCREEN)
     addleadingzeros(ttext, field);
    // add attributes
    for (i=0;i<9;i++)
@@ -2127,13 +1929,16 @@ void Generate_Field_String(Annotated_Field *field, char *ttext)
  char formula[LMAXCOMMAND];
      
   Field *tfield=&record[field->id];
+  if (record[tfield->id].formula)
+   strcpy(field->formula, field->text);
+  
   switch (tfield->type) {
-   case 0:
-    if (strcmp(tfield->automatic_value, "."))
+   case NUMERICAL:
+    if (strcmp(tfield->automatic_value, EMPTYSTRING))
      field->number=atof(tfield->automatic_value);
     if (tfield->formula) {
      strcpy(formula, field->text);
-     if (strcmp(tfield->automatic_value, "."))
+     if (strcmp(tfield->automatic_value, EMPTYSTRING))
       strcpy(formula, tfield->automatic_value);
      i=parseformulaforfunctions(formula);
      if (!i)
@@ -2147,31 +1952,31 @@ void Generate_Field_String(Annotated_Field *field, char *ttext)
     field->number=0; }
     strcpy(ttext, dtoa(field->number));
     limitsignificantnumbers(ttext, tfield->decimals);
-    if (strcmp(tfield->suffix, "."))
+    if (strcmp(tfield->suffix, EMPTYSTRING))
      strcat(ttext, tfield->suffix);
    break;
-   case 1:
+   case CALENDAR:
     strcpy(ttext, field->text);
    break;
-   case 2:
+   case STRING:
     strcpy(ttext, field->text);
-    if (strcmp(tfield->automatic_value, "."))
+    if (strcmp(tfield->automatic_value, EMPTYSTRING))
      strcpy(ttext, tfield->automatic_value);
     if (tfield->formula) {
      strcpy(formula, field->text);
-     if (strcmp(tfield->automatic_value, "."))
+     if (strcmp(tfield->automatic_value, EMPTYSTRING))
       strcpy(formula, tfield->automatic_value);
      i=stringformulacalculator(formula, currentrecord);
      if (i) {
       cropstring(formula, MAXSTRING);
     strcpy(ttext, formula); } }
    break; 
-   case 3:
+   case MIXEDTYPE:
     strcpy(ttext, field->text);
-    if (strcmp(tfield->automatic_value, "."))
+    if (strcmp(tfield->automatic_value, EMPTYSTRING))
      strcpy(ttext, tfield->automatic_value);
     if (tfield->formula) {
-     if (strcmp(tfield->automatic_value, "."))
+     if (strcmp(tfield->automatic_value, EMPTYSTRING))
       strcpy(field->text, tfield->automatic_value);
      strcpy(formula, field->text);
      n=0;
@@ -2186,21 +1991,27 @@ void Generate_Field_String(Annotated_Field *field, char *ttext)
       field->number=reversepolishcalculator(formula);
      else
     field->number=0; }
-    if (field->number) {
+    if (field->number || record[field->id].buttonbox==BUTTONSCREEN) {
      strcpy(ttext, dtoa(field->number));
      limitsignificantnumbers(ttext, tfield->decimals);
-     if (strcmp(tfield->suffix, "."))
+     if (strcmp(tfield->suffix, EMPTYSTRING))
     strcat(ttext, tfield->suffix); }
     if (tfield->formula && !field->number) {
      strcpy(formula, field->text);
-     if (strcmp(tfield->automatic_value, "."))
+     if (strcmp(tfield->automatic_value, EMPTYSTRING))
       strcpy(formula, tfield->automatic_value);
      i=stringformulacalculator(formula, currentrecord);
      if (i) {
       cropstring(formula, MAXSTRING);
     strcpy(ttext, formula); } }
+    break;
+    default:
   break; }
   strcpy(field->text, ttext);
+  
+  // restore button screen
+  if (record[field->id].buttonbox==BUTTONSCREEN)
+   record[field->id].type=STRING;
 }
 
 // generate (if any) dependant field string
@@ -2479,11 +2290,17 @@ int Read_Write_Relationships(int mode) // 0 read all, 1 write/add
 // setup necessary variables
 void Initialize_Database_Parameters()
 {
+ int i;
+ 
   currentrecord=Read_Write_Current_Parameters(0);
   currentmenu=Read_Write_Current_Parameters(1);
   menubar=Read_Write_Current_Parameters(2);
   autosave=Read_Write_Current_Parameters(3);
   currentfield=Read_Write_Current_Parameters(4);
+  
+   // determine button boxes
+   for (i=0;i<record.size();i++)
+    Determine_Button_Box(i);
 }
 
 // load database
@@ -2495,10 +2312,11 @@ void Load_Database(int pagenumber)
 }
 
 // pages selector - editor
-int Pages_Selector()
+int Pages_Selector(int pagetochange)
 {
   int i, t;
   
+  if (pagetochange==-1) {
    Change_Color(4);
    while (t!=ESC && t!='\n') {
     Show_Menu_Bar(1);
@@ -2554,7 +2372,10 @@ int Pages_Selector()
       if (currentpage)
        --currentpage;
     break; } }
-    
+  }
+  else
+   currentpage=pagetochange;
+  
   Read_Write_Current_Parameters(4, 1); // write out currentfield in case of change
   Load_Database(currentpage);
   
@@ -2675,4 +2496,126 @@ int fetchmousemenucommand()
    mousemenucommands.erase(p);
     
  return command;
+}
+
+// determine if record is buttonbox
+int Determine_Button_Box(int field_id)
+{
+  int i;
+  char command[MAXSTRING], tautomaticvalue[MAXSTRING];
+  
+    record[field_id].buttonbox=NOBUTTON;
+    if (record[field_id].size.x==1 && record[field_id].size.y==1 && record[field_id].editable && record[field_id].type!=VARIABLE) {
+     record[field_id].buttonbox=TICKBOX; // tick box
+     record[field_id].type=STRING; // string
+    }
+    for (i=0;i<buttonkeystotal;i++) {
+     if (!strcmp(buttonkeys[i], record[field_id].automatic_value) && record[field_id].type!=VARIABLE) { // button box
+      if (record[field_id].fieldlist-1!=field_id)
+       record[field_id].buttonbox=BUTTONBOX;
+       record[record[field_id].fieldlist-1].buttonbox=BUTTONSCREEN; // button screen
+       record[record[field_id].fieldlist-1].type=MIXEDTYPE;
+//        record[record[field_id].fieldlist-1].fieldlist=0;
+     strcpy(record[record[field_id].fieldlist-1].automatic_value, EMPTYSTRING); }
+    }
+     strcpy(tautomaticvalue, record[field_id].automatic_value);
+     if (strcmp(tautomaticvalue, EMPTYSTRING) && (scantextforcommand(tautomaticvalue, command)) && record[field_id].fieldlist-1==field_id) // button command
+      record[field_id].buttonbox=BUTTONCOMMAND;
+   
+ return record[field_id].buttonbox;
+}
+
+// return command from automatic value
+char *fetchcommand(char *text)
+{
+  static char *command=(char *) malloc((size_t) MAXSTRING);
+  char ttext[MAXSTRING];
+  strcpy(ttext, text);
+  int i;
+  
+   i=scantextforcommand(ttext, command);
+  
+ return command;
+}
+
+// reduce text by times at end char
+void Delete_Field_Entry(int field_id)
+{
+  strcpy(records[(currentrecord*fieldsperrecord)+field_id].text, " ");
+  records[(currentrecord*fieldsperrecord)+field_id].number=0;
+}
+
+// push space on field
+void pushspaceonfield(int field_id)
+{
+  int i1;
+  char ttext[MAXSTRING];
+  
+  if (field_id==-1)
+   field_id=currentfield;
+    
+      // tickboxes
+      if (record[field_id].buttonbox==TICKBOX) {
+       records[(field_id*fieldsperrecord)+field_id].text[0]=(records[(currentrecord*fieldsperrecord)+field_id].text[0]=='X') ? ' ' : 'X';
+      Read_Write_Field(records[(currentrecord*fieldsperrecord)+field_id], fieldposition(currentrecord, field_id), 1); }
+      // buttonboxes
+      if (record[field_id].buttonbox==BUTTONBOX) {
+       for (i1=0;i1<buttonkeystotal;i1++)
+        if (!strcmp(buttonkeys[i1], record[field_id].automatic_value))
+         break;
+        if (record[record[field_id].fieldlist-1].buttonbox==BUTTONSCREEN) {
+         if (i1<=buttonkeystotal-4) {
+          if (!isdigit(buttonkeys[i1][0]) && !isdecimalseparator(buttonkeys[i1][0]) && iscalculationsign(buttonkeys[i1][0]))
+           sprintf(ttext, " %s ", buttonkeys[i1]);
+          else
+           strcpy(ttext, buttonkeys[i1]);
+          strcat(records[(currentrecord*fieldsperrecord)+record[field_id].fieldlist-1].text, ttext);
+         }
+         else { // ac, del, exec
+          switch (i1) {
+           case buttonkeystotal-3: // AC
+            Delete_Field_Entry(record[field_id].fieldlist-1);
+           break;
+           case buttonkeystotal-2: // DEL
+            records[(currentrecord*fieldsperrecord)+record[field_id].fieldlist-1].text[strlen(records[(currentrecord*fieldsperrecord)+record[field_id].fieldlist-1].text)-1]='\0';
+           break;
+           case buttonkeystotal-1: // EXEC
+            records[(currentrecord*fieldsperrecord)+field_id].number=0;
+            record[record[field_id].fieldlist-1].type=NUMERICAL; // trick to bring reversepolishcalculator
+          break; }
+       Read_Write_Field(records[(currentrecord*fieldsperrecord)+record[field_id].fieldlist-1], fieldposition(currentrecord, record[field_id].fieldlist-1), 1); }
+     } }
+     if (record[field_id].buttonbox==BUTTONCOMMAND) {
+      if (runscript) {
+       keyonnextloop.push_back(SPACE);
+       runscript=0;
+      return; }
+      runscript=1;
+      scriptcommand=fetchcommand(record[field_id].automatic_value);
+    }
+     
+}
+
+// copy to clipboard
+void copytoclipboard()
+{
+  strcpy(clipboard, records[(currentrecord*fieldsperrecord)+currentfield].text);
+}
+
+// paste from clipboard
+void pastefromclipboard()
+{
+  strcpy(records[(currentrecord*fieldsperrecord)+currentfield].text, clipboard);
+  if (autosave)
+   Read_Write_Field(records[(currentrecord*fieldsperrecord)+currentfield], fieldposition(currentrecord, currentfield), 1);
+}
+
+// toggle autosave on/off
+void toggleautosave()
+{
+  autosave=(autosave) ? 0 : 1;
+  Show_Menu_Bar(1);
+  Show_Message(1, 24, 2, "autosave:", 0);
+  Show_Message(10, 24, 2, onoff[autosave], 1500);
+  Read_Write_Current_Parameters(3, 1);
 }

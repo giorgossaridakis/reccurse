@@ -1,16 +1,9 @@
-int Init_Screen();
-void End_Screen();
-void Change_Color(int choice);
-void Draw_Box(int color, int x_pos, int x_size, int y_pos, int y_size, int paintcolor=0);
-void Draw_Box(char t, int color, int x_pos, int x_size, int y_pos, int y_size, int paintcolor=0);
-void Draw_Box(Drawbox &tdrawbox);
-void gotoxy(int x, int y);
+// reccurse ncurses screen modules
 
 WINDOW *win1=newwin(80, 24, 1, 1);
 
-#define SPACE 32
-#define UNDERSCORE 95
-#define BOXCHAR '*'
+const int UNDERSCORE=95;
+const char BOXCHAR='*';
 
 int highlightcolors[2]={ 34, 23 };
 
