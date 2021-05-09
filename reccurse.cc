@@ -1,7 +1,7 @@
 // reccurse, the filemaker of ncurses
 #include "reccurse.h"
 
-const double version=0.392;
+const double version=0.393;
 
 int main(int argc, char *argv[])
 {
@@ -654,7 +654,7 @@ int Add_Field(int type, char *name, char *textvalue)
     strcpy(name, EMPTYSTRING); }
     if (textvalue==NULL) {
      textvalue=(char *) malloc(MAXSTRING);
-    strcpy(textvalue, EMPTYSTRING); }
+    strcpy(textvalue, " "); }
     if (type==VARIABLE) {
      strcpy(autovalue, textvalue);
     tx=99; ty=99; }
@@ -725,6 +725,7 @@ int Join_Fields(int field_id, int mode)
   record[fieldidentities[i]].size.x+=record[fieldidentities[i+1]].size.x+1; }
   else
    record[fieldidentities[i]].size.y+=record[fieldidentities[i+1]].size.y;
+//   if (strcmp(records[(currentrecord*fieldsperrecord)+fieldidentities[i+1]].text, EMPTYSTRING)) {
   strcat(records[(currentrecord*fieldsperrecord)+field_id].text, " ");
   strcat(records[(currentrecord*fieldsperrecord)+field_id].text, records[(currentrecord*fieldsperrecord)+fieldidentities[i+1]].text);
   Delete_Field(fieldidentities[i+1]);
