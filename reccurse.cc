@@ -1,7 +1,7 @@
 // reccurse, the filemaker of ncurses
 #include "reccurse.h"
 
-const double version=0.391;
+const double version=0.392;
 
 int main(int argc, char *argv[])
 {
@@ -1005,6 +1005,9 @@ int Show_Record_and_Menu()
       for (i=0;i<strlen(alterscreenparameterskeys);i++)
        if (c==alterscreenparameterskeys[i])
         alteredparameters=1;
+     for (i=0;i<strlen(programkeys);i++)
+      if (c==programkeys[i])
+       addorplayprogram(c);
       
      switch (c) {
       // from menu 0
@@ -1605,6 +1608,10 @@ int negatekeysforcurrentmenu(int t)
   if (currentmenu==5)
    if (t==ENTER || t==BACKSPACE || t==DELETE || t==SPACE)
     return t;
+  if (currentmenu<4)
+   for (i=0;i<strlen(programkeys);i++)
+    if (t==(int) programkeys[i])
+     return t;
   for (i=0;i<strlen(menukeys[currentmenu]);i++)
    if (t==menukeys[currentmenu][i])
     return t;
@@ -1748,7 +1755,7 @@ int Show_Field(Annotated_Field *field, int flag) // 1 highlight
   char ttext[MAXSTRING];
   int attributestable[9]; // normal, standout, underline, reverse, blink, dim, bold, protect, invisible
 
-  if (!tfield->active || tfield->type==VARIABLE)
+  if (!tfield->active || tfield->type>MIXEDTYPE)
    return -1;
   lima=(tfield->box) ? 80 : 81;
   limb=(tfield->box) ? 23 : 24;
@@ -2505,7 +2512,7 @@ int Determine_Button_Box(int field_id)
   char command[MAXSTRING], tautomaticvalue[MAXSTRING];
   
     record[field_id].buttonbox=NOBUTTON;
-    if (record[field_id].size.x==1 && record[field_id].size.y==1 && record[field_id].editable && record[field_id].type!=VARIABLE) {
+    if (record[field_id].size.x==1 && record[field_id].size.y==1 && record[field_id].editable && record[field_id].type<VARIABLE) {
      record[field_id].buttonbox=TICKBOX; // tick box
      record[field_id].type=STRING; // string
     }
@@ -2618,4 +2625,30 @@ void toggleautosave()
   Show_Message(1, 24, 2, "autosave:", 0);
   Show_Message(10, 24, 2, onoff[autosave], 1500);
   Read_Write_Current_Parameters(3, 1);
+}
+
+// add or play program
+int addorplayprogram(int programid)
+{
+  int i;
+  programid=ctoi(programid);
+  
+   for (i=0;i<record.size();i++)
+    if (record[i].type==PROGRAM && programid==ctoi(record[i].title[0]))
+     break;
+   
+   if (i==record.size()) {
+    Change_Color(5);
+    gotoxy(1, 24);
+    printw("keys:");
+    Scan_Input(input_string, 6, 24, 5);
+    Add_Field(PROGRAM, itoa(programid), input_string);
+    strcpy(input_string, " ");
+    Show_Menu_Bar(1);
+    Show_Message(1, 24, 5, "program saved", 750);
+   return record.size(); }
+    
+   breaktexttokeys(records[i].text); // text from any record will do
+    
+ return 0;
 }

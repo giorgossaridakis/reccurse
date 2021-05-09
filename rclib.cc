@@ -1017,7 +1017,7 @@ int decimatestringtokey(char *text)
     key=RIGHT;
    if (!strcmp(ttext, "shift_left"))
     key=SHIFT_LEFT;
-   if (!strcmp(ttext, "shit_right"))
+   if (!strcmp(ttext, "shift_right"))
     key=SHIFT_RIGHT;
    if (!strcmp(ttext, "escape") || !strcmp(ttext, "esc"))
     key=ESC;

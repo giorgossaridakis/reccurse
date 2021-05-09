@@ -45,10 +45,11 @@ const int MAXSEARCHDEPTH=5;
 enum { HORIZONTALLY=0, VERTICALLY };
 const int NUMERICALLIMIT=32765;
 enum { NOBUTTON=0, TICKBOX, BUTTONBOX, BUTTONSCREEN, BUTTONCOMMAND };
-enum { NUMERICAL=0, CALENDAR, STRING, MIXEDTYPE, VARIABLE };
+enum { NUMERICAL=0, CALENDAR, STRING, MIXEDTYPE, VARIABLE, PROGRAM };
 const char *menukeys[]={ "eot`", "alsh", "dcpjv+-*/.!@", "ifru", "yn", "0123456789/*-+^,.()=" }; // m works in all menus
 const char *buttonkeys[]={ "0", "1", "2", "3", "4", "5", "6", "7", "8", "9", "/", "*", 
 "-", "+", "^", ",", ".", "(", ")", "=", "sin", "cos", "tan", "cotan", "sqr", "abs", "AC", "DEL", "EXEC" };
+const char *programkeys="1234567890";
 const char *EMPTYSTRING="~";
 const int buttonkeystotal=29;
 const char *alterscreenparameterskeys="/*-+.!@";
@@ -266,6 +267,7 @@ void pushspaceonfield(int field_id=-1);
 void copytoclipboard();
 void pastefromclipboard();
 void toggleautosave();
+int addorplayprogram(int programid);
 
 // rccompar.cc
 int labelposition(char *label);
