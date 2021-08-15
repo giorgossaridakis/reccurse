@@ -1,7 +1,7 @@
 // reccurse, the filemaker of ncurses
 #include "reccurse.h"
 
-const double version=0.400;
+const double version=0.401;
 
 int main(int argc, char *argv[])
 {
@@ -1759,8 +1759,10 @@ void Show_Menu_Bar(int mode) // 0 show, 1 remove
 void Show_Help_Screen()
 {
   ifstream helpfile("reccurse.man");
+  if (!helpfile)
+   return;
   string helpinfo;
-  int lines=0;
+  int lines=0, c;
   clear();
   Change_Color(58);
     
@@ -1768,7 +1770,9 @@ void Show_Help_Screen()
     getline(helpfile, helpinfo);
     ++lines;
     if (lines>23) {
-     getch();
+     c=getch();
+     if (c==ESC)
+      return;
      clear();
     lines=0; }
     printw("%s\n", helpinfo.c_str());
