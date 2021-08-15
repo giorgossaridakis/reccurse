@@ -46,14 +46,14 @@ enum { HORIZONTALLY=0, VERTICALLY };
 const int NUMERICALLIMIT=32765;
 enum { NOBUTTON=0, TICKBOX, BUTTONBOX, BUTTONSCREEN, BUTTONCOMMAND };
 enum { NUMERICAL=0, CALENDAR, STRING, MIXEDTYPE, VARIABLE, PROGRAM };
-const char *menukeys[]={ "eot`", "alsh", "dcpjv+-*/.!@", "ifru", "yn", "0123456789/*-+^,.()=" }; // m works in all menus
+const char *menukeys[]={ "eot`", "alsh`", "dcpjv+-*/.!@`", "ifru`", "yn`", "0123456789/*-+^,.()=`" }; // m works in all menus
 const char *buttonkeys[]={ "0", "1", "2", "3", "4", "5", "6", "7", "8", "9", "/", "*", 
-"-", "+", "^", ",", ".", "(", ")", "=", "sin", "cos", "tan", "cotan", "sqr", "abs", "AC", "DEL", "EXEC" };
+"-", "+", "^", ",", ".", "(", ")", "=", "sin", "cos", "tan", "cotan", "sqr", "abs", "log", "AC", "DEL", "EXEC" };
 const char *programkeys="1234567890";
 const char *EMPTYSTRING="~";
-const int buttonkeystotal=29;
+const int buttonkeystotal=30;
 const char *alterscreenparameterskeys="/*-+.!@";
-const char *menutexts[]={ "<tabshiftarrows|<>|homeend|<g>|<e>dit|<o>ptions|ex<t>ra|`|<m>enubar|<ESC>quit", "<a>utosave on/off|<l>oad database|<s>ave database|<h>elp page|<ESC>main menu", "e<d>it|<c>opy|<DEL>ete|<j>oin|di<v>ide|datestam<p>|<INS>more|<ESC>main menu", "database <i>nformation|<f>ind|so<r>t records|set<u>p database|<ESC>main menu", "really quit ?", "calculator mode: 0123456789/*-+^,.()= <enter> <backspace> <delete>" };  //main, options, edit, extra, quit, calculator
+const char *menutexts[]={ "<tabshiftarrows|<>|homeend|<g>|<e>dit|<o>ptions|ex<t>ra|`|<m>enubar|<ESC>quit", "<a>utosave on/off|<l>oad database|<s>ave database|<h>elp page|`|<ESC>main menu", "e<d>it|<c>opy|<DEL>ete|<j>oin|di<v>ide|datestam<p>|<INS>more|`|<ESC>main menu", "database <i>nformation|<f>ind|so<r>t records|set<u>p database|`|<ESC>main menu", "really quit ?", "calculator: 0123456789/*-+^,.()= <enter> <backspace> <delete> <`>previous menu" };  //main, options, edit, extra, quit, calculator
 
 // keyboard
 const int DOWN=258;
@@ -108,6 +108,7 @@ char clipboard[MAXSTRING];
 int menucolors[6]={ 5, 6, 4, 3, 1, 2 };
 int menulines[6]={ 24, 24, 24, 24, 24, 24 };
 char infotext[MAXSTRING], *scriptcommand;
+int screen[81][25];
 
 struct Points {
  int x;
@@ -232,7 +233,7 @@ int Join_Fields(int field_id, int mode);
 void Renumber_Field_References(int startingfield);
 void Renumber_Field_Relationships(int startingfield);
 int Divide_Field(int field_id, int mode);
-void Bring_DateTime_Stamp(char tdatetime[MAXSTRING]);
+void Bring_DateTime_Stamp(char tdatetime[MAXSTRING], int field_id);
 int Read_Write_Field(Annotated_Field &tfield, long int field_position, int mode=0);
 long int fieldposition(int record_id, int field_id);
 long int fieldserialtofieldposition(int position);
@@ -254,7 +255,7 @@ int Export_Database(char *filename);
 int Import_Database(char *filename);
 int Import_External_db_File(char *filename);
 int Read_Write_Relationships(int mode=0);
-void Initialize_Database_Parameters();
+void Initialize_Database_Parameters(int mode=0);
 void Load_Database(int pagenumber);
 int Pages_Selector(int pagetochange=-1);
 int Clean_Database(char *filename);

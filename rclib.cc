@@ -1023,6 +1023,8 @@ int decimatestringtokey(char *text)
     key=ESC;
    if (!strcmp(ttext, "enter"))
     key=ENTER;
+   if (!strcmp(ttext, "space"))
+    key=SPACE;
    if (!strcmp(ttext, "backspace") || !strcmp(ttext, "bs"))
     key=BACKSPACE;
    if (!strcmp(ttext, "delete") || !strcmp(ttext, "del"))

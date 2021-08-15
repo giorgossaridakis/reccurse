@@ -1,7 +1,7 @@
 // reccurse, the filemaker of ncurses
 #include "reccurse.h"
 
-const double version=0.393;
+const double version=0.400;
 
 int main(int argc, char *argv[])
 {
@@ -133,7 +133,7 @@ int End_Program(int code)
 }
 
 // filename extension add/remove
-void Reccurse_File_Extension(char *filename, int flag) // 0 remove, 1 add .rc, 2 add .db
+void Reccurse_File_Extension(char *filename, int flag) // 0 remove, 1 add .rc, 2 add .db, 3 add .out
 {
   int i;
   
@@ -151,6 +151,10 @@ void Reccurse_File_Extension(char *filename, int flag) // 0 remove, 1 add .rc, 2
    case 2:
     Reccurse_File_Extension(filename, 0);
     strcat(filename, ".db");
+   break;
+   case 3:
+    Reccurse_File_Extension(filename, 0);
+    strcat(filename, ".out");
   break; }
 }
 
@@ -622,10 +626,10 @@ void Initialize_Record()
 {
   int i;
   char tdatetime[MAXSTRING];
-  Bring_DateTime_Stamp(tdatetime);
   
   for (i=0;i<fieldsperrecord;i++) {
    Annotated_Field tfield(i, 0, " ", " ");
+  Bring_DateTime_Stamp(tdatetime, tfield.id);
   if (record[tfield.id].type==CALENDAR)
    strcpy(tfield.text, tdatetime);
   records.push_back(tfield); }
@@ -812,12 +816,67 @@ int Divide_Field(int field_id, int mode)
 }
 
 // bring current datetime stamp in char array
-void Bring_DateTime_Stamp(char tdatetime[MAXSTRING])
+void Bring_DateTime_Stamp(char tdatetime[MAXSTRING], int field_id) 
 {
- time_t now = time(0);
- int i;
-
-  strcpy(tdatetime, ctime(&now));
+  int i;
+  time_t rawtime;
+  struct tm * timeinfo;
+  time (&rawtime);
+  timeinfo = localtime(&rawtime);
+  char calendarformat[MAXSTRING];
+  
+// specifier	Replaced by	Example
+// %a	Abbreviated weekday name *	Thu
+// %A	Full weekday name * 	Thursday
+// %b	Abbreviated month name *	Aug
+// %B	Full month name *	August
+// %c	Date and time representation *	Thu Aug 23 14:55:02 2001
+// %C	Year divided by 100 and truncated to integer (00-99)	20
+// %d	Day of the month, zero-padded (01-31)	23
+// %D	Short MM/DD/YY date, equivalent to %m/%d/%y	08/23/01
+// %e	Day of the month, space-padded ( 1-31)	23
+// %F	Short YYYY-MM-DD date, equivalent to %Y-%m-%d	2001-08-23
+// %g	Week-based year, last two digits (00-99)	01
+// %G	Week-based year	2001
+// %h	Abbreviated month name * (same as %b)	Aug
+// %H	Hour in 24h format (00-23)	14
+// %I	Hour in 12h format (01-12)	02
+// %j	Day of the year (001-366)	235
+// %m	Month as a decimal number (01-12)	08
+// %M	Minute (00-59)	55
+// %n	New-line character ('\n')	
+// %p	AM or PM designation	PM
+// %r	12-hour clock time *	02:55:02 pm
+// %R	24-hour HH:MM time, equivalent to %H:%M	14:55
+// %S	Second (00-61)	02
+// %t	Horizontal-tab character ('\t')	
+// %T	ISO 8601 time format (HH:MM:SS), equivalent to %H:%M:%S	14:55:02
+// %u	ISO 8601 weekday as number with Monday as 1 (1-7)	4
+// %U	Week number with the first Sunday as the first day of week one (00-53)	33
+// %V	ISO 8601 week number (01-53)	34
+// %w	Weekday as a decimal number with Sunday as 0 (0-6)	4
+// %W	Week number with the first Monday as the first day of week one (00-53)	34
+// %x	Date representation *	08/23/01
+// %X	Time representation *	14:55:02
+// %y	Year, last two digits (00-99)	01
+// %Y	Year	2001
+// %z	ISO 8601 offset from UTC in timezone (1 minute=1, 1 hour=100)
+// If timezone cannot be determined, no characters	+100
+// %Z	Timezone name or abbreviation *
+// If timezone cannot be determined, no characters	CDT
+// %%	A % sign	%
+// * The specifiers marked with an asterisk (*) are locale-dependent.
+// Note: Yellow rows indicate specifiers and sub-specifiers introduced by C99. Since C99, two locale-specific modifiers can also be inserted between the percentage sign (%) and the specifier proper to request an alternative format, where applicable:
+// Modifier	Meaning	Applies to
+// E	Uses the locale's alternative representation	%Ec %EC %Ex %EX %Ey %EY
+// O	Uses the locale's alternative numeric symbols	%Od %Oe %OH %OI %Om %OM %OS %Ou %OU %OV %Ow %OW %Oy
+  
+  strcpy(calendarformat, "%d-%m-%Y %H:%M:%S");
+  if (strcmp(record[field_id].automatic_value, EMPTYSTRING))
+   strcpy(calendarformat, record[field_id].automatic_value);
+  
+   strftime(tdatetime, MAXSTRING,const_cast <char *> (calendarformat), timeinfo);
+  
   for (i=0;i<strlen(tdatetime);i++)
    if (tdatetime[i]=='\n')
     tdatetime[i]=SPACE;    
@@ -953,7 +1012,7 @@ void Duplicate_Record(int record_id)
 // show record
 int Show_Record_and_Menu()
 {
-  int i, i1, n, trecordsnumber, run=1, c;
+  int i, i1, n, trecordsnumber, run=1, c, backupmenu=0;
   int findresults[MAXSEARCHDEPTH+1][MAXRECORDS], tsortresults[MAXRECORDS];
   char input_text[MAXSTRING], ttext[MAXSTRING], tattributes[9];
   FindSchedule tfindschedule;
@@ -962,6 +1021,10 @@ int Show_Record_and_Menu()
   
    while (run) {
     clear();
+    // clear screen array
+    for (i=1;i<81;i++)
+     for (i1=1;i1<25;i1++)
+      screen[i][i1]=SPACE;
     for (i=0;i<fieldsperrecord;i++)
      Show_Field(&records[(currentrecord*fieldsperrecord)+i]);
     if (currentfield>-1 && !recordsdemo)
@@ -1006,11 +1069,34 @@ int Show_Record_and_Menu()
       for (i=0;i<strlen(alterscreenparameterskeys);i++)
        if (c==alterscreenparameterskeys[i])
         alteredparameters=1;
-     for (i=0;i<strlen(programkeys);i++)
-      if (c==programkeys[i])
-       addorplayprogram(c);
+     if (currentmenu!=5)
+      for (i=0;i<strlen(programkeys);i++)
+       if (c==programkeys[i])
+        addorplayprogram(c);
       
      switch (c) {
+      // print screen
+      case 'z': {
+       Reccurse_File_Extension(pages[currentpage], 3);
+       FILE *out=fopen(pages[currentpage], "a");
+       Reccurse_File_Extension(pages[currentpage], 2);
+       mousemask(0, NULL);
+       clear();
+       Change_Color(58);
+       for (i1=1;i1<25;i1++) {
+        for (i=1;i<81;i++) {
+         fputc(screen[i][i1], out);
+         gotoxy(i, i1);
+        printw("%c", screen[i][i1]);
+        }
+        fputc('\n', out);
+       }
+       refresh();
+       getch();
+       mousemask(ALL_MOUSE_EVENTS, NULL);
+       fclose(out);
+      }
+      break;
       // from menu 0
       case 'e':
        currentmenu=2;
@@ -1025,17 +1111,21 @@ int Show_Record_and_Menu()
        Read_Write_Current_Parameters(1, 1);
       break;
       case '`': {
-       // any buttons and screens for need to go to calculator mode ?
-       int buttons=0, screens=0;
-       for (i1=0;i1<fieldsperrecord;i1++) {
-        if (record[i1].buttonbox==BUTTONBOX)
-         ++buttons;
-        if (record[i1].buttonbox=BUTTONSCREEN)
-       ++screens; }
-       if (!(buttons+screens))
-        break;
-       currentmenu=5;
-       Read_Write_Current_Parameters(1, 1); }
+       if (currentmenu==5)
+        currentmenu=backupmenu;
+       else {
+        int buttons=0, screens=0;
+        for (i1=0;i1<fieldsperrecord;i1++) {
+         if (record[i1].buttonbox==BUTTONBOX)
+          ++buttons;
+         if (record[i1].buttonbox==BUTTONSCREEN)
+        ++screens; }
+        if (!(buttons+screens))
+         break;
+        backupmenu=currentmenu;  // keep old menu from calculator mode
+       currentmenu=5; }
+       Read_Write_Current_Parameters(1, 1);  
+       Initialize_Database_Parameters(1); }
       break;
       case 'm': // from all menus
        ++menubar;
@@ -1326,7 +1416,7 @@ int Show_Record_and_Menu()
      break;
      case 'p':
       if (record[records[(currentrecord*fieldsperrecord)+currentfield].id].type && record[records[(currentrecord*fieldsperrecord)+currentfield].id].editable) {
-       Bring_DateTime_Stamp(records[(currentrecord*fieldsperrecord)+currentfield].text);
+       Bring_DateTime_Stamp(records[(currentrecord*fieldsperrecord)+currentfield].text, record[records[(currentrecord*fieldsperrecord)+currentfield].id].id);
       Read_Write_Field(records[(currentrecord*fieldsperrecord)+currentfield], fieldposition(currentrecord, currentfield), 1); }
      break;
      case SPACE:
@@ -1590,7 +1680,7 @@ int negatekeysforcurrentmenu(int t)
     
   if (t==SHIFT_RIGHT) t='>'; // shift+right arrow
   if (t==SHIFT_LEFT) t='<'; // shift+left arrow
-  if (t==ESC || t==LEFT || t==RIGHT || t==UP || t==DOWN || t==TAB || t==SHIFT_TAB || t=='m' || t=='g' || t=='?' || t==HOME || t==END || t=='<' || t=='>' || t==']' ||  t==START_OF_RECORDS || t==END_OF_RECORDS || t==KEY_MOUSE)
+  if (t==ESC || t==LEFT || t==RIGHT || t==UP || t==DOWN || t==TAB || t==SHIFT_TAB || t=='m' || t=='g' || t=='?' || t==HOME || t==END || t=='<' || t=='>' || t==']' ||  t==START_OF_RECORDS || t==END_OF_RECORDS || t==KEY_MOUSE || t=='z')
    return t;
   if (recordsdemo)
    return 0;
@@ -1668,15 +1758,25 @@ void Show_Menu_Bar(int mode) // 0 show, 1 remove
 // show a help scren
 void Show_Help_Screen()
 {
-  string helpinfo="                                <help screen>                                   reccurse is an advanced custom design record keeper for the terminal.           instruction keys are usually displayed in the bottom bar, the bottom bar itself can be switched from keyboard hints, to navigation information, to field text,  to disappearance with the <m> key. navigation through fields is done with arrow keys or tab/shift+tab and with home/end. move through records with shift+arrow  keys or < >. <g>o for record number. navigation keys work in all menus.         more keys -> ctrl+e to edit submenu, ctrl+o to options mode, ctrl+t to extra    submenu, ctrl+f find function, ctrl+k copy to clipboard, ctrl+v paste clipboard.ctrl+w to pages menu, arrow keys, INS, DELETE, HOME, END keys for there.        +-*/. keys will add/remove attributes,!@ keys for color, ? for this help screen.<carriage return> enters edit mode, <space> ticks/unticks tickboxes (1x1fields).when find is selected, user is prompted to enter a field number, then a search  criteria (asterisks denote any text until the next alphanumeric character).     the sequence is repeated until a carriage return is given. this allows for      multiple searches, each sequential will operate on the previous find records    that match the requested criteria.                                              when sort is selected, user is prompted to enter a field number, then           <a>scending or <d>escending order. the sequence is repeated and records are     sorted each time according to the requested sort parameters.                    reccurse will record changes in fields after editing, if autosave is enabled in options submenu (default option). to prevent loss of data, keep a backup.       written in Aug-Oct 2019 by Giorgos Saridakis.                                              reccurse is distributed under the GNU Public Licence. :)";
-
-   clear();
-   Change_Color(58);
-   gotoxy(1,1);
-   printw("%s", helpinfo.c_str());
-   refresh();
+  ifstream helpfile("reccurse.man");
+  string helpinfo;
+  int lines=0;
+  clear();
+  Change_Color(58);
+    
+   while (helpfile) {
+    getline(helpfile, helpinfo);
+    ++lines;
+    if (lines>23) {
+     getch();
+     clear();
+    lines=0; }
+    printw("%s\n", helpinfo.c_str());
+   }
    getch();
-   clear();
+    
+  helpfile.close();
+
 }
 
 // show database information screen
@@ -1829,6 +1929,8 @@ int Show_Field(Annotated_Field *field, int flag) // 1 highlight
     Change_Color(tfield->title_color);
     gotoxy(tposx, tposy);
     printw("%s", tfield->title);
+    for (i=0;i<strlen(tfield->title);i++)
+     screen[tposx+i][tposy]=tfield->title[i];
     // remove attributes
     attroff(A_STANDOUT);
     attroff(A_UNDERLINE);
@@ -1890,6 +1992,7 @@ int Show_Field(Annotated_Field *field, int flag) // 1 highlight
      break;
     gotoxy(columninprint, rowinprint);
     addch(ttext[i]);
+    screen[columninprint][rowinprint]=ttext[i];
     ++columninprint;
     if (columninprint>tfield->pt.x+tfield->size.x-1) {
      columninprint=tfield->pt.x;
@@ -2296,16 +2399,18 @@ int Read_Write_Relationships(int mode) // 0 read all, 1 write/add
 }
 
 // setup necessary variables
-void Initialize_Database_Parameters()
+void Initialize_Database_Parameters(int mode)
 {
  int i;
  
-  currentrecord=Read_Write_Current_Parameters(0);
-  currentmenu=Read_Write_Current_Parameters(1);
-  menubar=Read_Write_Current_Parameters(2);
-  autosave=Read_Write_Current_Parameters(3);
-  currentfield=Read_Write_Current_Parameters(4);
-  
+  if (!mode) {
+   currentrecord=Read_Write_Current_Parameters(0);
+   currentmenu=Read_Write_Current_Parameters(1);
+   menubar=Read_Write_Current_Parameters(2);
+   autosave=Read_Write_Current_Parameters(3);
+   currentfield=Read_Write_Current_Parameters(4);
+  }
+   
    // determine button boxes
    for (i=0;i<record.size();i++)
     Determine_Button_Box(i);

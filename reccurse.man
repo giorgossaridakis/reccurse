@@ -1,0 +1,355 @@
+reccurse manual ~0.400 version
+
+starting up
+-----------
+reccurse is a "filemaker" type program for the terminal. It is basically a 
+database with  customizable page setup for it's fields.
+there are three ways to start a new database:
+1. reccurse existing.rc:
+this will prompt the program to read page structure from a text file with .rc 
+extension. The program will then create the corresponding .db file. this is
+the file where everything will be stored. reccurse by default saves changes 
+in records in real time, so it's a good idea to always keep a backup of this
+file, to prevent loss of data.
+2. reccurse existing.db:
+if you have a ready .db file, the program will read from it directly, it will 
+not look for existing.rc 
+3. reccurse nonexisting
+reccurse will open and ask for verification of the filename. consequently, it 
+will create a .rc file with a sample field and the corresponding .db file.
+4. reccurse existing1.db existing2.db existing3.db etc
+reccurse will start up with the first existing database file, named page 1. 
+The pages menu is accessed with ctrl+w, navigated with cursor keys. 
+<ins>ert new and <del>ete selectable database pages is an option as well.
+
+navigation tips
+---------------
+Browse through fields with arrow keys or tab, shift+tab. shift+up goes to 
+first field in record, shift+down to the last. < or shift+left will take
+you to the previous record, > or shift+right to the next. HOME for the 
+first record, END for the last.
+Keys are usually displayed in the bottom bar, the bottom bar itself can be
+switched from keyboard hints, to navigation information, to entry display, 
+to disappearance and to calculator mode (if possible) with the <m> key. 
+Navigation through fields is done with arrow keys or tab/shift+tab and with 
+home/end. Move through records with shift+arrow keys or < >
+<g>o for record number. navigation keys work in all menus
+more keys -> ctrl+e to edit submenu, ctrl+o to options mode
+ctrl+t to extra submenu, ctrl+f find function
+ctrl+k copy to clipboard, ctrl+v paste clipboard
+ctrl+w to pages menu, arrow keys, INS, DELETE, HOME, END keys.
++-*/. keys will add/remove attributes, !@ keys for color up/down (see below)
+? for this help screen.
+<carriage return> enters edit field when in edit mode
+<space> ticks/unticks tickboxes (1x1fields)
+0 to 9 will call or arrign a script button (see below)
+clicking on a field will highlight it
+
+z will display and append to file (database name.out)
+a printable (ASCII) version of the current record 
+When find is selected, user is prompted to enter a field number, then a search
+criteria (asterisks imply any text until the next alphanumeric character).
+
+The sequence is repeated until a carriage return is given. This allows for
+multiple searches, each sequential will operate on the previous find records 
+that match the requested criteria.
+When sort is selected, user is prompted to enter a field number, then 
+<a>scending or <d>escending order. the sequence is repeated and records are 
+sorted each time according to the requested sort parameters. 
+
+autosave
+--------
+This will automatically save changes you make into fields if enabled. When 
+attributes have been changed through screen buttons or the field setup menu, 
+you will be asked whether to save or not. keep in mind that adding or deleting
+fields or entire records will be saved either autosave is enabled or not. 
+The same goes for joining or dividing fields.
+
+field types
+-----------
+Reccurse recognizes the following types for fields:
+
+0 - numerical, real or integer. number of decimal places can be declared
+1 - calendar field, a snapshot of date and time. automatic values can be 
+declared to change the calendar/time format shown for every field (see below)
+2 - string, alphanumerical
+3 - mixed type, alphanumerical or numerical which allows calculations
+4 - variable, a field that is used to keep variables
+5 - program field, a field with title 0 to 9 that can keep a series of keys
+to be pressed automatically, a script key
+ 
+special field types
+-------------------
+tickbox - if an editable field is 1x1 in size, it becomes one. Pressing 
+<space> while on edit mode will mark/unmark an X in it
+buttonbox - is a field with a pressable key in it, used to construct screen 
+calculators. to define a buttonbox, you'll need a field with an automatic 
+value of one of the following: "0", "1", "2", "3", "4", "5", "6", "7", "8",
+"9", "/", "*", "-", "+", "^", ",", ".", "(", ")", "=", "sin", "cos", "tan",
+"cotan", "sqr", "abs", "log", "AC", "DEL", "EXEC". 
+A button box must has a field reference to a field in the same database that 
+will become the screen of the calculator
+Pressing <space> on a buttonbox while on edit mode will punch that key to it's
+corresponding screen buttonscreen - a field referenced by one or more button 
+boxes. The field must have adequate length to display desired number of 
+digits/functions.
+buttoncommand - a pressable with <space> field that will execute a script
+command (see below). A script command is prefixed with @ .
+For example @file script . The characters in the automatic value before 
+@ will be displayed automatically in that field's place, as with all automatic 
+values. You can set-up a buttoncommand by placing a script command in that 
+field's automatic value and making the field reference it's own number. 
+If the field is numbered 10, then field reference must be 10 as well.
+
+The above field types are implicitly declared through tricks described above.
+They are not field types 0-4 that can be declared through the internal editor
+or in the .rc database file.
+
+script commands
+---------------
+These can be called with a buttoncommand field (see above). They are single 
+word commands or command <argument> types.
+
+Single word commands:
+START: will create a label named START in your script text file
+push - push space on the current field
+copy - copy current field entry to the clipboard
+paste - paste clipboard contents to current field
+end - signal for end of a loop
+compare - if the contents of the current field are the same as in the 
+ clipboard, execute next line of a script file. otherwise, skip it
+clear - delete all variable fields from the databse
+autosave - will toggle autosave on/off
+quit - obvious, quite the program
+stop - stop the running script
+pass - do nothing, go to the next line
+
+Commands with arguments:
+file - file <script> will execute a text file named script that contains
+script commands. A buttoncommand field will usually be used for that purpose
+record - record 10 will take you to record number 10 in the current database
+field - field 10 will take you to field number 10 in the current record
+enter - enter <entry text> will write your text to the current field
+append - append <entry text> will append your text to the current field
+variable - variable test will create/rewrite a variable named (titled) 
+test with the the value contained in the current field
+variabletoclipboard - @variabletoclipboard test will copy the contents of 
+the variable titled test to the clipboard
+delete - delete test will delete the variable field titled test
+loop - loop 5 will execute all commands below until @pass for 5 times
+wait - wait 4 will pause for 4 seconds
+goto - goto START will take the pointer to the label named START
+page - page 3 will change the current database page to the 3rd
+attributes - attributes 010010010 will change the current field's attributes
+color - color 25 will change the current field's color to 25 (see below)
+sleep - sleep 2 will set sleep time between commands to 2 seconds
+menu - menu 3 will take you to menu 3. acceptable values: 0 1 2 3 5
+key - key l will push the l key on the current menu
+keys - keys a-b-c-d will push keys given one by one. 
+acceptable keys are all keyboard keys and ->
+down, up, left, right, shift_left, shift_right, escape or esc, enter, 
+backspace or bs, delete or del, insert or ins, home, end, copy, paste,
+tab, shift_tab, space
+
+the editor
+----------
+ctrl+t and u will take you to the database field editor. choices follow
+on screen which will determine the field parameters, one field at a time
+you can edit these parameters here, or declare them in the database .rc
+file
+
+.rc file structure
+------------------
+Here is a sample .rc file that you should have with the code->
+
+sample reccurse .rc file
+
+begin and end with character seen below, so no others allowed in strings
+~ is absence of string 0 is absence of number.
+
+structure of record: <title (12 chars max), title_pos (0 on top, 1 right, 
+2 under, 3 left, 4 inside field), title attributes, title color, pos_x, 
+pos_y, size_x, size_y, attributes, color, box or not, box color, type 
+(0 int or double 1 date 2 string 3 mixed 4 variable 5 program),
+number of decimals, suffix if number or formula, formula or not, 
+field list reference (0 for none), editable, active, auto enter value> 
+#
+date&time 0 000000000 3 10 5 10 2 000000000 5 1 1 1 2 $ 0 0 1 1 .
+string 2 000100100 2 20 15 9 2 001010000 1 1 2 2 2 !!! 0 0 1 1 Giorgos
+formula 3 000000000 34 40 5 8 1 000000000 2 1 4 0 2 eur 1 0 0 1 22_+_22
+fieldlist 0 000010000 1 40 15 9 2 001010000 6 1 5 2 2 . 0 1 1 1 .
+#
+
+Reccurse needs to locate a first # then a new line character.
+all field parameters must also end with a new line character.
+at the end of field declarations, a # and new line character are expected 
+as well.
+the comments above are give or take self-explanatory. a suffix (max 3 chars)
+will be appended to end of a field's contents if that field is of type 
+0 (numerical). spaces in the .rc file are strictly to be replaced by 
+underscores. hello world -> hello_world.
+if formula is activated (1) then an entry of (12345+54321)/(1*0.33443) will 
+produce a numerical result in a numerical or a mixed type field. 
+formula entries can also be given in reverse polish calculator notation, 
+i.e. (12345 12345 +) (1*0.33433) / . 
+A #5 is a reference to the value of the 5th field in the same record as 
+the one being edited. A formula of #5+12345 will calculate 
+<what's in field 5>+12345. 
+Mathematical functions have been implemented: exp(a,b), sin(a), cos(a), 
+tan(a), cotan(a), sqr(a), abs(a), log(a)
+formulas for string fields can also be used. 
+examples: #5 will collect the text value from field 5. 
+string functions:
+mid$(text or field reference, start character, number of characters) 
+mid$(hello, 1, 2), left$(text, 2), right$(text, 2), toupper$(text), 
+tolower$(text). leave spaces after each function end. 
+string formulas apply to string or mixed type fields with formula set to 1.
+a field list entry above 0 means that field can collect values from the 
+field declared. up and down arrows during editing will summon them. 
+<insert> will copy the value of the field referenced in the same record.
+
+Your database file can have references to other database files. from edit menu, 
+INS key will bring selection of externa<l> databases. 
+The References Editor is relatively simple and things go like this -> 
+
+you have an external field (to the current database or other) to be measured 
+for equality with a local field. 
+once this occurs, the local reference field will automatically bring up the 
+external reference field's contents. If the local field has a field reference, 
+equalized fields will not be taken into account. The local field will collect 
+selectable values from the external reference field, no matter it's reference id. 
+External database filenames can be up to 25 characters in length, 
+including the suffix .db 3 characters. 
+It's a good idea to have all database pages files in the same directory, 
+to avoid long path in filenames.
+
+attributes
+----------
+attributes for field titles and contents can be declared as active or not 
+(0 1) in the .rc file or switched on/off during execution. 
+it's a nine digit number. let's see what they mean:
+  0 1        0 1      0 1      0 1      0 1    0 1    0 1   0 1       0 1
+normal   standout  underline reverse   blink   dim   bold  protect  invisible
+
+these are the choices we have from the ncurses library, thanks to which 
+this software is alive and colourful.
+ 
+ 
+ 
+  
+color codes
+-----------
+code   foreground   background
+ 1      RED         BLACK 
+ 2      GREEN       BLACK 
+ 3      YELLOW      BLACK 
+ 4      BLUE        BLACK 
+ 5      MAGENTA     BLACK 
+ 6      CYAN        BLACK 
+ 7      RED         GREEN 
+ 8      RED         YELLOW 
+ 9      RED         BLUE 
+ 10     RED         MAGENTA 
+ 11     RED         CYAN 
+ 12     RED         WHITE 
+ 13     GREEN       RED   
+ 14     GREEN       YELLOW   
+ 15     GREEN       BLUE 
+ 16     GREEN       MAGENTA 
+ 17     GREEN       CYAN 
+ 18     GREEN       WHITE 
+ 20     YELLOW      RED   
+ 21     YELLOW      GREEN    
+ 22     YELLOW      BLUE  
+ 23     YELLOW      MAGENTA  
+ 24     YELLOW      CYAN   
+ 25     YELLOW      WHITE  
+ 26     BLUE        RED  
+ 27     BLUE        GREEN  
+ 28     BLUE        YELLOW  
+ 29     BLUE        MAGENTA  
+ 30     BLUE        CYAN 
+ 31     BLUE        WHITE  
+ 32     MAGENTA     RED  
+ 33     MAGENTA     GREEN  
+ 34     MAGENTA     YELLOW  
+ 35     MAGENTA     BLUE  
+ 36     MAGENTA     CYAN  
+ 37     MAGENTA     WHITE  
+ 38     CYAN        RED    
+ 39     CYAN        GREEN  
+ 40     CYAN        YELLOW  
+ 41     CYAN        BLUE  
+ 42     CYAN        MAGENTA  
+ 43     CYAN        WHITE  
+ 44     WHITE       RED 
+ 45     WHITE       GREEN 
+ 46     WHITE       YELLOW   
+ 47     WHITE       BLUE 
+ 48     WHITE       MAGENTA 
+ 49     WHITE       CYAN 
+ 50     BLACK       BLACK 
+ 51     RED         RED 
+ 52     GREEN       GREEN   
+ 53     YELLOW      YELLOW   
+ 54     BLUE        BLUE 
+ 55     MAGENTA     MAGENTA 
+ 56     CYAN        CYAN 
+ 57     WHITE       WHITE 
+ 58     WHITE       BLACK
+ 
+ calendar/time format
+ --------------------
+ specifier	                              Replaced by Example
+ 
+ %a	Abbreviated weekday name *                            Thu
+ %A	Full weekday name *                              Thursday
+ %b	Abbreviated month name *                              Aug
+ %B	Full month name *                                  August
+ %c	Date and time representation *       Aug 23 14:55:02 2001
+ %C	Year divided by 100 and truncated to integer (00-99)   20
+ %d	Day of the month, zero-padded (01-31)                  23
+ %D	Short MM/DD/YY date, equivalent to %m/%d/%y      08/23/01
+ %e	Day of the month, space-padded ( 1-31)                 23
+ %F	Short YYYY-MM-DD date, equivalent to %Y-%m-%d  2001-08-23
+ %g	Week-based year, last two digits (00-99)               01
+ %G	Week-based year	                                     2001
+ %h	Abbreviated month name * (same as %b)                 Aug
+ %H	Hour in 24h format (00-23)                             14
+ %I	Hour in 12h format (01-12)                             02
+ %j	Day of the year (001-366)                             235
+ %m	Month as a decimal number (01-12)                      08
+ %M	Minute (00-59)                                         55
+ %p	AM or PM designation                                   PM
+ %r	12-hour clock time *                          02:55:02 pm
+ %R	24-hour HH:MM time, equivalent to %H:%M             14:55
+ %S	Second (00-61)                                         02
+ %T	ISO 8601 (HH:MM:SS), equivalent to %H:%M:%S      14:55:02
+ %u	ISO 8601 weekday as number with Monday as 1 (1-7)       4
+ %U	Week number, first Sunday as the first day (00-53)     33
+ %V	ISO 8601 week number (01-53)                           34
+ %w	Weekday as a decimal number with Sunday as 0 (0-6)      4
+ %W	Week number, first Monday as the first (00-53)         34
+ %x	Date representation *                            08/23/01
+ %X	Time representation *                            14:55:02
+ %y	Year, last two digits (00-99)                          01
+ %Y	Year                                                 2021
+ %z	ISO 8601 offset from UTC in tz (1 minute=1, 1 hour=100)
+ If timezone cannot be determined, no characters	     +100
+ %Z	Timezone name or abbreviation *
+ If timezone cannot be determined, no characters	      CDT
+
+epilogue
+--------
+Well, that's about it. My intention was to write an effective 
+filemaker type database for the terminal. 
+for suggestions or more, my email address is giorgossaridakis@gmail.com
+
+compile with g++ -oreccurse reccurse.cc -lncurses
+
+if you don't have ncurses library installed, your local distro will point 
+you to how to install it.
+
+Reccurse is distributed under the GNU Public Licence.
+
+Written between 2019-2021 by Giorgos Saridakis.

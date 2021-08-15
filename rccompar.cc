@@ -303,16 +303,21 @@ int commandparser(char scriptcommand[])
 // locate label
 int labelposition(char *label)
 {
-  int i;
+  int i, i1;
   char tlabel[MAXSTRING];
   strcpy(tlabel, label);
   strcat(tlabel, ":");
   
+   // find label
    for (i=0;i<scriptlines.size();i++)
     if (!strcmp(tlabel, scriptlines[i].textLine))
      break;
+   // duplicate ?
+   for (i1=i+1;i1<scriptlines.size();i1++)
+    if (!strcmp(tlabel, scriptlines[i1].textLine))
+    break;
     
-   if (i==scriptlines.size())
+   if (i==scriptlines.size() || i1<scriptlines.size())
     return 0;
   
  return i;
