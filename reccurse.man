@@ -216,7 +216,7 @@ The References Editor is relatively simple and things go like this ->
 you have an external field (to the current database or other) to be measured 
 for equality with a local field. 
 once this occurs, the local reference field will automatically bring up the 
-external reference field's contents. If the local field has a field reference, 
+external reference field's contents. If local destination field is a fieldlist, 
 equalized fields will not be taken into account. The local field will collect 
 selectable values from the external reference field, no matter it's reference id. 
 External database filenames can be up to 25 characters in length, 
