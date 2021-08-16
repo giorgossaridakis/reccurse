@@ -68,15 +68,16 @@ The same goes for joining or dividing fields.
 field types
 -----------
 Reccurse recognizes the following types for fields:
-
 0 - numerical, real or integer. number of decimal places can be declared
-1 - calendar field, a snapshot of date and time. automatic values can be 
+1 - calendar field, a snapshot of date and time. automatic value can be 
 declared to change the calendar/time format shown for every field (see below)
 2 - string, alphanumerical
 3 - mixed type, alphanumerical or numerical which allows calculations
 4 - variable, a field that is used to keep variables
 5 - program field, a field with title 0 to 9 that can keep a series of keys
 to be pressed automatically, a script key
+6 - clock, a live calendar/clock. automatic value can be utilized, see
+calendar above
  
 special field types
 -------------------
@@ -236,7 +237,6 @@ this software is alive and colourful.
  
  
  
-  
 color codes
 -----------
 code   foreground   background

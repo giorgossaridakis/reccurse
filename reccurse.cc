@@ -1,7 +1,7 @@
 // reccurse, the filemaker of ncurses
 #include "reccurse.h"
 
-const double version=0.401;
+const double version=0.402;
 
 int main(int argc, char *argv[])
 {
@@ -871,7 +871,11 @@ void Bring_DateTime_Stamp(char tdatetime[MAXSTRING], int field_id)
 // E	Uses the locale's alternative representation	%Ec %EC %Ex %EX %Ey %EY
 // O	Uses the locale's alternative numeric symbols	%Od %Oe %OH %OI %Om %OM %OS %Ou %OU %OV %Ow %OW %Oy
   
-  strcpy(calendarformat, "%d-%m-%Y %H:%M:%S");
+  if (record[field_id].type==CLOCK)
+   strcpy(calendarformat, "%H:%M:%S");
+  else
+   strcpy(calendarformat, "%d-%m-%Y %H:%M:%S");
+      
   if (strcmp(record[field_id].automatic_value, EMPTYSTRING))
    strcpy(calendarformat, record[field_id].automatic_value);
   
@@ -1060,10 +1064,12 @@ int Show_Record_and_Menu()
     }
     
     if (!runscript || (keyonnextloop.size() && keyonnextloop[keyonnextloop.size()-1]!=SPACE)) { // also process keyonnextloop from scripts, but not space
+     wtimeout(win1, 1000); // put this in routine, if needed elsewhere as well
      if (mousemenucommands.size())
       c=fetchmousemenucommand();
      else
       c=sgetch();
+     wtimeout(win1, -1); // block getch again
      c=negatekeysforcurrentmenu(c);
      if (!alteredparameters && currentmenu!=5)
       for (i=0;i<strlen(alterscreenparameterskeys);i++)
@@ -1860,7 +1866,7 @@ int Show_Field(Annotated_Field *field, int flag) // 1 highlight
   char ttext[MAXSTRING];
   int attributestable[9]; // normal, standout, underline, reverse, blink, dim, bold, protect, invisible
 
-  if (!tfield->active || tfield->type>MIXEDTYPE)
+  if (!tfield->active || (tfield->type>MIXEDTYPE && tfield->type!=CLOCK))
    return -1;
   lima=(tfield->box) ? 80 : 81;
   limb=(tfield->box) ? 23 : 24;
@@ -2120,6 +2126,8 @@ void Generate_Field_String(Annotated_Field *field, char *ttext)
       cropstring(formula, MAXSTRING);
     strcpy(ttext, formula); } }
     break;
+    case CLOCK:
+     Bring_DateTime_Stamp(ttext, tfield->id);     
     default:
   break; }
   strcpy(field->text, ttext);

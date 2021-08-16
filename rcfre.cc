@@ -183,10 +183,10 @@ void Field_Editor()
          record[fieldshown].box_color=i;
        break;
        case 13:
-        i=Scan_Input(1, NUMERICAL, PROGRAM, 1);
+        i=Scan_Input(1, NUMERICAL, CLOCK, 1);
         if (record[fieldshown].type==VARIABLE && i<VARIABLE && (record[fieldshown].pt.x<1 || record[fieldshown].pt.x>79 || record[fieldshown].pt.y<1 || record[fieldshown].pt.y>23))
          break;
-        if (i>=NUMERICAL && i<=PROGRAM)
+        if (i>=NUMERICAL && i<=CLOCK)
          record[fieldshown].type=i;
        break;
        case 14:

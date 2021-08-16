@@ -26,6 +26,7 @@
 #include <array>
 
 // definitions
+typedef unsigned long ul;
 // numericals
 const int MAXSTRING=80; // characters in a regular string
 const int MAXTITLE=20; // characters in a a title string
@@ -45,7 +46,7 @@ const int MAXSEARCHDEPTH=5;
 enum { HORIZONTALLY=0, VERTICALLY };
 const int NUMERICALLIMIT=32765;
 enum { NOBUTTON=0, TICKBOX, BUTTONBOX, BUTTONSCREEN, BUTTONCOMMAND };
-enum { NUMERICAL=0, CALENDAR, STRING, MIXEDTYPE, VARIABLE, PROGRAM };
+enum { NUMERICAL=0, CALENDAR, STRING, MIXEDTYPE, VARIABLE, PROGRAM, CLOCK };
 const char *menukeys[]={ "eot`", "alsh`", "dcpjv+-*/.!@`", "ifru`", "yn`", "0123456789/*-+^,.()=`" }; // m works in all menus
 const char *buttonkeys[]={ "0", "1", "2", "3", "4", "5", "6", "7", "8", "9", "/", "*", 
 "-", "+", "^", ",", ".", "(", ")", "=", "sin", "cos", "tan", "cotan", "sqr", "abs", "log", "AC", "DEL", "EXEC" };
