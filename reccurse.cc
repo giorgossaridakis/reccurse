@@ -1,7 +1,8 @@
 // reccurse, the filemaker of ncurses
 #include "reccurse.h"
 
-const double version=0.403;
+const double version=0.404;
+int renewscreen=1;
 
 int main(int argc, char *argv[])
 {
@@ -825,52 +826,6 @@ void Bring_DateTime_Stamp(char tdatetime[MAXSTRING], int field_id)
   timeinfo = localtime(&rawtime);
   char calendarformat[MAXSTRING];
   
-// specifier	Replaced by	Example
-// %a	Abbreviated weekday name *	Thu
-// %A	Full weekday name * 	Thursday
-// %b	Abbreviated month name *	Aug
-// %B	Full month name *	August
-// %c	Date and time representation *	Thu Aug 23 14:55:02 2001
-// %C	Year divided by 100 and truncated to integer (00-99)	20
-// %d	Day of the month, zero-padded (01-31)	23
-// %D	Short MM/DD/YY date, equivalent to %m/%d/%y	08/23/01
-// %e	Day of the month, space-padded ( 1-31)	23
-// %F	Short YYYY-MM-DD date, equivalent to %Y-%m-%d	2001-08-23
-// %g	Week-based year, last two digits (00-99)	01
-// %G	Week-based year	2001
-// %h	Abbreviated month name * (same as %b)	Aug
-// %H	Hour in 24h format (00-23)	14
-// %I	Hour in 12h format (01-12)	02
-// %j	Day of the year (001-366)	235
-// %m	Month as a decimal number (01-12)	08
-// %M	Minute (00-59)	55
-// %n	New-line character ('\n')	
-// %p	AM or PM designation	PM
-// %r	12-hour clock time *	02:55:02 pm
-// %R	24-hour HH:MM time, equivalent to %H:%M	14:55
-// %S	Second (00-61)	02
-// %t	Horizontal-tab character ('\t')	
-// %T	ISO 8601 time format (HH:MM:SS), equivalent to %H:%M:%S	14:55:02
-// %u	ISO 8601 weekday as number with Monday as 1 (1-7)	4
-// %U	Week number with the first Sunday as the first day of week one (00-53)	33
-// %V	ISO 8601 week number (01-53)	34
-// %w	Weekday as a decimal number with Sunday as 0 (0-6)	4
-// %W	Week number with the first Monday as the first day of week one (00-53)	34
-// %x	Date representation *	08/23/01
-// %X	Time representation *	14:55:02
-// %y	Year, last two digits (00-99)	01
-// %Y	Year	2001
-// %z	ISO 8601 offset from UTC in timezone (1 minute=1, 1 hour=100)
-// If timezone cannot be determined, no characters	+100
-// %Z	Timezone name or abbreviation *
-// If timezone cannot be determined, no characters	CDT
-// %%	A % sign	%
-// * The specifiers marked with an asterisk (*) are locale-dependent.
-// Note: Yellow rows indicate specifiers and sub-specifiers introduced by C99. Since C99, two locale-specific modifiers can also be inserted between the percentage sign (%) and the specifier proper to request an alternative format, where applicable:
-// Modifier	Meaning	Applies to
-// E	Uses the locale's alternative representation	%Ec %EC %Ex %EX %Ey %EY
-// O	Uses the locale's alternative numeric symbols	%Od %Oe %OH %OI %Om %OM %OS %Ou %OU %OV %Ow %OW %Oy
-  
   if (record[field_id].type==CLOCK)
    strcpy(calendarformat, "%H:%M:%S");
   else
@@ -1024,22 +979,25 @@ int Show_Record_and_Menu()
   vector<int>::iterator p;
   
    while (run) {
-    clear();
     // clear screen array
     for (i=1;i<81;i++)
      for (i1=1;i1<25;i1++)
       screen[i][i1]=SPACE;
+    // show fields
+    if (renewscreen)
+     clear();
     for (i=0;i<fieldsperrecord;i++)
      Show_Field(&records[(currentrecord*fieldsperrecord)+i]);
     if (currentfield>-1 && !recordsdemo)
      Show_Field(&records[(currentrecord*fieldsperrecord)+currentfield], 1);
+    refresh();
     if (!recordsdemo)
      for (i=0;i<MAXRECORDS;i++)
       if (i<=recordsnumber)
        findresults[0][i]=i;
       else
        findresults[0][i]=-1;
-     
+       
     Show_Menu_Bar();
     cleanstdin();
     i=strlen(menutexts[currentmenu])+1;
@@ -1070,7 +1028,7 @@ int Show_Record_and_Menu()
      else
       c=sgetch();
      blockunblockgetch();
-     c=negatekeysforcurrentmenu(c);
+     renewscreen=c=negatekeysforcurrentmenu(c);
      if (!alteredparameters && currentmenu!=5)
       for (i=0;i<strlen(alterscreenparameterskeys);i++)
        if (c==alterscreenparameterskeys[i])
@@ -1688,27 +1646,34 @@ int negatekeysforcurrentmenu(int t)
   if (t==SHIFT_LEFT) t='<'; // shift+left arrow
   if (t==ESC || t==LEFT || t==RIGHT || t==UP || t==DOWN || t==TAB || t==SHIFT_TAB || t=='m' || t=='g' || t=='?' || t==HOME || t==END || t=='<' || t=='>' || t==']' ||  t==START_OF_RECORDS || t==END_OF_RECORDS || t==KEY_MOUSE || t=='z')
    return t;
+  
   if (recordsdemo)
    return 0;
+  
   if (t==6) { currentmenu=3; t='f'; return t; } // enter find mode
   if (t==5 || t==15 || t==20 || t==PAGES_SELECTOR_KEY) { // direct menu access with ctrl
    switch (t) {
     case 5:currentmenu=2; break; case 15:currentmenu=1; break; case 20:currentmenu=3; break; case PAGES_SELECTOR_KEY: Pages_Selector();
    break; }
    Read_Write_Current_Parameters(1, 1);
-  return 0; }
+  return 1; } // 1 will set renewscreen
+
   if (currentmenu==2)
    if (t==INSERT || t==DELETE || t==SPACE || t==COPY || t==PASTE)
     return t;
+   
   if (currentmenu==2 && t=='\n')
    return 'd';
+  
   if (currentmenu==5)
    if (t==ENTER || t==BACKSPACE || t==DELETE || t==SPACE)
     return t;
+   
   if (currentmenu<4)
    for (i=0;i<strlen(programkeys);i++)
     if (t==(int) programkeys[i])
      return t;
+    
   for (i=0;i<strlen(menukeys[currentmenu]);i++)
    if (t==menukeys[currentmenu][i])
     return t;
@@ -2018,8 +1983,6 @@ int Show_Field(Annotated_Field *field, int flag) // 1 highlight
    attroff(A_BOLD);
    attroff(A_PROTECT);
    attroff(A_INVIS);
-  
-  refresh();
     
  return 0;   
 }
@@ -2161,7 +2124,7 @@ int Generate_Dependant_Field_String(Annotated_Field *field, char *ttext)
    if (relationships[i].extFields[0]<1 || relationships[i].extFields[1]<1 || relationships[i].localFields[0]<1 || relationships[i].localFields[1]<1 || relationships[i].extFields[0]>dummyfieldsperrecord || relationships[i].extFields[1]>dummyfieldsperrecord || relationships[i].localFields[0]>fieldsperrecord || relationships[i].localFields[1]>fieldsperrecord)
     return 0;
    
-   // destination local field is fieldlist, return 0 and keep dummyrecords for reference in Scan_Input
+   // destination local field is fieldlist, return success and keep dummyrecords for reference in Scan_Input
    if (record[relationships[i].localFields[1]-1].fieldlist) {
     externalreferencedatabase=i;
    return 2; }
