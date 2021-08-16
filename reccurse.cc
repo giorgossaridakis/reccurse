@@ -1,7 +1,7 @@
 // reccurse, the filemaker of ncurses
 #include "reccurse.h"
 
-const double version=0.402;
+const double version=0.403;
 
 int main(int argc, char *argv[])
 {
@@ -1064,12 +1064,12 @@ int Show_Record_and_Menu()
     }
     
     if (!runscript || (keyonnextloop.size() && keyonnextloop[keyonnextloop.size()-1]!=SPACE)) { // also process keyonnextloop from scripts, but not space
-     wtimeout(win1, 1000); // put this in routine, if needed elsewhere as well
+     blockunblockgetch(UNBLOCK); // necessary to give live clock operational status
      if (mousemenucommands.size())
       c=fetchmousemenucommand();
      else
       c=sgetch();
-     wtimeout(win1, -1); // block getch again
+     blockunblockgetch();
      c=negatekeysforcurrentmenu(c);
      if (!alteredparameters && currentmenu!=5)
       for (i=0;i<strlen(alterscreenparameterskeys);i++)

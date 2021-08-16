@@ -557,20 +557,21 @@ int sgetch(int x_pos, int y_pos, int sleeptime, int showflag)
    vector<int>::iterator p=keyonnextloop.begin();
    keyonnextloop.erase(p);
   return t; }
-  
-  t=getch();
-  // mouse activity
-  if (t==KEY_MOUSE) {
-   if(getmouse(&mouse) == OK)
-  return KEY_MOUSE; }
-  // character
-  if (isalpha(t)) {
-   if (menubar && showflag) {
-    printw(".%c", t);
-    gotoxy(x_pos, y_pos);
-    refresh(); 
-   Sleep(sleeptime); }
-  return tolower(t); }
+   
+    t=getch();
+    // mouse activity
+    if (t==KEY_MOUSE)
+     if(getmouse(&mouse) == OK)
+      return KEY_MOUSE;
+    // character
+    if (isalpha(t)) {
+     if (menubar && showflag) {
+      printw(".%c", t);
+      gotoxy(x_pos, y_pos);
+      refresh(); 
+     Sleep(sleeptime); }
+    return tolower(t); 
+    }
   
   // movement or otherwise
  return t;
@@ -1073,4 +1074,12 @@ int breaktexttokeys(char *text)
    } 
     
  return keyonnextloop.size();
+}
+
+// block, unblock getch
+int blockunblockgetch(int delay)
+{
+  wtimeout(win1, delay);
+  
+ return (delay==-1) ? 0 : 1;
 }
