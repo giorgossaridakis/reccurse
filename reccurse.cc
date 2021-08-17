@@ -1,7 +1,7 @@
 // reccurse, the filemaker of ncurses
 #include "reccurse.h"
 
-const double version=0.404;
+const double version=0.405;
 int renewscreen=1;
 
 int main(int argc, char *argv[])
@@ -2593,7 +2593,7 @@ int Determine_Button_Box(int field_id)
   char command[MAXSTRING], tautomaticvalue[MAXSTRING];
   
     record[field_id].buttonbox=NOBUTTON;
-    if (record[field_id].size.x==1 && record[field_id].size.y==1 && record[field_id].editable && record[field_id].type<VARIABLE) {
+    if (record[field_id].size.x==1 && record[field_id].size.y==1 && record[field_id].editable && record[field_id].type!=VARIABLE && record[field_id].type!=PROGRAM) {
      record[field_id].buttonbox=TICKBOX; // tick box
      record[field_id].type=STRING; // string
     }
@@ -2644,8 +2644,10 @@ void pushspaceonfield(int field_id)
     
       // tickboxes
       if (record[field_id].buttonbox==TICKBOX) {
-       records[(field_id*fieldsperrecord)+field_id].text[0]=(records[(currentrecord*fieldsperrecord)+field_id].text[0]=='X') ? ' ' : 'X';
-      Read_Write_Field(records[(currentrecord*fieldsperrecord)+field_id], fieldposition(currentrecord, field_id), 1); }
+       records[(currentrecord*fieldsperrecord)+field_id].text[0]=(records[(currentrecord*fieldsperrecord)+field_id].text[0]=='X') ? ' ' : 'X';
+       if (autosave)
+        Read_Write_Field(records[(currentrecord*fieldsperrecord)+field_id], fieldposition(currentrecord, field_id), 1); 
+      return; }
       // buttonboxes
       if (record[field_id].buttonbox==BUTTONBOX) {
        for (i1=0;i1<buttonkeystotal;i1++)
@@ -2672,7 +2674,8 @@ void pushspaceonfield(int field_id)
             record[record[field_id].fieldlist-1].type=NUMERICAL; // trick to bring reversepolishcalculator
           break; }
        Read_Write_Field(records[(currentrecord*fieldsperrecord)+record[field_id].fieldlist-1], fieldposition(currentrecord, record[field_id].fieldlist-1), 1); }
-     } }
+      } 
+     return; }
      if (record[field_id].buttonbox==BUTTONCOMMAND) {
       if (runscript) {
        keyonnextloop.push_back(SPACE);
