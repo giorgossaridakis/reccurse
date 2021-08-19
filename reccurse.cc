@@ -1,7 +1,7 @@
 // reccurse, the filemaker of ncurses
 #include "reccurse.h"
 
-const double version=0.405;
+const double version=0.407;
 int renewscreen=1;
 
 int main(int argc, char *argv[])
@@ -663,7 +663,7 @@ int Add_Field(int type, char *name, char *textvalue)
     if (type==VARIABLE) {
      strcpy(autovalue, textvalue);
     tx=99; ty=99; }
-    Field tfield(fieldsperrecord, name, 0, const_cast <char *> ("000000000"), 58, tx, ty, 1, 1, const_cast <char *> ("000000000"), 58, 0, 58, type, const_cast <char *> (EMPTYSTRING), 2, 0, 0, 1, 1, (type==VARIABLE) ? textvalue : const_cast <char *> (EMPTYSTRING));
+    Field tfield(fieldsperrecord, name, 0, const_cast <char *> ("000000000"), 58, tx, ty, 1, 1, const_cast <char *> ("000000000"), 58, 0, 58, type, const_cast <char *> (EMPTYSTRING), 2, 0, 0, 1, (type==VARIABLE || type==PROGRAM) ? 0 : 1, (type==VARIABLE) ? textvalue : const_cast <char *> (EMPTYSTRING));
     record.push_back(tfield);
     Annotated_Field ttfield(fieldsperrecord, atof(textvalue), textvalue, " ");
     for (i=0;i<recordsnumber-1;i++) {
@@ -827,9 +827,9 @@ void Bring_DateTime_Stamp(char tdatetime[MAXSTRING], int field_id)
   char calendarformat[MAXSTRING];
   
   if (record[field_id].type==CLOCK)
-   strcpy(calendarformat, "%H:%M:%S");
+   strcpy(calendarformat, "%X");
   else
-   strcpy(calendarformat, "%d-%m-%Y %H:%M:%S");
+   strcpy(calendarformat, "%x %X");
       
   if (strcmp(record[field_id].automatic_value, EMPTYSTRING))
    strcpy(calendarformat, record[field_id].automatic_value);
@@ -2009,7 +2009,7 @@ int Show_Field_ID(Annotated_Field *tfield)
 // arrange string for field text
 void Generate_Field_String(Annotated_Field *field, char *ttext)
 {
- int i, n;
+ int i, n=0;
  char formula[LMAXCOMMAND];
      
   Field *tfield=&record[field->id];
@@ -2063,7 +2063,9 @@ void Generate_Field_String(Annotated_Field *field, char *ttext)
      if (strcmp(tfield->automatic_value, EMPTYSTRING))
       strcpy(field->text, tfield->automatic_value);
      strcpy(formula, field->text);
-     n=0;
+     // parse string functions
+     stringformulacalculator(formula, currentrecord);
+     // now mathematical formulae
      i=parseformulaforfunctions(formula);
      if (!i)
       i=parseformulaforerrors(formula);
