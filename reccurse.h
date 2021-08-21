@@ -45,6 +45,7 @@ const int MAXRELATIONSHIPS=25; // will fit into above 1kb, same as MAXPAGES
 const int MAXSEARCHDEPTH=5;
 enum { HORIZONTALLY=0, VERTICALLY };
 const int NUMERICALLIMIT=32765;
+int BLOCK=-1, UNBLOCK=1000; // wait times for getch()
 enum { NOBUTTON=0, TICKBOX, BUTTONBOX, BUTTONSCREEN, BUTTONCOMMAND };
 enum { NUMERICAL=0, CALENDAR, STRING, MIXEDTYPE, VARIABLE, PROGRAM, CLOCK };
 const char *menukeys[]={ "eot`", "alsh`", "dcpjv+-*/.!@`", "ifru`", "yn`", "0123456789/*-+^,.()=`" }; // m works in all menus
@@ -336,6 +337,7 @@ int scantextforcommand(char *text, char *command, char separator='@');
 int kbhit(void);
 int decimatestringtokey(char *text);
 int breaktexttokeys(char *text);
+int blockunblockgetch(int delay=BLOCK);
 
 // rcfre.cc
 int References_Editor();

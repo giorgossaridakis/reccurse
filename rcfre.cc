@@ -207,8 +207,8 @@ void Field_Editor()
          record[fieldshown].formula=i;
        break;
        case 17:
-        i=Scan_Input(1, 1, fieldsperrecord, 4);
-        if (i && i<fieldsperrecord+1)
+        i=Scan_Input(0, 1, fieldsperrecord, 4);
+        if (i>-1 && i<fieldsperrecord+1)
          record[fieldshown].fieldlist=i;
        break;
        case 18:
