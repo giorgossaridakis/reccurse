@@ -1,7 +1,7 @@
 // reccurse, the filemaker of ncurses
 #include "reccurse.h"
 
-const double version=0.407;
+const double version=0.408;
 int renewscreen=1;
 
 int main(int argc, char *argv[])
@@ -134,7 +134,7 @@ int End_Program(int code)
 }
 
 // filename extension add/remove
-void Reccurse_File_Extension(char *filename, int flag) // 0 remove, 1 add .rc, 2 add .db, 3 add .out
+char* Reccurse_File_Extension(char *filename, int flag) // 0 remove, 1 add .rc, 2 add .db, 3 add .out
 {
   int i;
   
@@ -157,6 +157,8 @@ void Reccurse_File_Extension(char *filename, int flag) // 0 remove, 1 add .rc, 2
     Reccurse_File_Extension(filename, 0);
     strcat(filename, ".out");
   break; }
+  
+ return &filename[0];
 }
 
 // read .rc file
@@ -1041,9 +1043,14 @@ int Show_Record_and_Menu()
      switch (c) {
       // print screen
       case 'z': {
-       Reccurse_File_Extension(pages[currentpage], 3);
-       FILE *out=fopen(pages[currentpage], "a");
-       Reccurse_File_Extension(pages[currentpage], 2);
+       Show_Menu_Bar(1);
+       Show_Message(1, 24, 5, "filename:", 0);
+       strcpy(input_string, pages[currentpage]);
+       Reccurse_File_Extension(input_string, 3);
+       i=Scan_Input(input_string, 11, 24, 5);
+       if (i==ESC)
+        break;
+       FILE *out=fopen(input_string, "a");
        mousemask(0, NULL);
        clear();
        Change_Color(58);

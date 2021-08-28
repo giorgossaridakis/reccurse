@@ -218,7 +218,7 @@ vector <FindSchedule> findschedule;
 // reccurse.cc
 void Intro_Screen();
 int End_Program(int code=0);
-void Reccurse_File_Extension(char *filename, int flag=0);
+char* Reccurse_File_Extension(char *filename, int flag=0);
 int Read_rc_File();
 int Write_rc_File(char *file);
 int Read_Write_db_File(int mode=0);
@@ -309,7 +309,13 @@ int sgetch(int x_pos=78, int y_pos=24, int sleeptime=250, int showflag=1);
 void cleanstdin();
 void Show_Message(int x_pos, int y_pos, int color, char *message, int sleeptime=1500);
 void Show_Message(int x_pos, int y_pos, int color, const char *message, int sleeptime=1500);
-void Sleep(int sleepMs) { usleep(sleepMs*1000); } // sleep routine;=)
+#if defined(__FreeBSD__) || defined(__NetBSD__) || defined(__OpenBSD__) || defined(__DragonFly__)
+void Sleep(ul sleepMs) { sleep(sleepMs/1000); }
+#define Sleep(sleepMs) sleep(sleepMs/1000);
+#endif
+#ifdef __linux__ 
+void Sleep(ul sleepMs) { usleep(sleepMs*1000); }
+#endif
 void replaceunderscoresandbrackets(char dataname[], int flag);
 char *ctos(int t);
 double bringfractionpartofdivision(int param1, int param2, int scale=10);
