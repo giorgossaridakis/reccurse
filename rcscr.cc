@@ -253,3 +253,45 @@ void gotoxy(int x, int y)
 {
   move(y-1,x-1);
 }
+
+// change attributes
+void Change_Attributes(int attribute)
+{
+  switch (attribute) {
+   case NORMAL:
+    attroff(A_STANDOUT);
+    attroff(A_UNDERLINE);
+    attroff(A_REVERSE);
+    attroff(A_BLINK);
+    attroff(A_DIM);
+    attroff(A_BOLD);
+    attroff(A_PROTECT);
+    attroff(A_INVIS);
+    attron(A_NORMAL);
+   break;
+   case STANDOUT:
+    attron(A_STANDOUT);
+   break;
+   case UNDERLINE:
+    attron(A_UNDERLINE);
+   break;
+   case REVERSE:
+    attron(A_REVERSE);
+   break;
+   case BLINK:
+    attron(A_BLINK);
+   break;
+   case DIM:
+    attron(A_DIM);
+   break;
+   case BOLD:
+    attron(A_BOLD);
+   break;
+   case PROTECT:
+    attron(A_PROTECT);
+   break;
+   case INVISIBLE:
+    attron(A_INVIS);
+  break; }
+
+}

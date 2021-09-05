@@ -43,11 +43,14 @@ const int MAXMENUS=10; // mouse menus
 const int RELATIONSHIPSLENGTH=1024; // 1kb of external db files relationship data
 const int MAXRELATIONSHIPS=25; // will fit into above 1kb, same as MAXPAGES
 const int MAXSEARCHDEPTH=5;
+const int INSTRUCTION='%';
 enum { HORIZONTALLY=0, VERTICALLY };
 const int NUMERICALLIMIT=32765;
 int BLOCK=-1, UNBLOCK=1000; // wait times for getch()
+int separatort=46, separatord=44, suffixposition=1;
 enum { NOBUTTON=0, TICKBOX, BUTTONBOX, BUTTONSCREEN, BUTTONCOMMAND };
 enum { NUMERICAL=0, CALENDAR, STRING, MIXEDTYPE, VARIABLE, PROGRAM, CLOCK };
+enum { NORMAL=0, STANDOUT, UNDERLINE, REVERSE, BLINK, DIM, BOLD, PROTECT, INVISIBLE };
 const char *menukeys[]={ "eot`", "alsh`", "dcpjv+-*/.!@`", "ifru`", "yn`", "0123456789/*-+^,.()=`" }; // m works in all menus
 const char *buttonkeys[]={ "0", "1", "2", "3", "4", "5", "6", "7", "8", "9", "/", "*", 
 "-", "+", "^", ",", ".", "(", ")", "=", "sin", "cos", "tan", "cotan", "sqr", "abs", "log", "AC", "DEL", "EXEC" };
@@ -344,6 +347,9 @@ int kbhit(void);
 int decimatestringtokey(char *text);
 int breaktexttokeys(char *text);
 int blockunblockgetch(int delay=BLOCK);
+int isautomaticvalueformatinstruction(int field_id);
+char *formatmonetarystring(char *text);
+char *appendsuffix(char *text, int field_id);
 
 // rcfre.cc
 int References_Editor();
@@ -374,6 +380,8 @@ void replacepartoftextwithcorrespondingvalue(char ttext[MAXSTRING], int record_i
 void extracttextpart(char source[MAXSTRING], char dest[MAXSTRING], int startpt, int endpt);
 void inserttextpart(char text[MAXSTRING], char part[MAXSTRING], int point);
 int commandparser(int reference, char tcommand[MAXSTRING]);
+char* formatreplacer(char source[MAXSTRING], int field_id);
+char *performinstruction(char instruction[MAXSTRING], int field_id);
 
 // rcscr.cc
 int Init_Screen();
@@ -383,6 +391,7 @@ void Draw_Box(int color, int x_pos, int x_size, int y_pos, int y_size, int paint
 void Draw_Box(char t, int color, int x_pos, int x_size, int y_pos, int y_size, int paintcolor=0);
 void Draw_Box(Drawbox &tdrawbox);
 void gotoxy(int x, int y);
+void Change_Attributes(int attribute);
 
 // to be compiled together
 #include "rcscr.cc"

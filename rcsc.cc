@@ -1,5 +1,7 @@
 // string formula parser
 
+enum { SAME=0, LOWER, UPPER };
+int nextletterssize;
 const char *commands[]={ "mid$(", "left$(", "right$(", "toupper$(", "tolower$(" };
 
 int stringformulacalculator(char formula[MAXSTRING], int record_id)
@@ -85,14 +87,10 @@ void inserttextpart(char text[MAXSTRING], char part[MAXSTRING], int point)
   
    for (i=0;i<point;i++)
     ttext[n++]=text[i];
-//    ttext[n++]=SPACE;
-   for (i=0;i<strlen(part);i++)
+   for (i=0;i<strlen(part) && n<MAXSTRING;i++)
     ttext[n++]=part[i];
-//    ttext[n++]=SPACE;
-   for (i=point;i<strlen(text);i++) {
+   for (i=point;i<strlen(text) && n<MAXSTRING;i++)
     ttext[n++]=text[i];
-    if (n>MAXSTRING)
-   break; }
    ttext[n]='\0';
    strcpy(text, ttext);; 
 }
@@ -168,4 +166,95 @@ int commandparser(int reference, char tcommand[MAXSTRING])
    strcpy(tcommand, tttext);
 
  return 1;
+}
+
+// execute commands for format string
+char* formatreplacer(char source[MAXSTRING], int field_id)
+{
+  int i, i1, operation=1;
+  static char formattedtext[MAXSTRING];
+  char instruction[MAXSTRING], newsource[MAXSTRING];
+
+   strcpy(newsource, source);
+   stringformulacalculator(newsource, currentrecord); // treat as a formula record
+   i=i1=nextletterssize=0;
+   
+   while (operation) {
+    operation=0;
+       
+    for (;i<strlen(newsource);i++) {
+     if (newsource[i]==INSTRUCTION) {
+      extracttextpart(newsource, instruction, i, i+3);
+      inserttextpart(newsource, performinstruction(instruction, field_id), i);
+      operation=1;
+     break; }
+     switch (nextletterssize) {
+      case UPPER:
+       formattedtext[i1++]=toupper(newsource[i]);
+      break;
+      case LOWER:
+       formattedtext[i1++]=tolower(newsource[i]);
+      break;
+      case SAME:
+       formattedtext[i1++]=newsource[i];
+     break; }
+    }
+   }
+   formattedtext[i1]='\0'; 
+    
+  return &formattedtext[0];   
+}
+
+// instructions in automatic values
+char *performinstruction(char instruction[MAXSTRING], int field_id)
+{
+
+  int i;
+  char number[3];
+  if (isdigit(instruction[1]) || isdigit(instruction[2])) { // characters from field string to bring
+   number[0]=instruction[1];
+   number[1]=strlen(instruction)==3 ? instruction[2] : ' ';
+  instruction[1]='t'; }
+  
+   switch(instruction[1]) {
+    case 'f': // capital or not for the next characters
+     switch (instruction[2]) {
+      case 'c':
+       nextletterssize=UPPER;
+      break;
+      case 's':
+       nextletterssize=LOWER;
+      break;
+      default:
+       nextletterssize=SAME;
+     break; }
+     break;
+     case 't': // insert current fields text, if number follows, cut after n chars
+      i=atoi(number);
+      strcpy(instruction, records[(currentrecord*fieldsperrecord)+field_id].text);
+      if (i)
+       instruction[i]='\0';
+      return &instruction[0];
+     break;
+     case 'm':
+      switch (instruction[2]) {
+       case 'i':
+        separatort=44;
+       break;
+       case 'm':
+        separatort=46;
+       break;
+       case 'f':
+        suffixposition=0;
+       break;
+       case 'b':
+        suffixposition=1;
+      break; }
+     break;
+     default:
+      // add more
+    break; }
+    strcpy(instruction, "");
+    
+ return &instruction[0];   
 }

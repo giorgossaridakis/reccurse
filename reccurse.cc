@@ -1,7 +1,7 @@
 // reccurse, the filemaker of ncurses
 #include "reccurse.h"
 
-const double version=0.408;
+const double version=0.414;
 int renewscreen=1;
 
 int main(int argc, char *argv[])
@@ -833,7 +833,7 @@ void Bring_DateTime_Stamp(char tdatetime[MAXSTRING], int field_id)
   else
    strcpy(calendarformat, "%x %X");
       
-  if (strcmp(record[field_id].automatic_value, EMPTYSTRING))
+  if (isautomaticvalueformatinstruction(field_id))
    strcpy(calendarformat, record[field_id].automatic_value);
   
    strftime(tdatetime, MAXSTRING,const_cast <char *> (calendarformat), timeinfo);
@@ -1359,7 +1359,7 @@ int Show_Record_and_Menu()
      break;
      // from menu 2
      case 'd':
-      if (!strcmp(record[currentfield].automatic_value, EMPTYSTRING) && record[currentfield].type!=CALENDAR) {
+      if (record[currentfield].type!=CALENDAR && record[currentfield].type!=CLOCK) {
        if (record[currentfield].buttonbox==BUTTONSCREEN)
         record[currentfield].type=NUMERICAL; // trick to bring reversepolishcalculator
        if (!record[currentfield].fieldlist) 
@@ -1374,12 +1374,15 @@ int Show_Record_and_Menu()
         Show_Field(&records[(currentrecord*fieldsperrecord)+record[currentfield].fieldlist-1], 1);
         attroff(A_BLINK); } }
       Screen_String_Editor(records[(currentrecord*fieldsperrecord)+currentfield]); }
+      if (isautomaticvalueformatinstruction(currentfield))
+       strcpy(records[(currentrecord*fieldsperrecord)+currentfield].text, formatreplacer(record[currentfield].automatic_value, currentfield));
       if (record[currentfield].type==CALENDAR) {
        strcpy(input_string, records[(currentrecord*fieldsperrecord)+currentfield].text);
        Scan_Date(1, 24, input_string);
        strcpy(records[(currentrecord*fieldsperrecord)+currentfield].text, input_string);
-       if (autosave)
-      Read_Write_Field(records[(currentrecord*fieldsperrecord)+currentfield], fieldposition(currentrecord, currentfield), 1); }
+      }
+      if (autosave)
+       Read_Write_Field(records[(currentrecord*fieldsperrecord)+currentfield], fieldposition(currentrecord, currentfield), 1);
       // jump to next BUTTONCOMMAND script, if any
       if (record[currentfield].fieldlist && record[record[currentfield].fieldlist-1].buttonbox==BUTTONCOMMAND) {
        currentfield=record[currentfield].fieldlist-1;
@@ -1635,11 +1638,9 @@ int Screen_String_Editor(Annotated_Field &tfield)
     Show_Menu_Bar(1);
     t=Scan_Input(tstring, 1, 24, record[tfield.id].color);
     if (t==ESC)
-     return -1;
+     return -1;    
     strcpy(tfield.text, tstring);
     tfield.number=atof(tfield.text);
-    if (autosave)
-     Read_Write_Field(tfield, tfieldposition, 1);
 
  return 0;
 }
@@ -1835,7 +1836,7 @@ int Show_Field(Annotated_Field *field, int flag) // 1 highlight
 {
   Field *tfield=&record[field->id];
   int i, lima, limb, tposx, tposy, tcolor, columninprint, rowinprint;
-  char ttext[MAXSTRING];
+  char ttext[MAXSTRING*24], ttcolor[4];
   int attributestable[9]; // normal, standout, underline, reverse, blink, dim, bold, protect, invisible
 
   if (!tfield->active || (tfield->type>MIXEDTYPE && tfield->type!=CLOCK))
@@ -1879,49 +1880,17 @@ int Show_Field(Annotated_Field *field, int flag) // 1 highlight
    for (i=0;i<9;i++)
     attributestable[i]=ctoi(record[tfield->id].title_attributes[i]);
     for (i=0;i<9;i++) {
-     if (attributestable[i]) {
-      switch (i) {
-       case 0:
-        attron(A_NORMAL);
-       break;
-       case 1:
-        attron(A_STANDOUT);
-       break;
-       case 2:
-        attron(A_UNDERLINE);
-       break;
-       case 3:
-        attron(A_REVERSE);
-       break;
-       case 4:
-        attron(A_BLINK);
-       break;
-       case 5:
-        attron(A_DIM);
-       break;
-       case 6:
-        attron(A_BOLD);
-       break;
-       case 7:
-        attron(A_PROTECT);
-       break;
-       case 8:
-        attron(A_INVIS);
-    break; } } }
+     if (attributestable[i])
+      Change_Attributes(i);
+    }
     Change_Color(tfield->title_color);
     gotoxy(tposx, tposy);
     printw("%s", tfield->title);
     for (i=0;i<strlen(tfield->title);i++)
      screen[tposx+i][tposy]=tfield->title[i];
     // remove attributes
-    attroff(A_STANDOUT);
-    attroff(A_UNDERLINE);
-    attroff(A_REVERSE);
-    attroff(A_BLINK);
-    attroff(A_DIM);
-    attroff(A_BOLD);
-    attroff(A_PROTECT);
-   attroff(A_INVIS); } }
+    Change_Attributes(NORMAL);
+   } }
  
    // field string to field size and lines
    fieldhasdependancy=Generate_Dependant_Field_String(field, ttext);
@@ -1933,45 +1902,34 @@ int Show_Field(Annotated_Field *field, int flag) // 1 highlight
    for (i=0;i<9;i++)
     attributestable[i]=ctoi(record[tfield->id].attributes[i]);
    for (i=0;i<9;i++) {
-    if (attributestable[i]) {
-     switch (i) {
-      case 0:
-       attron(A_NORMAL);
-      break;
-      case 1:
-       attron(A_STANDOUT);
-      break;
-      case 2:
-       attron(A_UNDERLINE);
-      break;
-      case 3:
-       attron(A_REVERSE);
-      break;
-      case 4:
-       attron(A_BLINK);
-      break;
-      case 5:
-       attron(A_DIM);
-      break;
-      case 6:
-       attron(A_BOLD);
-      break;
-      case 7:
-       attron(A_PROTECT);
-      break;
-      case 8:
-       attron(A_INVIS);
-   break; } } }
+    if (attributestable[i])
+     Change_Attributes(i); }
    tcolor=tfield->color;
    if (flag) {
     tcolor=(tfield->color==highlightcolors[0]) ? highlightcolors[1] : highlightcolors[0];
-    for (i=strlen(ttext);i<80;i++)
-   ttext[i]=SPACE; }
+    for (i=strlen(ttext);i<((tfield->size.x)+1)*((tfield->size.y)+1);i++)
+   ttext[i]=SPACE;
+   ttext[i]='\0';
+   }
    Change_Color(tcolor); 
    columninprint=tfield->pt.x, rowinprint=tfield->pt.y;
    for (i=0;i<strlen(ttext);i++) {
     if (strlen(ttext)==1 && isspace(ttext[0]))
      break;
+    if (ttext[i]=='\\' && tolower(ttext[i+1])=='a') {  // format requested
+     i+=3;
+     Change_Attributes(ctoi(ttext[i-1]));
+    }
+    if (ttext[i]=='\\' && tolower(ttext[i+1])=='c') { // color requested
+     i+=2;
+     int i1=0;
+     while (isdigit(ttext[i]))
+      ttcolor[i1++]=ttext[i++];
+     ttcolor[i1]='\0';
+     if (!flag)
+      Change_Color(atoi(ttcolor));
+     i+=i1-1;
+    }
     gotoxy(columninprint, rowinprint);
     addch(ttext[i]);
     screen[columninprint][rowinprint]=ttext[i];
@@ -1982,14 +1940,7 @@ int Show_Field(Annotated_Field *field, int flag) // 1 highlight
     if (rowinprint+1>tfield->pt.y+tfield->size.y)
    break; }
    // remove attributes
-   attroff(A_STANDOUT);
-   attroff(A_UNDERLINE);
-   attroff(A_REVERSE);
-   attroff(A_BLINK);
-   attroff(A_DIM);
-   attroff(A_BOLD);
-   attroff(A_PROTECT);
-   attroff(A_INVIS);
+   Change_Attributes(NORMAL);
     
  return 0;   
 }
@@ -2025,7 +1976,7 @@ void Generate_Field_String(Annotated_Field *field, char *ttext)
   
   switch (tfield->type) {
    case NUMERICAL:
-    if (strcmp(tfield->automatic_value, EMPTYSTRING))
+    if (strcmp(tfield->automatic_value, EMPTYSTRING) && !isautomaticvalueformatinstruction(tfield->id))
      field->number=atof(tfield->automatic_value);
     if (tfield->formula) {
      strcpy(formula, field->text);
@@ -2043,15 +1994,16 @@ void Generate_Field_String(Annotated_Field *field, char *ttext)
     field->number=0; }
     strcpy(ttext, dtoa(field->number));
     limitsignificantnumbers(ttext, tfield->decimals);
-    if (strcmp(tfield->suffix, EMPTYSTRING))
-     strcat(ttext, tfield->suffix);
+    if (isautomaticvalueformatinstruction(tfield->id))
+     formatmonetarystring(ttext);
+    appendsuffix(ttext, tfield->id);
    break;
    case CALENDAR:
     strcpy(ttext, field->text);
    break;
    case STRING:
     strcpy(ttext, field->text);
-    if (strcmp(tfield->automatic_value, EMPTYSTRING))
+    if (strcmp(tfield->automatic_value, EMPTYSTRING) && !isautomaticvalueformatinstruction(tfield->id))
      strcpy(ttext, tfield->automatic_value);
     if (tfield->formula) {
      strcpy(formula, field->text);
@@ -2087,8 +2039,9 @@ void Generate_Field_String(Annotated_Field *field, char *ttext)
     if (field->number || record[field->id].buttonbox==BUTTONSCREEN) {
      strcpy(ttext, dtoa(field->number));
      limitsignificantnumbers(ttext, tfield->decimals);
-     if (strcmp(tfield->suffix, EMPTYSTRING))
-    strcat(ttext, tfield->suffix); }
+     if (isautomaticvalueformatinstruction(tfield->id))
+      formatmonetarystring(ttext);
+    appendsuffix(ttext, tfield->id); }
     if (tfield->formula && !field->number) {
      strcpy(formula, field->text);
      if (strcmp(tfield->automatic_value, EMPTYSTRING))

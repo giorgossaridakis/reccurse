@@ -1083,3 +1083,64 @@ int blockunblockgetch(int delay)
   
  return (delay==-1) ? 0 : 1;
 }
+
+// see if automatic value contains format instructions
+int isautomaticvalueformatinstruction(int field_id)
+{ 
+   for (int i=0;i<strlen(record[field_id].automatic_value);i++)
+    if (record[field_id].automatic_value[i]==INSTRUCTION)
+     return 1;
+    
+ return 0;
+}
+
+// separate thousands and decimals
+char *formatmonetarystring(char *text)
+{
+  if (separatort==0)
+   return text;
+  
+  int i, i1, separatord, length, separatod;
+  separatord=(separatort==46) ? 44 : 46;
+  length=strlen(text);
+  
+  for (i=0;i<strlen(text);i++)
+   if (text[i]=='.') {
+    text[i]=separatord;
+    break;
+   }
+   
+  while (i) {
+   for (i1=0;i1<3 && i;i1++)
+    --i;
+   if (i1==3 && i) {
+    for (i1=length+1;i1>i;i1--)
+     text[i1]=text[i1-1];
+    text[i1]=separatort;
+    ++length;
+   }
+  }
+   
+ return text;   
+}
+
+// append suffix to numerical fields
+char *appendsuffix(char *text, int field_id)
+{
+  char ttext[MAXSTRING];
+  
+  if (!strcmp(record[field_id].suffix, EMPTYSTRING))
+   return text;
+  
+  if (!suffixposition) {
+   strcpy(ttext, record[field_id].suffix);
+  strcat(ttext, text); }
+  else {
+   strcpy(ttext, text);
+   strcat(ttext, record[field_id].suffix);
+  }
+  
+  strcpy(text, ttext);
+   
+ return text;
+}
