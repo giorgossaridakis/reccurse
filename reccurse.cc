@@ -1,7 +1,7 @@
 // reccurse, the filemaker of ncurses
 #include "reccurse.h"
 
-const double version=0.414;
+const double version=0.416;
 int renewscreen=1;
 
 int main(int argc, char *argv[])
@@ -1374,7 +1374,7 @@ int Show_Record_and_Menu()
         Show_Field(&records[(currentrecord*fieldsperrecord)+record[currentfield].fieldlist-1], 1);
         attroff(A_BLINK); } }
       Screen_String_Editor(records[(currentrecord*fieldsperrecord)+currentfield]); }
-      if (isautomaticvalueformatinstruction(currentfield))
+      if (isautomaticvalueformatinstruction(currentfield) && (record[currentfield].type==STRING || record[currentfield].type==MIXEDTYPE))
        strcpy(records[(currentrecord*fieldsperrecord)+currentfield].text, formatreplacer(record[currentfield].automatic_value, currentfield));
       if (record[currentfield].type==CALENDAR) {
        strcpy(input_string, records[(currentrecord*fieldsperrecord)+currentfield].text);
@@ -1389,7 +1389,7 @@ int Show_Record_and_Menu()
       pushspaceonfield(); }
      break;
      case 'p':
-      if (record[records[(currentrecord*fieldsperrecord)+currentfield].id].type && record[records[(currentrecord*fieldsperrecord)+currentfield].id].editable) {
+      if (record[records[(currentrecord*fieldsperrecord)+currentfield].id].type==CALENDAR) {
        Bring_DateTime_Stamp(records[(currentrecord*fieldsperrecord)+currentfield].text, record[records[(currentrecord*fieldsperrecord)+currentfield].id].id);
       Read_Write_Field(records[(currentrecord*fieldsperrecord)+currentfield], fieldposition(currentrecord, currentfield), 1); }
      break;
@@ -1835,7 +1835,7 @@ void Show_DB_Information()
 int Show_Field(Annotated_Field *field, int flag) // 1 highlight
 {
   Field *tfield=&record[field->id];
-  int i, lima, limb, tposx, tposy, tcolor, columninprint, rowinprint;
+  int i, i1=0, lima, limb, tposx, tposy, tcolor, columninprint, rowinprint;
   char ttext[MAXSTRING*24], ttcolor[4];
   int attributestable[9]; // normal, standout, underline, reverse, blink, dim, bold, protect, invisible
 
@@ -1916,19 +1916,31 @@ int Show_Field(Annotated_Field *field, int flag) // 1 highlight
    for (i=0;i<strlen(ttext);i++) {
     if (strlen(ttext)==1 && isspace(ttext[0]))
      break;
-    if (ttext[i]=='\\' && tolower(ttext[i+1])=='a') {  // format requested
-     i+=3;
-     Change_Attributes(ctoi(ttext[i-1]));
-    }
-    if (ttext[i]=='\\' && tolower(ttext[i+1])=='c') { // color requested
-     i+=2;
-     int i1=0;
-     while (isdigit(ttext[i]))
-      ttcolor[i1++]=ttext[i++];
-     ttcolor[i1]='\0';
-     if (!flag)
-      Change_Color(atoi(ttcolor));
-     i+=i1-1;
+    if (ttext[i]=='\\') {
+     switch (ttext[i+1]) {
+      case 'a': // format requested
+       i+=3;
+       Change_Attributes(ctoi(ttext[i-1]));
+      break;
+      case 'c': // color requested
+       i+=2;
+       while (isdigit(ttext[i]))
+        ttcolor[i1++]=ttext[i++];
+       ttcolor[i1]='\0';
+       if (!flag)
+        Change_Color(atoi(ttcolor));
+       i+=i1-1;
+      break;
+      case 'n': // newline
+       i+=2;
+       if (rowinprint+1<=tfield->pt.y+tfield->size.y) {
+        for (i1=columninprint;i1<tfield->pt.x+tfield->size.x;i1++)
+         addch(SPACE);
+        columninprint=tfield->pt.x;
+       ++rowinprint; }
+      break;
+      default:
+     break; }
     }
     gotoxy(columninprint, rowinprint);
     addch(ttext[i]);

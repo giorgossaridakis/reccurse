@@ -378,9 +378,18 @@ void Scan_Date(int x_pos, int y_pos, char tdate[])
    break; }
    if (d>daysinmonth(y, m))
   d=daysinmonth(y, m); }
+  
+  if (c==ESC) 
+   return;
 
-  if (c=='\n')
-   strcpy(tdate, date);
+  // pass new values to time structure and rearrange
+  ltm->tm_year=y-1900;
+  ltm->tm_mon=m-1;
+  ltm->tm_mday=d;
+  strcpy(calendarformat, "%x %X");
+  if (isautomaticvalueformatinstruction(currentfield))
+   strcpy(calendarformat, record[currentfield].automatic_value);
+  strftime(tdate, MAXSTRING, const_cast<char *> (calendarformat), ltm);
 }
 
 // add zeros before first number in string

@@ -110,6 +110,7 @@ char pages[MAXPAGES][MAXSTRING];
 char rcfile[MAXSTRING], dbfile[MAXSTRING];
 const char *onoff[]= { "off", "on" };
 char clipboard[MAXSTRING];
+char calendarformat[MAXSTRING];
 int menucolors[6]={ 5, 6, 4, 3, 1, 2 };
 int menulines[6]={ 24, 24, 24, 24, 24, 24 };
 char infotext[MAXSTRING], *scriptcommand;
