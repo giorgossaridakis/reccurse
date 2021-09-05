@@ -312,9 +312,8 @@ int sgetch(int x_pos=78, int y_pos=24, int sleeptime=250, int showflag=1);
 void cleanstdin();
 void Show_Message(int x_pos, int y_pos, int color, char *message, int sleeptime=1500);
 void Show_Message(int x_pos, int y_pos, int color, const char *message, int sleeptime=1500);
-#if defined(__FreeBSD__) || defined(__NetBSD__) || defined(__OpenBSD__) || defined(__DragonFly__)
+#if defined(__FreeBSD__) || defined(__NetBSD__) || defined(__DragonFly__)
 void Sleep(ul sleepMs) { sleep(sleepMs/1000); }
-#define Sleep(sleepMs) sleep(sleepMs/1000);
 #endif
 #ifdef __linux__ 
 void Sleep(ul sleepMs) { usleep(sleepMs*1000); }
