@@ -1,7 +1,7 @@
 // reccurse, the filemaker of ncurses
 #include "reccurse.h"
 
-const double version=0.416;
+const double version=0.417;
 int renewscreen=1;
 
 int main(int argc, char *argv[])
@@ -1835,7 +1835,7 @@ void Show_DB_Information()
 int Show_Field(Annotated_Field *field, int flag) // 1 highlight
 {
   Field *tfield=&record[field->id];
-  int i, i1=0, lima, limb, tposx, tposy, tcolor, columninprint, rowinprint;
+  int i, i1, lima, limb, tposx, tposy, tcolor, columninprint, rowinprint;
   char ttext[MAXSTRING*24], ttcolor[4];
   int attributestable[9]; // normal, standout, underline, reverse, blink, dim, bold, protect, invisible
 
@@ -1923,13 +1923,12 @@ int Show_Field(Annotated_Field *field, int flag) // 1 highlight
        Change_Attributes(ctoi(ttext[i-1]));
       break;
       case 'c': // color requested
-       i+=2;
+       i+=2; i1=0;
        while (isdigit(ttext[i]))
         ttcolor[i1++]=ttext[i++];
        ttcolor[i1]='\0';
-       if (!flag)
+       if (!flag && atoi(ttcolor))
         Change_Color(atoi(ttcolor));
-       i+=i1-1;
       break;
       case 'n': // newline
        i+=2;
@@ -1938,6 +1937,16 @@ int Show_Field(Annotated_Field *field, int flag) // 1 highlight
          addch(SPACE);
         columninprint=tfield->pt.x;
        ++rowinprint; }
+      break;
+      case 'b': // bell
+       i+=2;
+       if (field->id==currentfield)
+        beep();
+      break;
+      case 'f': // flash
+       i+=2;
+       if (field->id==currentfield)
+        flash();
       break;
       default:
      break; }
