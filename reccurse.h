@@ -51,6 +51,7 @@ int separatort=46, separatord=44, suffixposition=1;
 enum { NOBUTTON=0, TICKBOX, BUTTONBOX, BUTTONSCREEN, BUTTONCOMMAND };
 enum { NUMERICAL=0, CALENDAR, STRING, MIXEDTYPE, VARIABLE, PROGRAM, CLOCK };
 enum { NORMAL=0, STANDOUT, UNDERLINE, REVERSE, BLINK, DIM, BOLD, PROTECT, INVISIBLE };
+enum { TOLEFT=1, CENTER, TORIGHT };
 const char *menukeys[]={ "eot`", "alsh`", "dcpjv+-*/.!@`", "ifru`", "yn`", "0123456789/*-+^,.()=`" }; // m works in all menus
 const char *buttonkeys[]={ "0", "1", "2", "3", "4", "5", "6", "7", "8", "9", "/", "*", 
 "-", "+", "^", ",", ".", "(", ")", "=", "sin", "cos", "tan", "cotan", "sqr", "abs", "log", "AC", "DEL", "EXEC" };
@@ -307,7 +308,6 @@ long int filesize(char *filename);
 void stringquotesencloser(char *tstring, int flag=0);
 void stringquotesopener(char *tstring);
 int isinquotes(char tstring[]);
-void limitspaces(char *tstring);
 int numberofdigits(long int n);
 int sgetch(int x_pos=78, int y_pos=24, int sleeptime=250, int showflag=1);
 void cleanstdin();
@@ -350,6 +350,9 @@ int blockunblockgetch(int delay=BLOCK);
 int isautomaticvalueformatinstruction(int field_id);
 char *formatmonetarystring(char *text);
 char *appendsuffix(char *text, int field_id);
+int limitspaces(char *tstring);
+void aligntextsingley(Annotated_Field *field, int alignment, int row=0);
+char* aligntext(char text[MAXSTRING], Annotated_Field *field, int alignment);
 
 // rcfre.cc
 int References_Editor();
@@ -377,7 +380,7 @@ int parseformulaforerrors(char formula[]);
 // rcsc.cc
 int stringformulacalculator(char formula[MAXSTRING], int record_id);
 void replacepartoftextwithcorrespondingvalue(char ttext[MAXSTRING], int record_id);
-void extracttextpart(char source[MAXSTRING], char dest[MAXSTRING], int startpt, int endpt);
+int extracttextpart(char source[MAXSTRING], char dest[MAXSTRING], int startpt, int endpt);
 void inserttextpart(char text[MAXSTRING], char part[MAXSTRING], int point);
 int commandparser(int reference, char tcommand[MAXSTRING]);
 char* formatreplacer(char source[MAXSTRING], int field_id);

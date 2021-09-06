@@ -523,26 +523,6 @@ int isinquotes(char tstring[])
  return 0;
 }
 
-// trim spaces at start and end of string
-void limitspaces(char *tstring)
-{
-  int i=0, n=0;
-  char ttstring[MAXSTRING];
-  
-  while (isspace(tstring[i]) && i<strlen(tstring))
-   ++i;
-  for (;i<strlen(tstring);i++)
-   ttstring[n++]=tstring[i];
-  ttstring[n]='\0';
-  i=strlen(ttstring)-1;
-  while (isspace(ttstring[i]))
-   --i;
-  ttstring[++i]='\0';
-  if (!strlen(ttstring))
-   strcpy(ttstring, " ");
-  strcpy(tstring, ttstring);
-}
-
 // number of digits
 int numberofdigits(long int n)
 {
@@ -1152,4 +1132,134 @@ char *appendsuffix(char *text, int field_id)
   strcpy(text, ttext);
    
  return text;
+}
+
+// trim spaces at start and end of string
+int limitspaces(char *tstring)
+{
+  int i, n, spaces;
+  char ttstring[MAXSTRING];
+  
+    i=n=spaces=0;
+    while (isspace(tstring[i]) && i<strlen(tstring)) {
+     ++i;
+    ++spaces; } 
+    for (;i<strlen(tstring);i++)
+     ttstring[n++]=tstring[i];
+    ttstring[n]='\0';
+    i=strlen(ttstring)-1;
+    while (isspace(ttstring[i])) {
+     --i;
+    ++spaces; }
+    ttstring[++i]='\0';
+    if (!strlen(ttstring))
+     strcpy(ttstring, " ");
+    strcpy(tstring, ttstring);
+  
+ return spaces;
+}
+
+// align text for single sized y fields
+void aligntextsingley(Annotated_Field *field, int alignment, int row)
+{
+  int y, x, i, spaces;
+  int ptx, pty, sizex;
+  char ttext[MAXSTRING], ttext2[MAXSTRING], screenpart[MAXSTRING], spacesstring[MAXSTRING];
+  
+  strcpy(ttext, field->text);
+  limitspaces(ttext);
+  ptx=record[field->id].pt.x;
+  pty=record[field->id].pt.y;
+  sizex=record[field->id].size.x;
+    
+    i=spaces=0; y=pty+row;
+    if (row<record[field->id].size.y) {
+     for (x=ptx;x<ptx+sizex;x++)
+      screenpart[i++]=screen[x][y];
+     screenpart[i]='\0';
+     spaces=limitspaces(screenpart);
+     if (alignment==CENTER)
+      spaces/=2;
+    }
+    for (i=0;i<spaces;i++)
+     spacesstring[i]=SPACE;
+    spacesstring[i]='\0';
+    
+    switch (alignment) {
+     case TOLEFT:
+      strcat(ttext, spacesstring);
+     break; 
+     case CENTER:
+      strcpy(ttext2, spacesstring);
+      strcat(spacesstring, ttext);
+      strcat(spacesstring, ttext2);
+      strcpy(ttext, spacesstring);
+     break;
+     case TORIGHT:
+      strcat(spacesstring, ttext);
+      strcpy(ttext, spacesstring);
+    break; }
+    
+   strcpy(field->text, ttext);
+    
+}
+
+// align text
+char* aligntext(char text[MAXSTRING], Annotated_Field *field, int alignment)
+{
+  int i, spaces, printablechars, row=0, operation=1;
+  char alltext[MAXSTRING], fieldcopy[MAXSTRING], ttext[MAXSTRING];
+  Annotated_Field tfield=*field;
+  strcpy(fieldcopy, text);
+  
+   while (operation) {
+    operation=printablechars=0;
+    
+    for (i=0;i<strlen(fieldcopy);i++) {
+     
+     if (fieldcopy[i]=='\\') { // instruction follows
+      switch (fieldcopy[i+1]) {
+       case 'a':
+        i+=3;
+       break;
+       case 'c':
+        i+=2;
+        while (isdigit(fieldcopy[i]))
+         ++i;
+       break;
+       case 'n':
+        i+=2;
+       break;
+       case 'b':
+        i+=2;
+       break;
+       case 'f':
+        i+=2;
+       break;
+       case 'p':
+        i+=3;
+      break; }
+     }
+     if (fieldcopy[i]!='\\')
+      ++printablechars;
+     
+     if (printablechars==record[field->id].size.x) {
+      operation=1;
+       break;
+     }
+    }
+    i=(i>strlen(fieldcopy)) ? strlen(fieldcopy) : i;
+    extracttextpart(fieldcopy, ttext, 0, i);
+    strcpy(tfield.text, ttext);
+    aligntextsingley(&tfield, alignment, row);   
+    ++row;
+    if (row==1)
+     strcpy(alltext, tfield.text);
+    else
+     strcat(alltext, tfield.text);
+   }
+   
+   strcpy(text, alltext);
+
+ return &text[0];
 }

@@ -1,7 +1,7 @@
 // reccurse, the filemaker of ncurses
 #include "reccurse.h"
 
-const double version=0.417;
+const double version=0.422;
 int renewscreen=1;
 
 int main(int argc, char *argv[])
@@ -1359,7 +1359,7 @@ int Show_Record_and_Menu()
      break;
      // from menu 2
      case 'd':
-      if (record[currentfield].type!=CALENDAR && record[currentfield].type!=CLOCK) {
+      if (record[currentfield].type!=CALENDAR && record[currentfield].type!=CLOCK && record[currentfield].buttonbox==NOBUTTON) {
        if (record[currentfield].buttonbox==BUTTONSCREEN)
         record[currentfield].type=NUMERICAL; // trick to bring reversepolishcalculator
        if (!record[currentfield].fieldlist) 
@@ -1832,7 +1832,7 @@ void Show_DB_Information()
 }
   
 // show field
-int Show_Field(Annotated_Field *field, int flag) // 1 highlight
+int Show_Field(Annotated_Field *field, int flag) // 1 highlight, 2 only in screen array
 {
   Field *tfield=&record[field->id];
   int i, i1, lima, limb, tposx, tposy, tcolor, columninprint, rowinprint;
@@ -1885,7 +1885,8 @@ int Show_Field(Annotated_Field *field, int flag) // 1 highlight
     }
     Change_Color(tfield->title_color);
     gotoxy(tposx, tposy);
-    printw("%s", tfield->title);
+    if (flag<2)
+     printw("%s", tfield->title);
     for (i=0;i<strlen(tfield->title);i++)
      screen[tposx+i][tposy]=tfield->title[i];
     // remove attributes
@@ -1898,6 +1899,7 @@ int Show_Field(Annotated_Field *field, int flag) // 1 highlight
     Generate_Field_String(field, ttext);
    if (field->number || record[field->id].type==NUMERICAL || record[field->id].type==MIXEDTYPE || record[field->id].buttonbox==BUTTONSCREEN)
     addleadingzeros(ttext, field);
+     
    // add attributes
    for (i=0;i<9;i++)
     attributestable[i]=ctoi(record[tfield->id].attributes[i]);
@@ -1905,10 +1907,20 @@ int Show_Field(Annotated_Field *field, int flag) // 1 highlight
     if (attributestable[i])
      Change_Attributes(i); }
    tcolor=tfield->color;
+   
+   // see if there is an alignment request
+   i=0;
+   while (isspace(ttext[i]))
+    ++i;
+   if (ttext[i]=='\\' && ttext[i+1]=='p' && isdigit(ttext[i+2]) && flag<2) {
+    Show_Field(field, 2);
+    aligntext(ttext, field, ctoi(ttext[i+2])); 
+   }
+   // highlight field
    if (flag) {
     tcolor=(tfield->color==highlightcolors[0]) ? highlightcolors[1] : highlightcolors[0];
     for (i=strlen(ttext);i<((tfield->size.x)+1)*((tfield->size.y)+1);i++)
-   ttext[i]=SPACE;
+     ttext[i]=SPACE;
    ttext[i]='\0';
    }
    Change_Color(tcolor); 
@@ -1948,18 +1960,26 @@ int Show_Field(Annotated_Field *field, int flag) // 1 highlight
        if (field->id==currentfield)
         flash();
       break;
+      case 'p': // alignment, handled before
+       i+=3;
+      break;
       default:
      break; }
+     if (ttext[i]=='\\') { // if next char is \, will not appear and command will be skipped
+      --i;
+     continue; }
     }
+    if (rowinprint+1>tfield->pt.y+tfield->size.y)
+     break; 
     gotoxy(columninprint, rowinprint);
-    addch(ttext[i]);
+    if (flag<2)
+     addch(ttext[i]);
     screen[columninprint][rowinprint]=ttext[i];
     ++columninprint;
     if (columninprint>tfield->pt.x+tfield->size.x-1) {
      columninprint=tfield->pt.x;
     ++rowinprint; }
-    if (rowinprint+1>tfield->pt.y+tfield->size.y)
-   break; }
+   }
    // remove attributes
    Change_Attributes(NORMAL);
     

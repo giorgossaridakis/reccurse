@@ -259,15 +259,7 @@ void Change_Attributes(int attribute)
 {
   switch (attribute) {
    case NORMAL:
-    attroff(A_STANDOUT);
-    attroff(A_UNDERLINE);
-    attroff(A_REVERSE);
-    attroff(A_BLINK);
-    attroff(A_DIM);
-    attroff(A_BOLD);
-    attroff(A_PROTECT);
-    attroff(A_INVIS);
-    attron(A_NORMAL);
+    attrset(0);
    break;
    case STANDOUT:
     attron(A_STANDOUT);

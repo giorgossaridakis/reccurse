@@ -63,7 +63,7 @@ void replacepartoftextwithcorrespondingvalue(char ttext[MAXSTRING], int record_i
 }
 
 // remove part of text and place in a char array
-void extracttextpart(char source[MAXSTRING], char dest[MAXSTRING], int startpt, int endpt)
+int extracttextpart(char source[MAXSTRING], char dest[MAXSTRING], int startpt, int endpt)
 {
   int i, n=0;
   char ttext[MAXSTRING];
@@ -77,6 +77,8 @@ void extracttextpart(char source[MAXSTRING], char dest[MAXSTRING], int startpt, 
      ttext[n++]=source[i];
    ttext[n]='\0';
    strcpy(source, ttext);
+   
+ return strlen(source);
 }
 
 // insert text in text
