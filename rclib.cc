@@ -1227,8 +1227,11 @@ char* aligntext(char text[MAXSTRING], Annotated_Field *field, int alignment)
         while (isdigit(fieldcopy[i]))
          ++i;
        break;
-       case 'n':
-        i+=2;
+       case 'n': // not allowed
+        return &text[0];
+//         fieldcopy[i]=' '; // clear next line escape code
+//         fieldcopy[i+1]=' ';
+//         i+=2;
        break;
        case 'b':
         i+=2;
@@ -1242,6 +1245,8 @@ char* aligntext(char text[MAXSTRING], Annotated_Field *field, int alignment)
      }
      if (fieldcopy[i]!='\\')
       ++printablechars;
+     else
+      --i;
      
      if (printablechars==record[field->id].size.x) {
       operation=1;
