@@ -46,7 +46,7 @@ const int MAXSEARCHDEPTH=5;
 const int INSTRUCTION='%';
 enum { HORIZONTALLY=0, VERTICALLY };
 const int NUMERICALLIMIT=32765;
-int BLOCK=-1, UNBLOCK=1000; // wait times for getch()
+int BLOCK=-1, UNBLOCK=1000, PRINTUNBLOCK=25; // wait times for getch()
 int separatort=46, separatord=44, suffixposition=1;
 enum { NOBUTTON=0, TICKBOX, BUTTONBOX, BUTTONSCREEN, BUTTONCOMMAND };
 enum { NUMERICAL=0, CALENDAR, STRING, MIXEDTYPE, VARIABLE, PROGRAM, CLOCK };
@@ -93,6 +93,7 @@ int autosave;
 int recordsdemo=0;
 int printscreenmode=0;
 int renewscreen=1;
+int recordsdemoall=0;
 int currentpage=0;
 int pagesnumber=0;
 int currentmenu=0;
@@ -279,6 +280,7 @@ void copytoclipboard();
 void pastefromclipboard();
 void toggleautosave();
 int addorplayprogram(int programid);
+void outputscreenarraytofile();
 
 // rccompar.cc
 int labelposition(char *label);

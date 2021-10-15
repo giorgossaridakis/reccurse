@@ -1,7 +1,7 @@
 // reccurse, the filemaker of ncurses
 #include "reccurse.h"
 
-const double version=0.423;
+const double version=0.424;
 
 
 int main(int argc, char *argv[])
@@ -1033,6 +1033,9 @@ int Show_Record_and_Menu()
     }
     
     if (!runscript || (keyonnextloop.size() && keyonnextloop[keyonnextloop.size()-1]!=SPACE)) { // also process keyonnextloop from scripts, but not space
+     if (recordsdemoall && printscreenmode)
+      blockunblockgetch(PRINTUNBLOCK);
+     else
      blockunblockgetch(UNBLOCK); // necessary to give live clock operational status
      if (mousemenucommands.size())
       c=fetchmousemenucommand();
@@ -1048,6 +1051,14 @@ int Show_Record_and_Menu()
       for (i=0;i<strlen(programkeys);i++)
        if (c==programkeys[i])
         addorplayprogram(c);
+       
+     if (recordsdemoall && c!='w') {
+      c='>';
+      renewscreen=1;
+      if (!printscreenmode) // a little extra time to view record
+     Sleep(750); }
+     if (currentrecord==recordsnumber-2)
+      recordsdemoall=0;
       
      switch (c) {
       // print screen
@@ -1072,11 +1083,15 @@ int Show_Record_and_Menu()
       case 'q':
        if (!printscreenmode)
         break;
-       for (i1=1;i1<25;i1++) {
-        for (i=1;i<81;i++)
-         fputc(screen[i][i1], out);
-       fputc('\n', out); }
-       fflush(out);
+       outputscreenarraytofile();
+      break;
+      case 'w': // demonstrate all records
+       if (recordsdemoall) {
+        recordsdemoall=0;
+       break; }
+       if (recordsnumber>1)
+        recordsdemoall=1;
+       currentrecord=0;
       break;
       // from menu 0
       case 'e':
@@ -1154,6 +1169,8 @@ int Show_Record_and_Menu()
        if (!recordsdemo && autosave) 
         Read_Write_Current_Parameters(0, 1);
        Show_Menu_Bar();
+       if (recordsdemoall && printscreenmode) // output to file in print mode
+        outputscreenarraytofile();
       break;
       case '<': // from all menus
        for (i=currentrecord;i>-1;i--) 
@@ -1662,7 +1679,7 @@ int negatekeysforcurrentmenu(int t)
     
   if (t==SHIFT_RIGHT) t='>'; // shift+right arrow
   if (t==SHIFT_LEFT) t='<'; // shift+left arrow
-  if (t==ESC || t==LEFT || t==RIGHT || t==UP || t==DOWN || t==TAB || t==SHIFT_TAB || t=='m' || t=='g' || t=='?' || t==HOME || t==END || t=='<' || t=='>' || t==']' ||  t==START_OF_RECORDS || t==END_OF_RECORDS || t==KEY_MOUSE || t=='z' || t=='q')
+  if (t==ESC || t==LEFT || t==RIGHT || t==UP || t==DOWN || t==TAB || t==SHIFT_TAB || t=='m' || t=='g' || t=='?' || t==HOME || t==END || t=='<' || t=='>' || t==']' ||  t==START_OF_RECORDS || t==END_OF_RECORDS || t==KEY_MOUSE || t=='z' || t=='q' || t=='w')
    return t;
   
   if (recordsdemo)
@@ -2748,4 +2765,17 @@ int addorplayprogram(int programid)
    breaktexttokeys(records[i].text); // text from any record will do
     
  return 0;
+}
+
+// output screen array to file
+void outputscreenarraytofile()
+{
+  int i, i1;
+  
+   for (i1=1;i1<25;i1++) {
+    for (i=1;i<81;i++)
+     fputc(screen[i][i1], out);
+    fputc('\n', out); }
+   
+   fflush(out);
 }
