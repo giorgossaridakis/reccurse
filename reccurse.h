@@ -91,6 +91,8 @@ using namespace std;
 int menubar;
 int autosave;
 int recordsdemo=0;
+int printscreenmode=0;
+int renewscreen=1;
 int currentpage=0;
 int pagesnumber=0;
 int currentmenu=0;
@@ -116,6 +118,7 @@ int menucolors[6]={ 5, 6, 4, 3, 1, 2 };
 int menulines[6]={ 24, 24, 24, 24, 24, 24 };
 char infotext[MAXSTRING], *scriptcommand;
 int screen[81][25];
+FILE *out;
 
 struct Points {
  int x;

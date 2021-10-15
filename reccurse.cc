@@ -1,8 +1,8 @@
 // reccurse, the filemaker of ncurses
 #include "reccurse.h"
 
-const double version=0.422;
-int renewscreen=1;
+const double version=0.423;
+
 
 int main(int argc, char *argv[])
 {
@@ -989,7 +989,16 @@ int Show_Record_and_Menu()
     if (renewscreen)
      clear();
     for (i=0;i<fieldsperrecord;i++)
-     Show_Field(&records[(currentrecord*fieldsperrecord)+i]);
+      Show_Field(&records[(currentrecord*fieldsperrecord)+i], printscreenmode);
+    if (printscreenmode) {
+     clear();
+     for (i1=1;i1<25;i1++) {
+      for (i=1;i<81;i++) {
+       gotoxy(i, i1);
+       printw("%c", screen[i][i1]);
+       }
+      }
+    }
     if (currentfield>-1 && !recordsdemo)
      Show_Field(&records[(currentrecord*fieldsperrecord)+currentfield], 1);
     refresh();
@@ -1042,7 +1051,14 @@ int Show_Record_and_Menu()
       
      switch (c) {
       // print screen
-      case 'z': {
+      case 'z':
+       if (printscreenmode) {
+        printscreenmode=0;
+        mousemask(ALL_MOUSE_EVENTS, NULL);
+        fclose(out);
+       break; }
+       else
+        printscreenmode=2; // to use in flag for Show_Field
        Show_Menu_Bar(1);
        Show_Message(1, 24, 5, "filename:", 0);
        strcpy(input_string, pages[currentpage]);
@@ -1050,23 +1066,17 @@ int Show_Record_and_Menu()
        i=Scan_Input(input_string, 11, 24, 5);
        if (i==ESC)
         break;
-       FILE *out=fopen(input_string, "a");
+       out=fopen(input_string, "a");
        mousemask(0, NULL);
-       clear();
-       Change_Color(58);
+      break;
+      case 'q':
+       if (!printscreenmode)
+        break;
        for (i1=1;i1<25;i1++) {
-        for (i=1;i<81;i++) {
+        for (i=1;i<81;i++)
          fputc(screen[i][i1], out);
-         gotoxy(i, i1);
-        printw("%c", screen[i][i1]);
-        }
-        fputc('\n', out);
-       }
-       refresh();
-       getch();
-       mousemask(ALL_MOUSE_EVENTS, NULL);
-       fclose(out);
-      }
+       fputc('\n', out); }
+       fflush(out);
       break;
       // from menu 0
       case 'e':
@@ -1141,7 +1151,7 @@ int Show_Record_and_Menu()
         --currentrecord; }
         else
        --currentrecord; }
-       if (!recordsdemo) 
+       if (!recordsdemo && autosave) 
         Read_Write_Current_Parameters(0, 1);
        Show_Menu_Bar();
       break;
@@ -1150,7 +1160,7 @@ int Show_Record_and_Menu()
         if (findresults[0][i]<currentrecord && findresults[0][i]>-1) {
          currentrecord=findresults[0][i];
        break; }
-       if (!recordsdemo) 
+       if (!recordsdemo && autosave) 
         Read_Write_Current_Parameters(0, 1);
       break;
       case HOME:
@@ -1652,7 +1662,7 @@ int negatekeysforcurrentmenu(int t)
     
   if (t==SHIFT_RIGHT) t='>'; // shift+right arrow
   if (t==SHIFT_LEFT) t='<'; // shift+left arrow
-  if (t==ESC || t==LEFT || t==RIGHT || t==UP || t==DOWN || t==TAB || t==SHIFT_TAB || t=='m' || t=='g' || t=='?' || t==HOME || t==END || t=='<' || t=='>' || t==']' ||  t==START_OF_RECORDS || t==END_OF_RECORDS || t==KEY_MOUSE || t=='z')
+  if (t==ESC || t==LEFT || t==RIGHT || t==UP || t==DOWN || t==TAB || t==SHIFT_TAB || t=='m' || t=='g' || t=='?' || t==HOME || t==END || t=='<' || t=='>' || t==']' ||  t==START_OF_RECORDS || t==END_OF_RECORDS || t==KEY_MOUSE || t=='z' || t=='q')
    return t;
   
   if (recordsdemo)
