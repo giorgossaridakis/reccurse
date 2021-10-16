@@ -1,7 +1,7 @@
 // reccurse, the filemaker of ncurses
 #include "reccurse.h"
 
-const double version=0.424;
+const double version=0.427;
 
 
 int main(int argc, char *argv[])
@@ -111,13 +111,8 @@ void Intro_Screen()
 // goodbye
 int End_Program(int code)
 {
-  if (!code) {
-   if (alteredparameters) {
-    char c;
-    Show_Message(1, 24, 2, "save altered parameters (y/n):", 0);
-    c=sgetch();
-    if (tolower(c)=='y')
-  Read_Write_db_File(4); } }
+  if (!code)
+   checkalteredparameters();
   
   Clean_Database(dbfile); 
   Read_Write_Current_Parameters(4, 1);
@@ -131,6 +126,23 @@ int End_Program(int code)
   End_Screen();
   
  exit(EXIT_SUCCESS);
+}
+
+// altered parameters
+int checkalteredparameters()
+{
+ char c;   
+    
+  if (!alteredparameters)
+   return 0;
+
+   Show_Message(1, 24, 2, "save altered parameters (y/n):", 0);
+   c=sgetch();
+   if (tolower(c)=='y')
+    Read_Write_db_File(4);
+   alteredparameters=0;
+
+  return 1;
 }
 
 // filename extension add/remove
@@ -1002,12 +1014,12 @@ int Show_Record_and_Menu()
     if (currentfield>-1 && !recordsdemo)
      Show_Field(&records[(currentrecord*fieldsperrecord)+currentfield], 1);
     refresh();
-    if (!recordsdemo)
-     for (i=0;i<MAXRECORDS;i++)
-      if (i<=recordsnumber)
-       findresults[0][i]=i;
-      else
-       findresults[0][i]=-1;
+    if (!recordsdemo) {
+     for (i=0;i<=recordsnumber;i++)
+      findresults[0][i]=i;
+     for (;i<MAXRECORDS;i++)
+      findresults[0][i]=-1;
+    }
        
     Show_Menu_Bar();
     cleanstdin();
@@ -1052,13 +1064,13 @@ int Show_Record_and_Menu()
        if (c==programkeys[i])
         addorplayprogram(c);
        
-     if (recordsdemoall && c!='w') {
-      c='>';
-      renewscreen=1;
-      if (!printscreenmode) // a little extra time to view record
-     Sleep(750); }
-     if (currentrecord==recordsnumber-2)
-      recordsdemoall=0;
+     if (recordsdemoall) {
+      if (c!='w') {
+       c='>';
+       renewscreen=1;
+       if (!printscreenmode) // a little extra time to view record
+      Sleep(750); }
+     }
       
      switch (c) {
       // print screen
@@ -1091,7 +1103,7 @@ int Show_Record_and_Menu()
        break; }
        if (recordsnumber>1)
         recordsdemoall=1;
-       currentrecord=0;
+       currentrecord=findresults[0][0];
       break;
       // from menu 0
       case 'e':
@@ -1152,7 +1164,15 @@ int Show_Record_and_Menu()
         if (findresults[0][i]>currentrecord) {
          currentrecord=findresults[0][i];
        break; }
-       if (currentrecord>recordsnumber-1 && currentrecord+1<MAXRECORDS) {
+       if (recordsdemoall && printscreenmode) // output to file in print mode
+        outputscreenarraytofile();
+       if (recordsdemoall && i==recordsnumber+1)
+        recordsdemoall=0;
+       if ((currentrecord>recordsnumber-1 && currentrecord+1<MAXRECORDS)) {
+        if (recordsdemoall) {
+         recordsdemoall=0;
+         --currentrecord;
+        break; }
         if (recordsdemo) {
          --currentrecord;
         break; }
@@ -1169,8 +1189,6 @@ int Show_Record_and_Menu()
        if (!recordsdemo && autosave) 
         Read_Write_Current_Parameters(0, 1);
        Show_Menu_Bar();
-       if (recordsdemoall && printscreenmode) // output to file in print mode
-        outputscreenarraytofile();
       break;
       case '<': // from all menus
        for (i=currentrecord;i>-1;i--) 
@@ -2432,7 +2450,9 @@ void Load_Database(int pagenumber)
 // pages selector - editor
 int Pages_Selector(int pagetochange)
 {
-  int i, t;
+  int i, t, tpage;
+  
+  tpage=currentpage;
   
   if (pagetochange==-1) {
    Change_Color(4);
@@ -2494,6 +2514,8 @@ int Pages_Selector(int pagetochange)
   else
    currentpage=pagetochange;
   
+  if (currentpage!=tpage)
+   checkalteredparameters();
   Read_Write_Current_Parameters(4, 1); // write out currentfield in case of change
   Load_Database(currentpage);
   

@@ -227,6 +227,7 @@ vector <FindSchedule> findschedule;
 // reccurse.cc
 void Intro_Screen();
 int End_Program(int code=0);
+int checkalteredparameters();
 char* Reccurse_File_Extension(char *filename, int flag=0);
 int Read_rc_File();
 int Write_rc_File(char *file);
