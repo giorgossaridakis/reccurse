@@ -1924,11 +1924,13 @@ int Show_Field(Annotated_Field *field, int flag) // 1 highlight, 2 only in scree
    if (tposx>0 && tposx<80 && tposy>0 && tposy<24 && strcmp(tfield->title, EMPTYSTRING)) {
    for (i=0;i<9;i++)
     attributestable[i]=ctoi(record[tfield->id].title_attributes[i]);
-    for (i=0;i<9;i++) {
-     if (attributestable[i])
-      Change_Attributes(i);
+    if (!printscreenmode)
+     for (i=0;i<9;i++) {
+      if (attributestable[i])
+       Change_Attributes(i);
     }
-    Change_Color(tfield->title_color);
+    if (!printscreenmode)
+     Change_Color(tfield->title_color);
     gotoxy(tposx, tposy);
     if (flag<2)
      printw("%s", tfield->title);
@@ -1984,7 +1986,7 @@ int Show_Field(Annotated_Field *field, int flag) // 1 highlight, 2 only in scree
        while (isdigit(ttext[i]))
         ttcolor[i1++]=ttext[i++];
        ttcolor[i1]='\0';
-       if (!flag && atoi(ttcolor))
+       if (!flag && atoi(ttcolor) && !printscreenmode)
         Change_Color(atoi(ttcolor));
       break;
       case 'n': // newline

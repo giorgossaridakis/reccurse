@@ -64,15 +64,15 @@ void Field_Editor()
    gotoxy(35,17);
    printw("20.autovalue:*");
    Change_Color(5);
-   gotoxy(19, 18);
-   printw("<arrows><enter><space><*><esc>");
+   gotoxy(18, 18);
+   printw("<arrows><enter><space><esc><* &>");
    gotoxy(22, 19);
    printw("<j>ump <insert> <delete>");
    Change_Color(3);
    gotoxy(18,20);
    t=sgetch(18,20);
    cleanstdin();
-   if (t!=SPACE && t!=LEFT && t!=RIGHT && t!=ESC && t!=INSERT && t!=DELETE && t!='j' && t!='*')
+   if (t!=SPACE && t!=LEFT && t!=RIGHT && t!=ESC && t!=INSERT && t!=DELETE && t!='j' && t!='*' && t!='&')
     t='\n';
    switch (t) {
     case SPACE:
@@ -114,6 +114,18 @@ void Field_Editor()
        addch(SPACE); }
        Show_Message(18, 20, 1, "field deleted", 1500);
       --fieldshown; }
+     break;
+     case '&':
+      printw("duplicate (y/n):");
+      t=sgetch();
+      if (tolower(t)!='y')
+       break;
+      Add_Field();
+      record[record.size()-1]=record[fieldshown];
+      record[record.size()-1].id=record.size()-1;
+      strcpy(ttext, "duplicate to field ");
+      strcat(ttext, itoa(fieldsperrecord));
+      Show_Message(18, 20, 1, ttext, 1500);
      break;
      case 'j':
       printw("to field:");
