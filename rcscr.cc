@@ -134,46 +134,51 @@ void Change_Color(int choice)
 // draw a usual box
 void Draw_Box(int color, int x_pos, int x_size, int y_pos, int y_size, int paintcolor)
 {
-  int i;
-  attron(A_ALTCHARSET);
-  Change_Color(color);
+  int i, boxchar=BOXCHAR;
   
-  gotoxy(x_pos, y_pos);
-  screen[x_pos][y_pos]=BOXCHAR;
-  addch(108);
-  gotoxy(x_pos+x_size, y_pos);
-  screen[x_pos+x_size][y_pos]=BOXCHAR;
-  addch(107);
-  gotoxy(x_pos, y_pos+y_size);
-  screen[x_pos][y_pos+y_size]=BOXCHAR;
-  addch(109);
-  gotoxy(x_pos+x_size, y_pos+y_size);
-  screen[x_pos+x_size][y_pos+y_size]=BOXCHAR;
-  addch(106);
-  for (i=x_pos+1;i<x_pos+x_size;i++) {
-   gotoxy(i, y_pos);
-   screen[i][y_pos]=BOXCHAR;
-   addch(113);
-   gotoxy(i, y_pos+y_size);
-   screen[i][y_pos+y_size]=BOXCHAR;
-  addch(113); }
-  for (i=y_pos+1;i<y_pos+y_size;i++) {
-   gotoxy(x_pos, i);
-   screen[x_pos][i]=BOXCHAR;
-   addch(120);
-   gotoxy(x_pos+x_size, i);
-   screen[x_pos+x_size][i]=BOXCHAR;
-  addch(120); }
-  attroff(A_ALTCHARSET);
-  if (paintcolor) {
-   Change_Color(paintcolor);
-   int n;
+   if (!printscreenmode) {
+    attron(A_ALTCHARSET);
+   Change_Color(color); }
+   else
+    boxchar='*';
+  
+   gotoxy(x_pos, y_pos);
+   screen[x_pos][y_pos]=boxchar;
+   addch(108);
+   gotoxy(x_pos+x_size, y_pos);
+   screen[x_pos+x_size][y_pos]=boxchar;
+   addch(107);
+   gotoxy(x_pos, y_pos+y_size);
+   screen[x_pos][y_pos+y_size]=boxchar;
+   addch(109);
+   gotoxy(x_pos+x_size, y_pos+y_size);
+   screen[x_pos+x_size][y_pos+y_size]=boxchar;
+   addch(106);
    for (i=x_pos+1;i<x_pos+x_size;i++) {
-    for (n=y_pos+1;n<y_pos+y_size;n++) {
-     gotoxy(i, n);
-   addch(SPACE); } }
-  Change_Color(58); }
- refresh();
+    gotoxy(i, y_pos);
+    screen[i][y_pos]=boxchar;
+    addch(113);
+    gotoxy(i, y_pos+y_size);
+    screen[i][y_pos+y_size]=boxchar;
+   addch(113); }
+   for (i=y_pos+1;i<y_pos+y_size;i++) {
+    gotoxy(x_pos, i);
+    screen[x_pos][i]=boxchar;
+    addch(120);
+    gotoxy(x_pos+x_size, i);
+    screen[x_pos+x_size][i]=boxchar;
+   addch(120); }
+   attroff(A_ALTCHARSET);
+   if (paintcolor) {
+    Change_Color(paintcolor);
+    int n;
+    for (i=x_pos+1;i<x_pos+x_size;i++) {
+     for (n=y_pos+1;n<y_pos+y_size;n++) {
+      gotoxy(i, n);
+    addch(SPACE); } }
+    Change_Color(58); }
+
+  refresh();
 }
 
 // draw a box with custom char
