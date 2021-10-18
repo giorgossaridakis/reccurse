@@ -9,10 +9,7 @@ void Field_Editor()
   while (t!=ESC) {
    Draw_Box(BOXCHAR, 6, 17, 33, 5, 16, 3);
    Show_Menu_Bar(1);
-   Change_Color(58);
-   for (i=18;i<40;i++) {
-    gotoxy(i, 20);
-   addch(SPACE); }
+   clearinputline();
    Change_Color(3);
    gotoxy(25, 6);
    printw("reccurse database");
@@ -108,10 +105,7 @@ void Field_Editor()
       t=sgetch();
       if (tolower(t)=='y') {
        Delete_Field(fieldshown);
-       Change_Color(58);
-       for (i=18;i<40;i++) {
-        gotoxy(i, 20);
-       addch(SPACE); }
+       clearinputline();
        Show_Message(18, 20, 1, "field deleted", 1500);
       --fieldshown; }
      break;
@@ -126,6 +120,15 @@ void Field_Editor()
       strcpy(ttext, "duplicate to field ");
       strcat(ttext, itoa(fieldsperrecord));
       Show_Message(18, 20, 1, ttext, 1500);
+      clearinputline();
+      gotoxy(18,20);
+      Change_Color(2);
+      printw("copy records (y/n):");
+      t=sgetch();
+      if (tolower(t)!='y')
+       break;
+      for (i=0;i<recordsnumber;i++)
+       strcpy(records[(i*fieldsperrecord)+record.size()-1].text, records[(i*fieldsperrecord)+fieldshown].text);
      break;
      case 'j':
       printw("to field:");
@@ -219,7 +222,7 @@ void Field_Editor()
          record[fieldshown].formula=i;
        break;
        case 17:
-        i=Scan_Input(0, 1, fieldsperrecord, 4);
+        i=Scan_Input(1, 1, fieldsperrecord, 4);
         if (i>-1 && i<fieldsperrecord+1)
          record[fieldshown].fieldlist=i;
        break;
@@ -238,10 +241,7 @@ void Field_Editor()
       break; }
   break; } }
   alteredparameters=1;
-  Change_Color(58);
-  for (i=18;i<40;i++) {
-   gotoxy(i, 20);
-  addch(SPACE); }
+  clearinputline();
   Change_Color(1);
   gotoxy(18,20);
   cleanstdin();
@@ -386,10 +386,7 @@ int References_Editor()
       trelationships[relationshipshown].localFields[1]=i;
   break; } }
   alteredparameters=1;
-  Change_Color(58);
-  for (i=18;i<40;i++) {
-   gotoxy(i, 20);
-  addch(SPACE); }
+  clearinputline();
   gotoxy(18,20);
   Change_Color(1);
   cleanstdin();
@@ -407,3 +404,13 @@ int References_Editor()
  return alteredparameters;
 }
 
+// clear input line
+void clearinputline()
+{
+  int i;
+  
+   Change_Color(58);
+   for (i=18;i<40;i++) {
+    gotoxy(i, 20);
+   addch(SPACE); }
+}

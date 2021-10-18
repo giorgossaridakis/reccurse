@@ -1,7 +1,7 @@
 // reccurse, the filemaker of ncurses
 #include "reccurse.h"
 
-const double version=0.427;
+const double version=0.428;
 
 
 int main(int argc, char *argv[])
@@ -1071,6 +1071,11 @@ int Show_Record_and_Menu()
        if (!printscreenmode) // a little extra time to view record
       Sleep(750); }
      }
+     
+     // execute automatic record scripts
+     for (i=0;i<fieldsperrecord;i++)
+      if (record[i].buttonbox==AUTOMATICSCRIPT)
+       pushspaceonfield(i);
       
      switch (c) {
       // print screen
@@ -1487,6 +1492,9 @@ int Show_Record_and_Menu()
      break;
      case 'u': // invoke editor
       Field_Editor();
+      // determine button boxes
+      for (i=0;i<record.size();i++)
+       Determine_Button_Box(i);
       currentrecord=Read_Write_Current_Parameters(0);
      break;
      case DELETE:
@@ -2647,10 +2655,8 @@ int Determine_Button_Box(int field_id)
   char command[MAXSTRING], tautomaticvalue[MAXSTRING];
   
     record[field_id].buttonbox=NOBUTTON;
-    if (record[field_id].size.x==1 && record[field_id].size.y==1 && record[field_id].editable && record[field_id].type!=VARIABLE && record[field_id].type!=PROGRAM) {
+    if (record[field_id].size.x==1 && record[field_id].size.y==1 && record[field_id].editable && record[field_id].type!=VARIABLE && record[field_id].type!=PROGRAM)
      record[field_id].buttonbox=TICKBOX; // tick box
-     record[field_id].type=STRING; // string
-    }
     for (i=0;i<buttonkeystotal;i++) {
      if (!strcmp(buttonkeys[i], record[field_id].automatic_value) && record[field_id].type!=VARIABLE) { // button box
       if (record[field_id].fieldlist-1!=field_id)
@@ -2663,6 +2669,11 @@ int Determine_Button_Box(int field_id)
      strcpy(tautomaticvalue, record[field_id].automatic_value);
      if (strcmp(tautomaticvalue, EMPTYSTRING) && (scantextforcommand(tautomaticvalue, command)) && record[field_id].fieldlist-1==field_id) // button command
       record[field_id].buttonbox=BUTTONCOMMAND;
+     if (record[field_id].size.x==0 && record[field_id].size.y==0 && record[field_id].fieldlist-1==field_id) // automatic scripts
+      record[field_id].buttonbox=AUTOMATICSCRIPT;
+      
+     if (record[field_id].buttonbox>NOBUTTON)
+      record[field_id].type=STRING;
    
  return record[field_id].buttonbox;
 }
@@ -2730,7 +2741,7 @@ void pushspaceonfield(int field_id)
        Read_Write_Field(records[(currentrecord*fieldsperrecord)+record[field_id].fieldlist-1], fieldposition(currentrecord, record[field_id].fieldlist-1), 1); }
       } 
      return; }
-     if (record[field_id].buttonbox==BUTTONCOMMAND) {
+     if (record[field_id].buttonbox==BUTTONCOMMAND || record[field_id].buttonbox==AUTOMATICSCRIPT) {
       if (runscript) {
        keyonnextloop.push_back(SPACE);
        runscript=0;

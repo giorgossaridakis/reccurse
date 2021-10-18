@@ -48,7 +48,7 @@ enum { HORIZONTALLY=0, VERTICALLY };
 const int NUMERICALLIMIT=32765;
 int BLOCK=-1, UNBLOCK=1000, PRINTUNBLOCK=25; // wait times for getch()
 int separatort=46, separatord=44, suffixposition=1;
-enum { NOBUTTON=0, TICKBOX, BUTTONBOX, BUTTONSCREEN, BUTTONCOMMAND };
+enum { NOBUTTON=0, TICKBOX, BUTTONBOX, BUTTONSCREEN, BUTTONCOMMAND, AUTOMATICSCRIPT };
 enum { NUMERICAL=0, CALENDAR, STRING, MIXEDTYPE, VARIABLE, PROGRAM, CLOCK };
 enum { NORMAL=0, STANDOUT, UNDERLINE, REVERSE, BLINK, DIM, BOLD, PROTECT, INVISIBLE };
 enum { TOLEFT=1, CENTER, TORIGHT };
@@ -363,6 +363,7 @@ char* aligntext(char text[MAXSTRING], Annotated_Field *field, int alignment);
 // rcfre.cc
 int References_Editor();
 void Field_Editor();
+void clearinputline();
 
 // rcmenusel.cc
 int Menu_Selector();
