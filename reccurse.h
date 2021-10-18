@@ -120,6 +120,8 @@ int menulines[6]={ 24, 24, 24, 24, 24, 24 };
 char infotext[MAXSTRING], *scriptcommand;
 int screen[81][25];
 FILE *out;
+vector<int> fieldrepetitions;
+int changedrecord=1;
 
 struct Points {
  int x;
@@ -284,6 +286,7 @@ int addorplayprogram(int programid);
 void outputscreenarraytofile();
 
 // rccompar.cc
+int commandparser(char scriptcommand[]);
 int labelposition(char *label);
 int islinelabel(char *scriptcommand);
 int setvariablefromfield(char *parameter, int field_id);

@@ -2,9 +2,9 @@
 
 // definitions
 enum { NOCOMMAND=0, NONEXECUTABLE, COMMAND }; // return results
-const char *noparametercommands[]= { "push", "copy", "paste", "end", "compare", "clear", "autosave", "quit", "stop", "pass" };
-int noparametercommandskeys=10;
-enum { PUSHSPACE=0, COPYTEXT, PASTETEXT, ENDLOOP, COMPAREWITHCLIPBOARD, CLEARVARIABLES, AUTOSAVERECCURSE,  QUITPROGRAM, STOPSCRIPT, PASS };
+const char *noparametercommands[]= { "push", "copy", "paste", "end", "compare", "greater", "smaller", "clear", "autosave", "quit", "stop", "pass" };
+int noparametercommandskeys=12;
+enum { PUSHSPACE=0, COPYTEXT, PASTETEXT, ENDLOOP, COMPAREWITHCLIPBOARD, COMPAREWITHCLIPBOARDGREATER, COMPAREWITHCLIPBOARDSMALLER, CLEARVARIABLES, AUTOSAVERECCURSE,  QUITPROGRAM, STOPSCRIPT, PASS };
 const char *parametercommands[]= { "file", "record", "field", "enter", "append", "variable", "variabletoclipboard", "delete", "loop", "wait", "goto", "page", "attributes", "color", "sleep", "menu", "key", "keys" };
 int parametercommandskeys=18;
 enum { FILEOPEN=0, GOTORECORD, GOTOFIELD, ENTERTEXT, APPENDTEXT, VARIABLESET, VARIABLETOCLIPBOARD, CLEARVARIABLE, LOOPFOR, WAITSECS, GOTOLABEL, GOTOPAGE, SETATTRIBUTES, SETCOLOR, SETSLEEPTIME, CHANGEMENU, PUSHKEY, PUSHKEYS };
@@ -109,6 +109,26 @@ int commandparser(char scriptcommand[])
       break; }
       if (strcmp(clipboard, records[thisfield].text))
        ++runline;
+     break;
+     case COMPAREWITHCLIPBOARDGREATER:
+      if (!scriptrunning)
+       return NONEXECUTABLE;
+       d=atof(clipboard);
+      if ((record[currentfield].type!=NUMERICAL && record[currentfield].type!=MIXEDTYPE) || !d) {
+       ++runline;
+      break; }
+      if (records[thisfield].number<=d)
+        ++runline;
+     break;
+     case COMPAREWITHCLIPBOARDSMALLER:
+      if (!scriptrunning)
+       return NONEXECUTABLE;
+       d=atof(clipboard);
+      if ((record[currentfield].type!=NUMERICAL && record[currentfield].type!=MIXEDTYPE) || !d) {
+       ++runline;
+      break; }
+       if (records[thisfield].number>=d)
+        ++runline;
      break;
      case AUTOSAVERECCURSE:
       toggleautosave();

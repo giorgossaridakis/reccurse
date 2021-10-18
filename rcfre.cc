@@ -183,8 +183,8 @@ void Field_Editor()
         strcpy(record[fieldshown].attributes, ttext);
        break;
        case 10:
-        i=Scan_Input(1, 1, 58, 2);
-        if (i && i<59)
+        i=Scan_Input(1, 0, 59, 2);
+        if (i>-1 && i<60) // 0 or 59 is handled from fieldrepetitions
          record[fieldshown].color=i;
        break;
        case 11:

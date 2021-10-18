@@ -1,7 +1,7 @@
 // reccurse, the filemaker of ncurses
 #include "reccurse.h"
 
-const double version=0.428;
+const double version=0.430;
 
 
 int main(int argc, char *argv[])
@@ -997,6 +997,13 @@ int Show_Record_and_Menu()
     for (i=1;i<81;i++)
      for (i1=1;i1<25;i1++)
       screen[i][i1]=SPACE;
+    // handle field repetitions
+    if (changedrecord) {
+     fieldrepetitions.clear();
+     for (i=0;i<fieldsperrecord;i++)
+      fieldrepetitions.push_back((record[i].color) ? record[i].color : -1);
+    }
+    changedrecord=0;
     // show fields
     if (renewscreen)
      clear();
@@ -1065,6 +1072,8 @@ int Show_Record_and_Menu()
         addorplayprogram(c);
        
      if (recordsdemoall) {
+      if (c==ESC)
+       c='w';
       if (c!='w') {
        c='>';
        renewscreen=1;
@@ -1074,7 +1083,7 @@ int Show_Record_and_Menu()
      
      // execute automatic record scripts
      for (i=0;i<fieldsperrecord;i++)
-      if (record[i].buttonbox==AUTOMATICSCRIPT)
+      if (record[i].buttonbox==AUTOMATICSCRIPT && fieldrepetitions[i])
        pushspaceonfield(i);
       
      switch (c) {
@@ -1168,6 +1177,7 @@ int Show_Record_and_Menu()
        for (i=0;i<recordsnumber+1;i++) 
         if (findresults[0][i]>currentrecord) {
          currentrecord=findresults[0][i];
+         changedrecord=1;
        break; }
        if (recordsdemoall && printscreenmode) // output to file in print mode
         outputscreenarraytofile();
@@ -1199,6 +1209,7 @@ int Show_Record_and_Menu()
        for (i=currentrecord;i>-1;i--) 
         if (findresults[0][i]<currentrecord && findresults[0][i]>-1) {
          currentrecord=findresults[0][i];
+         changedrecord=1;
        break; }
        if (!recordsdemo && autosave) 
         Read_Write_Current_Parameters(0, 1);
@@ -1321,7 +1332,7 @@ int Show_Record_and_Menu()
       case LEFT:
        if (recordsdemo)
         break;
-       { 
+       {
          vector <int> fieldxidentities;
          n=0;
          sortfieldsbyxpt(currentfield, fieldxidentities);
@@ -1495,6 +1506,7 @@ int Show_Record_and_Menu()
       // determine button boxes
       for (i=0;i<record.size();i++)
        Determine_Button_Box(i);
+      changedrecord=1;
       currentrecord=Read_Write_Current_Parameters(0);
      break;
      case DELETE:
@@ -2524,8 +2536,10 @@ int Pages_Selector(int pagetochange)
   else
    currentpage=pagetochange;
   
-  if (currentpage!=tpage)
+  if (currentpage!=tpage) {
+   changedrecord=1;
    checkalteredparameters();
+  }
   Read_Write_Current_Parameters(4, 1); // write out currentfield in case of change
   Load_Database(currentpage);
   
@@ -2669,7 +2683,7 @@ int Determine_Button_Box(int field_id)
      strcpy(tautomaticvalue, record[field_id].automatic_value);
      if (strcmp(tautomaticvalue, EMPTYSTRING) && (scantextforcommand(tautomaticvalue, command)) && record[field_id].fieldlist-1==field_id) // button command
       record[field_id].buttonbox=BUTTONCOMMAND;
-     if (record[field_id].size.x==0 && record[field_id].size.y==0 && record[field_id].fieldlist-1==field_id) // automatic scripts
+     if (record[field_id].size.x==0 && record[field_id].size.y==0 && record[field_id].fieldlist-1==field_id) // automatic scripts, repetitions in color
       record[field_id].buttonbox=AUTOMATICSCRIPT;
       
      if (record[field_id].buttonbox>NOBUTTON)
@@ -2747,6 +2761,10 @@ void pushspaceonfield(int field_id)
        runscript=0;
       return; }
       runscript=1;
+      if (fieldrepetitions[field_id]>-1 && fieldrepetitions[field_id]!=59)
+       --fieldrepetitions[field_id];
+      if (fieldrepetitions[field_id]==59)
+       fieldrepetitions[field_id]=0;
       scriptcommand=fetchcommand(record[field_id].automatic_value);
     }
      
