@@ -186,7 +186,7 @@ char Scan_Input(char istring[MAXSTRING], int x_pos, int y_pos, int color)
   int i, t, column=strlen(istring)-1, fieldreferenceflag=0, fieldreferencelist, dummyfieldreferencelist, fieldreferencerecord=currentrecord;
   char tstring[MAXSTRING], iistring[MAXSTRING];
   
-  if (record.size() && records.size() && record[currentfield].fieldlist) {
+  if (record.size() && records.size() && record[currentfield].fieldlist && !editoroption) {
    fieldreferenceflag=1;
    if (fieldhasdependancy==2) {
      fieldreferencerecord=0;
@@ -198,6 +198,8 @@ char Scan_Input(char istring[MAXSTRING], int x_pos, int y_pos, int color)
    for (i=column+1;i<79;i++)
     tstring[i]=SPACE;
    tstring[i]='\0';
+   if (color<1 || color>58)
+    color=58;
    Change_Color(color);
    column=x_pos;
    while (t!=ESC && t!='\n') {
@@ -557,7 +559,7 @@ int sgetch(int x_pos, int y_pos, int sleeptime, int showflag)
      if (menubar && showflag) {
       printw(".%c", t);
       gotoxy(x_pos, y_pos);
-      refresh(); 
+      refresh();
      Sleep(sleeptime); }
     return tolower(t); 
     }

@@ -1,7 +1,7 @@
 // reccurse, the filemaker of ncurses
 #include "reccurse.h"
 
-const double version=0.430;
+const double version=0.432;
 
 
 int main(int argc, char *argv[])
@@ -999,9 +999,9 @@ int Show_Record_and_Menu()
       screen[i][i1]=SPACE;
     // handle field repetitions
     if (changedrecord) {
-     fieldrepetitions.clear();
+     lastfieldrepeated=-1;
      for (i=0;i<fieldsperrecord;i++)
-      fieldrepetitions.push_back((record[i].color) ? record[i].color : -1);
+      fieldrepetitions[i]=((record[i].color) ? record[i].color : -1);
     }
     changedrecord=0;
     // show fields
@@ -1082,9 +1082,17 @@ int Show_Record_and_Menu()
      }
      
      // execute automatic record scripts
-     for (i=0;i<fieldsperrecord;i++)
-      if (record[i].buttonbox==AUTOMATICSCRIPT && fieldrepetitions[i])
-       pushspaceonfield(i);
+     if (!runscript) {
+      for (i=0;i<fieldsperrecord;i++) {
+       if (record[i].buttonbox==AUTOMATICSCRIPT && i!=lastfieldrepeated && fieldrepetitions[i]) {
+        pushspaceonfield(i);
+        break;
+       } 
+      }
+      if (i==fieldsperrecord)  //one or none fields to be repeated
+       lastfieldrepeated=-1;
+     }
+
       
      switch (c) {
       // print screen
@@ -2755,19 +2763,29 @@ void pushspaceonfield(int field_id)
        Read_Write_Field(records[(currentrecord*fieldsperrecord)+record[field_id].fieldlist-1], fieldposition(currentrecord, record[field_id].fieldlist-1), 1); }
       } 
      return; }
-     if (record[field_id].buttonbox==BUTTONCOMMAND || record[field_id].buttonbox==AUTOMATICSCRIPT) {
+     if (record[field_id].buttonbox==BUTTONCOMMAND) {
       if (runscript) {
        keyonnextloop.push_back(SPACE);
        runscript=0;
       return; }
       runscript=1;
-      if (fieldrepetitions[field_id]>-1 && fieldrepetitions[field_id]!=59)
-       --fieldrepetitions[field_id];
-      if (fieldrepetitions[field_id]==59)
-       fieldrepetitions[field_id]=0;
       scriptcommand=fetchcommand(record[field_id].automatic_value);
     }
-     
+    if (record[field_id].buttonbox==AUTOMATICSCRIPT) {
+     char tcommand[MAXSTRING]; // bypass required first char in automatic_value commands
+     if (record[field_id].automatic_value[0]=='@') {
+      strcpy(tcommand, " ");
+     strcat(tcommand, record[field_id].automatic_value); }
+     else
+      strcpy(tcommand, record[field_id].automatic_value);
+     lastfieldrepeated=field_id;
+     if (fieldrepetitions[field_id]>-1 && fieldrepetitions[field_id]!=59)
+      --fieldrepetitions[field_id];
+     if (fieldrepetitions[field_id]==59)
+      fieldrepetitions[field_id]=0;
+     runscript=1;
+     scriptcommand=fetchcommand(tcommand);
+    }
 }
 
 // copy to clipboard

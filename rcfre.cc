@@ -5,6 +5,7 @@ void Field_Editor()
 {
   int i, selection, fieldshown=0, t;
   char ttext[MAXSTRING];
+  editoroption=1;
   
   while (t!=ESC) {
    Draw_Box(BOXCHAR, 6, 17, 33, 5, 16, 3);
@@ -105,6 +106,13 @@ void Field_Editor()
       t=sgetch();
       if (tolower(t)=='y') {
        Delete_Field(fieldshown);
+       for (i=0;i<relationships.size();i++)
+        if (relationships[i].localFields[0]==fieldshown || relationships[i].localFields[1]==fieldshown)
+         break;
+       if (i<relationships.size())
+        for (i=fieldshown;i<fieldsperrecord;i++)
+         if (record[i].fieldlist>fieldshown)
+          --record[i].fieldlist;
        clearinputline();
        Show_Message(18, 20, 1, "field deleted", 1500);
       --fieldshown; }
@@ -251,6 +259,7 @@ void Field_Editor()
    alteredparameters=0;
    Read_Write_db_File(3);
   Read_Write_db_File(1); }
+  editoroption=0;
 }
 
 // references editor

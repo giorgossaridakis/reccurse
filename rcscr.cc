@@ -122,12 +122,15 @@ void End_Screen()
 // change color
 void Change_Color(int choice)
 {
-  int color;  
+  int color;
   
   if (!choice)
    scanf("%d", &color);
+//   if (choice<1 || choice>58)
+//    choice=58;
   else
    color=choice;
+  
    attron(COLOR_PAIR(color));
 }
 

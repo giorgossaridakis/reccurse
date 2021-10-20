@@ -120,8 +120,8 @@ int menulines[6]={ 24, 24, 24, 24, 24, 24 };
 char infotext[MAXSTRING], *scriptcommand;
 int screen[81][25];
 FILE *out;
-vector<int> fieldrepetitions;
-int changedrecord=1;
+int fieldrepetitions[MAXFIELDS], lastfieldrepeated;
+int changedrecord=1, editoroption=0;
 
 struct Points {
  int x;
@@ -399,7 +399,7 @@ char *performinstruction(char instruction[MAXSTRING], int field_id);
 // rcscr.cc
 int Init_Screen();
 void End_Screen();
-void Change_Color(int choice);
+void Change_Color(int choice=58);
 void Draw_Box(int color, int x_pos, int x_size, int y_pos, int y_size, int paintcolor=0);
 void Draw_Box(char t, int color, int x_pos, int x_size, int y_pos, int y_size, int paintcolor=0);
 void Draw_Box(Drawbox &tdrawbox);
