@@ -1,7 +1,7 @@
 // reccurse, the filemaker of ncurses
 #include "reccurse.h"
 
-const double version=0.432;
+const double version=0.435;
 
 
 int main(int argc, char *argv[])
@@ -1167,7 +1167,17 @@ int Show_Record_and_Menu()
         recordsdemo=0;
         currentrecord=trecordsnumber; // restore currentrecord before find
        break; }
-       if (!currentmenu) {
+       if (currentmenu==7) {
+        currentmenu=6;
+        if (autosave)
+         Read_Write_Current_Parameters(1, 1);
+       break; }
+       if (currentmenu==6) {
+        currentmenu=2;
+        if (autosave)
+         Read_Write_Current_Parameters(1, 1);
+       break; }
+       if (currentmenu==0) {
         currentmenu=4;
         menubar=1;
         Show_Menu_Bar();
@@ -1177,9 +1187,10 @@ int Show_Record_and_Menu()
          run=0;
         else
          currentmenu=0; }
-       else {
+       else
         currentmenu=0;
-      Read_Write_Current_Parameters(1, 1); }
+       if (autosave)
+        Read_Write_Current_Parameters(1, 1);
       break;
       case '>': // from all menus
        for (i=0;i<recordsnumber+1;i++) 
@@ -1380,21 +1391,52 @@ int Show_Record_and_Menu()
        toggleautosave();
       break;
       case 'l':
-       Show_Menu_Bar(1);
-       strcpy(input_string, dbfile);
-       i=Scan_Input(input_string, 1, 24, 5);
-       if (i==ESC)
-        break;
-       Reccurse_File_Extension(input_string, 2);
-       if (!tryfile(input_string)) {
-        Show_Message(1, 24, 1, "nonexisting file!", 1500);
-       break; }
-       strcpy(dbfile, input_string);
-       strcpy(pages[0], dbfile);
-       currentpage=0;
-       pagesnumber=1;
-       Load_Database(currentpage);
-       Show_Message(1, 24, 2, "database loaded", 1500);
+       if (currentmenu==1) {
+        Show_Menu_Bar(1);
+        strcpy(input_string, dbfile);
+        i=Scan_Input(input_string, 1, 24, 5);
+        if (i==ESC)
+         break;
+        Reccurse_File_Extension(input_string, 2);
+        if (!tryfile(input_string)) {
+         Show_Message(1, 24, 1, "nonexisting file!", 1500);
+        break; }
+        strcpy(dbfile, input_string);
+        strcpy(pages[0], dbfile);
+        currentpage=0;
+        pagesnumber=1;
+        Load_Database(currentpage);
+        Show_Message(1, 24, 2, "database loaded", 1500);
+       }
+       if (currentmenu==6) {
+        currentmenu=7;
+        if (autosave)
+         Read_Write_Current_Parameters(1, 1);
+       }
+       break;
+       
+       
+//        if (currentmenu==6) { // to menu 7
+//         Show_Menu_Bar(1);
+//         Show_Message(1, 24, 4, "<i>mport records, external <r>eferences editor ?", 0);
+//         if (mousemenucommands.size())
+//          c=fetchmousemenucommand();
+//         else {
+//          cleanstdin();
+//         c=sgetch(); }
+//         switch (c) {
+//          case 'i':
+//           Show_Menu_Bar(1);
+//           Show_Message(1, 24, 4, "external dbfile:", 0);
+//           Scan_Input();
+//           i=Import_External_db_File(input_string);
+//          break;
+//          case 'r':
+//           References_Editor();
+//         break; }
+//       }
+      
+      
      break;
      case 's':
       Show_Menu_Bar(1);
@@ -1428,6 +1470,7 @@ int Show_Record_and_Menu()
      break;
      // from menu 2
      case 'd':
+      if (currentmenu==2) {
       if (record[currentfield].type!=CALENDAR && record[currentfield].type!=CLOCK && record[currentfield].buttonbox==NOBUTTON) {
        if (record[currentfield].buttonbox==BUTTONSCREEN)
         record[currentfield].type=NUMERICAL; // trick to bring reversepolishcalculator
@@ -1456,6 +1499,16 @@ int Show_Record_and_Menu()
       if (record[currentfield].fieldlist && record[record[currentfield].fieldlist-1].buttonbox==BUTTONCOMMAND) {
        currentfield=record[currentfield].fieldlist-1;
       pushspaceonfield(); }
+      }
+      if (currentmenu==6) {
+       if (recordsnumber<2)
+        break;
+       Show_Menu_Bar(1);
+       Show_Message(1, 24, 1, "delete entire record (y/n):", 0);
+       c=sgetch();
+       if (tolower(c)=='y')
+        Delete_Record(currentrecord);
+     }
      break;
      case 'p':
       if (record[records[(currentrecord*fieldsperrecord)+currentfield].id].type==CALENDAR) {
@@ -1509,73 +1562,33 @@ int Show_Record_and_Menu()
       strcpy(records[(currentrecord*fieldsperrecord)+n-1].text, records[(currentrecord*fieldsperrecord)+i-1].text); 
       Read_Write_Field(records[(currentrecord*fieldsperrecord)+n-1], fieldposition(currentrecord, n-1), 1);
      break;
-     case 'u': // invoke editor
-      Field_Editor();
-      // determine button boxes
-      for (i=0;i<record.size();i++)
-       Determine_Button_Box(i);
-      changedrecord=1;
-      currentrecord=Read_Write_Current_Parameters(0);
-     break;
      case DELETE:
       Delete_Field_Entry(currentfield);
       Read_Write_Field(records[(currentrecord*fieldsperrecord)+currentfield], fieldposition(currentrecord, currentfield), 1);
      break;
      case INSERT:
+      if (currentmenu==2) {
+       currentmenu=6;
+       Read_Write_Current_Parameters(1, 1);
+      }
+     break;
+     case 'u':
+      if (currentmenu==3) {
+       Field_Editor();
+       // determine button boxes
+       for (i=0;i<record.size();i++)
+        Determine_Button_Box(i);
+       changedrecord=1;
+       currentrecord=Read_Write_Current_Parameters(0);
+      }
+      if (currentmenu==6)
+       Duplicate_Record(currentrecord);
+     break;
+     case 'x':
       Show_Menu_Bar(1);
-      Show_Message(1, 24, 4, "d<u>plicate, <d>elete record, <i>mport/e<x>port records, externa<l> .dbfiles?", 0);
-      // call fetchmousemenucommand if necessary
-      if (mousemenucommands.size())
-       c=fetchmousemenucommand();
-      else {
-       cleanstdin();
-      c=sgetch(); }
-      if (c!='u' && c!='d' && c!='x' && c!='i' && c!='l')
-       break;
-      switch (c) {
-       case 'u':
-        Duplicate_Record(currentrecord);
-       break;
-       case 'd':
-        if (recordsnumber<2)
-         break;
-        Show_Menu_Bar(1);
-         Show_Message(1, 24, 1, "delete entire record (y/n):", 0);
-        c=sgetch();
-        if (tolower(c)=='y')
-         Delete_Record(currentrecord);
-       break;
-       case 'i':
-        Show_Menu_Bar(1);
-        Show_Message(1, 24, 5, "filename:", 0);
-        Scan_Input();
-        Import_Database(input_string);
-       break;
-       case 'x':
-        Show_Menu_Bar(1);
-        Show_Message(1, 24, 5, "filename:", 0);
-        Scan_Input();
-        Export_Database(input_string);
-       break;
-       case 'l':
-        Show_Menu_Bar(1);
-        Show_Message(1, 24, 4, "<i>mport records, external <r>eferences editor ?", 0);
-        if (mousemenucommands.size())
-         c=fetchmousemenucommand();
-        else {
-         cleanstdin();
-        c=sgetch(); }
-        switch (c) {
-         case 'i':
-          Show_Menu_Bar(1);
-          Show_Message(1, 24, 4, "external dbfile:", 0);
-          Scan_Input();
-          i=Import_External_db_File(input_string);
-         break;
-         case 'r':
-          References_Editor();
-        break; }
-      break; }
+      Show_Message(1, 24, 5, "filename:", 0);
+      Scan_Input();
+      Export_Database(input_string);
      break;
      case COPY:
       copytoclipboard();
@@ -1585,9 +1598,25 @@ int Show_Record_and_Menu()
      break;
      // menu 3
      case 'i':
-      Show_DB_Information();
+      if (currentmenu==3)
+       Show_DB_Information();
+      if (currentmenu==6) {
+       Show_Menu_Bar(1);
+       Show_Message(1, 24, 5, "filename:", 0);
+       Scan_Input();
+       Import_Database(input_string);
+      }
+      if (currentmenu==7) {
+       Show_Menu_Bar(1);
+       Show_Message(1, 24, 4, "external dbfile:", 0);
+       Scan_Input();
+       i=Import_External_db_File(input_string);
+      }
      break;
      case 'r':
+      if (currentmenu==7) {
+       References_Editor();
+      break; }
       for (i=0;i<fieldsperrecord;i++)
        Show_Field_ID(&records[(currentrecord*fieldsperrecord)+i]);
       findschedule.clear();
@@ -1727,7 +1756,7 @@ int negatekeysforcurrentmenu(int t)
   if (t==SHIFT_LEFT) t='<'; // shift+left arrow
   if (t==ESC || t==LEFT || t==RIGHT || t==UP || t==DOWN || t==TAB || t==SHIFT_TAB || t=='m' || t=='g' || t=='?' || t==HOME || t==END || t=='<' || t=='>' || t==']' ||  t==START_OF_RECORDS || t==END_OF_RECORDS || t==KEY_MOUSE || t=='z' || t=='q' || t=='w')
    return t;
-  
+
   if (recordsdemo)
    return 0;
   
@@ -1739,7 +1768,7 @@ int negatekeysforcurrentmenu(int t)
    Read_Write_Current_Parameters(1, 1);
   return 1; } // 1 will set renewscreen
 
-  if (currentmenu==2)
+  if (currentmenu==2 || currentmenu==6)
    if (t==INSERT || t==DELETE || t==SPACE || t==COPY || t==PASTE)
     return t;
    
@@ -2706,12 +2735,28 @@ char *fetchcommand(char *text)
   static char *command=(char *) malloc((size_t) MAXSTRING);
   char ttext[MAXSTRING];
   strcpy(ttext, text);
-  int i;
-  
-   i=scantextforcommand(ttext, command);
+
+   scantextforcommand(restructurecommand(ttext), command);
   
  return command;
 }
+
+// restructure command in automatic_value
+char *restructurecommand(char *command)
+{
+  char tcommand[MAXSTRING];
+    
+   if (command[0]=='@') {
+    strcpy(tcommand, " ");
+   strcat(tcommand, command); }
+   else
+    strcpy(tcommand, command);
+   
+   strcpy(command, tcommand);
+    
+ return command;
+}
+
 
 // reduce text by times at end char
 void Delete_Field_Entry(int field_id)
@@ -2772,19 +2817,13 @@ void pushspaceonfield(int field_id)
       scriptcommand=fetchcommand(record[field_id].automatic_value);
     }
     if (record[field_id].buttonbox==AUTOMATICSCRIPT) {
-     char tcommand[MAXSTRING]; // bypass required first char in automatic_value commands
-     if (record[field_id].automatic_value[0]=='@') {
-      strcpy(tcommand, " ");
-     strcat(tcommand, record[field_id].automatic_value); }
-     else
-      strcpy(tcommand, record[field_id].automatic_value);
      lastfieldrepeated=field_id;
      if (fieldrepetitions[field_id]>-1 && fieldrepetitions[field_id]!=59)
       --fieldrepetitions[field_id];
      if (fieldrepetitions[field_id]==59)
       fieldrepetitions[field_id]=0;
      runscript=1;
-     scriptcommand=fetchcommand(tcommand);
+     scriptcommand=fetchcommand(record[field_id].automatic_value);
     }
 }
 

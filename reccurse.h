@@ -46,20 +46,20 @@ const int MAXSEARCHDEPTH=5;
 const int INSTRUCTION='%';
 enum { HORIZONTALLY=0, VERTICALLY };
 const int NUMERICALLIMIT=32765;
-int BLOCK=-1, UNBLOCK=1000, PRINTUNBLOCK=25; // wait times for getch()
+int BLOCK=-1, UNBLOCK=1000, PRINTUNBLOCK=25, SCANUNBLOCK=10000; // wait times for getch()
 int separatort=46, separatord=44, suffixposition=1;
 enum { NOBUTTON=0, TICKBOX, BUTTONBOX, BUTTONSCREEN, BUTTONCOMMAND, AUTOMATICSCRIPT };
 enum { NUMERICAL=0, CALENDAR, STRING, MIXEDTYPE, VARIABLE, PROGRAM, CLOCK };
 enum { NORMAL=0, STANDOUT, UNDERLINE, REVERSE, BLINK, DIM, BOLD, PROTECT, INVISIBLE };
 enum { TOLEFT=1, CENTER, TORIGHT };
-const char *menukeys[]={ "eot`", "alsh`", "dcpjv+-*/.!@`", "ifru`", "yn`", "0123456789/*-+^,.()=`" }; // m works in all menus
+const char *menukeys[]={ "eot`", "alsh`", "dcpjv+-*/.!@`", "ifru`", "yn`", "0123456789/*-+^,.()=`", "udixl`", "ir`" }; // m works in all menus
 const char *buttonkeys[]={ "0", "1", "2", "3", "4", "5", "6", "7", "8", "9", "/", "*", 
 "-", "+", "^", ",", ".", "(", ")", "=", "sin", "cos", "tan", "cotan", "sqr", "abs", "log", "AC", "DEL", "EXEC" };
 const char *programkeys="1234567890";
 const char *EMPTYSTRING="~";
 const int buttonkeystotal=30;
 const char *alterscreenparameterskeys="/*-+.!@";
-const char *menutexts[]={ "<tabshiftarrows|<>|homeend|<g>|<e>dit|<o>ptions|ex<t>ra|`|<m>enubar|<ESC>quit", "<a>utosave on/off|<l>oad database|<s>ave database|<h>elp page|`|<ESC>main menu", "e<d>it|<c>opy|<DEL>ete|<j>oin|di<v>ide|datestam<p>|<INS>more|`|<ESC>main menu", "database <i>nformation|<f>ind|so<r>t records|set<u>p database|`|<ESC>main menu", "really quit ?", "calculator: 0123456789/*-+^,.()= <enter> <backspace> <delete> <`>previous menu" };  //main, options, edit, extra, quit, calculator
+const char *menutexts[]={ "<tabshiftarrows|<>|homeend|<g>|<e>dit|<o>ptions|ex<t>ra|`|<m>enubar|<ESC>quit", "<a>utosave on/off|<l>oad database|<s>ave database|<h>elp page|`|<ESC>main menu", "e<d>it|<c>opy|<DEL>ete|<j>oin|di<v>ide|datestam<p>|<INS>more|`|<ESC>main menu", "database <i>nformation|<f>ind|so<r>t records|set<u>p database|`|<ESC>main menu", "really quit ?", "calculator: 0123456789/*-+^,.()= <enter> <backspace> <delete> <`>previous menu", "d<u>plicate, <d>elete record, <i>mport/e<x>port records, externa<l> .dbfiles", "<i>mport records, external <r>eferences editor" };  //main, options, edit, extra, quit, calculator, extra from edit, external db records
 
 // keyboard
 const int DOWN=258;
@@ -115,8 +115,8 @@ char rcfile[MAXSTRING], dbfile[MAXSTRING];
 const char *onoff[]= { "off", "on" };
 char clipboard[MAXSTRING];
 char calendarformat[MAXSTRING];
-int menucolors[6]={ 5, 6, 4, 3, 1, 2 };
-int menulines[6]={ 24, 24, 24, 24, 24, 24 };
+int menucolors[8]={ 5, 6, 4, 3, 1, 2, 4, 4 };
+int menulines[8]={ 24, 24, 24, 24, 24, 24, 24, 24 };
 char infotext[MAXSTRING], *scriptcommand;
 int screen[81][25];
 FILE *out;
@@ -277,6 +277,7 @@ void Set_Mouse_Menus();
 int fetchmousemenucommand();
 int Determine_Button_Box(int field_id);
 char *fetchcommand(char *text);
+char *restructurecommand(char *command);
 void Delete_Field_Entry(int field_id);
 void pushspaceonfield(int field_id=-1);
 void copytoclipboard();

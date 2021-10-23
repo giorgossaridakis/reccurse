@@ -218,7 +218,11 @@ char Scan_Input(char istring[MAXSTRING], int x_pos, int y_pos, int color)
     gotoxy(column, y_pos);
     refresh();
     cleanstdin();
+    blockunblockgetch(SCANUNBLOCK); // give time for input char, otherwise leave 
     t=getch();
+    blockunblockgetch();
+    if (t==-1)
+     t='\n';
     if (t==PASTE && strlen(clipboard))
      strcpy(tstring, clipboard);
     if (isprintablecharacter(t) && column<80) {

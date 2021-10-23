@@ -1,4 +1,4 @@
-reccurse manual ~0.400 version
+reccurse manual ~0.440 version
 
 starting up
 -----------
@@ -40,16 +40,20 @@ ctrl+k copy to clipboard, ctrl+v paste clipboard
 ctrl+w to pages menu, arrow keys, INS, DELETE, HOME, END keys.
 +-*/. keys will add/remove attributes, !@ keys for color up/down (see below)
 ? for this help screen.
+w will show all records in the current database, one by one. w or ESC exits.
 <carriage return> enters edit field when in edit mode
 <space> ticks/unticks tickboxes (1x1fields)
 0 to 9 will call or arrign a script button (see below)
 clicking on a field will highlight it
 
-z will display and append to file (database name.out)
-a printable (ASCII) version of the current record 
+z will switch to / from a printable (ASCII) version of the current screen
+a filename will be asked for, in case you'll want to print out to
+the default is database name.out.
+when in this mode, <q> will write the current record to the output file.
+if <w> is pressed, all records will be be written to the selected file.
+
 When find is selected, user is prompted to enter a field number, then a search
 criteria (asterisks imply any text until the next alphanumeric character).
-
 The sequence is repeated until a carriage return is given. This allows for
 multiple searches, each sequential will operate on the previous find records 
 that match the requested criteria.
@@ -101,10 +105,46 @@ For example @file script . The characters in the automatic value before
 values. You can set-up a buttoncommand by placing a script command in that 
 field's automatic value and making the field reference it's own number. 
 If the field is numbered 10, then field reference must be 10 as well.
+autoscript - is a field that will automatically execute a script command 
+when record is entered. autoscript fields must be declared with size x and y
+of 0 and with reference (fieldreference) to themselves. 
+the script command to be executed is again taken from the automatic value.
+you can choose either to execute a script file or a single command. color
+plays a role in these fields, if it set to 0, the automatic value command will
+be played indefinitely, in each second cycle. if it's set to 1..58, it will
+be executed the same number of times before it's stopped. if it's set to 59, 
+it will execute once. Naturally, you can have more than one automatic script 
+fields running. they will be executed one by one.
 
 The above field types are implicitly declared through tricks described above.
-They are not field types 0-4 that can be declared through the internal editor
+They are not field types 0-6 that can be declared through the internal editor
 or in the .rc database file.
+
+field / fieldlist references
+----------------------------
+a field list entry above 0 means that field can collect values from the 
+field declared. up and down arrows during editing will summon them. 
+<insert> will copy the value of the field referenced in the same record.
+
+Your database file can have references to other database files. from edit menu, 
+INS key will bring selection of externa<l> databases. 
+The References Editor is relatively simple and things go like this -> 
+you have an external field (to the current database or other) to be measured 
+for equality with a local field. 
+once this occurs, the local reference field will automatically bring up the 
+external reference field's contents. If local destination field is a fieldlist, 
+equalized fields will not be taken into account. The local field will collect 
+selectable values from the external reference field, no matter it's reference id. 
+External database filenames can be up to 25 characters in length, 
+including the suffix .db 3 characters. 
+It's a good idea to have all database pages files in the same directory, 
+to avoid long path in filenames.
+
+automatic values
+----------------
+
+text formatting
+---------------
 
 script commands
 ---------------
@@ -119,6 +159,10 @@ paste - paste clipboard contents to current field
 end - signal for end of a loop
 compare - if the contents of the current field are the same as in the 
  clipboard, execute next line of a script file. otherwise, skip it
+greater - like compare, only comparison is done with current record being
+ greater in number than the clipboard
+smaller - like above, comparison is done with currrent record being smaller
+ in numerical value than the clipboard
 clear - delete all variable fields from the databse
 autosave - will toggle autosave on/off
 quit - obvious, quite the program
@@ -206,23 +250,7 @@ mid$(hello, 1, 2), left$(text, 2), right$(text, 2), toupper$(text),
 tolower$(text). leave spaces after each function end. 
 string formulas apply to string or mixed type fields with formula set to 1.
 a field list entry above 0 means that field can collect values from the 
-field declared. up and down arrows during editing will summon them. 
-<insert> will copy the value of the field referenced in the same record.
-
-Your database file can have references to other database files. from edit menu, 
-INS key will bring selection of externa<l> databases. 
-The References Editor is relatively simple and things go like this -> 
-
-you have an external field (to the current database or other) to be measured 
-for equality with a local field. 
-once this occurs, the local reference field will automatically bring up the 
-external reference field's contents. If local destination field is a fieldlist, 
-equalized fields will not be taken into account. The local field will collect 
-selectable values from the external reference field, no matter it's reference id. 
-External database filenames can be up to 25 characters in length, 
-including the suffix .db 3 characters. 
-It's a good idea to have all database pages files in the same directory, 
-to avoid long path in filenames.
+field declared.
 
 attributes
 ----------
@@ -347,7 +375,7 @@ for suggestions or more, my email address is giorgossaridakis@gmail.com
 
 compile with g++ -oreccurse reccurse.cc -lncurses
 
-if you don't have ncurses library installed, your local distro will point 
+if you don't have ncurses library installed, the documents will point 
 you to how to install it.
 
 Reccurse is distributed under the GNU Public Licence.
