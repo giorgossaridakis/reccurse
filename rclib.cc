@@ -218,9 +218,7 @@ char Scan_Input(char istring[MAXSTRING], int x_pos, int y_pos, int color)
     gotoxy(column, y_pos);
     refresh();
     cleanstdin();
-    blockunblockgetch(SCANUNBLOCK); // give time for input char, otherwise leave 
-    t=getch();
-    blockunblockgetch();
+    t=bgetch(SCANUNBLOCK); // give time for input char, otherwise leave 
     if (t==-1)
      t='\n';
     if (t==PASTE && strlen(clipboard))
@@ -572,6 +570,21 @@ int sgetch(int x_pos, int y_pos, int sleeptime, int showflag)
  return t;
 }
 
+// getch with block/unblock
+int bgetch(int delay)
+{
+  int t;  
+    
+   if (delay!=BLOCK)
+    blockunblockgetch(delay);
+  
+   t=getch();
+   
+   blockunblockgetch();
+   
+ return t;
+}
+
 /* remove garbage from stdin */
 void cleanstdin()
 {
@@ -864,7 +877,7 @@ int findfieldege(int flag) // 0 first, 1 last
 // locate field by mouse click
 int locatefieldbymouseclick()
 {
-   int x, y, i, field=currentfield;
+   int x, y, i, field=-1;
    
     for (i=0;i<fieldsperrecord;i++)
      for (x=record[i].pt.x;x<record[i].pt.x+record[i].size.x;x++)
@@ -880,6 +893,15 @@ int locatefieldbymouseclick()
 bool rightmousebuttonclicked()
 {
   if (mouse.bstate & BUTTON3_CLICKED)
+   return true;
+
+ return false;       
+}
+
+// left mouse button double clicked
+bool leftmousebuttondoubleclicked()
+{
+  if (mouse.bstate & BUTTON1_DOUBLE_CLICKED)
    return true;
 
  return false;       
@@ -922,6 +944,7 @@ void INThandler(int sig)
      Show_Menu_Bar(1);
      Change_Color(1);
      gotoxy(1,24);
+     blockunblockgetch(UNBLOCK);
      printw("really quit ?");
      c = sgetch();
      if (tolower(c) == 'y')
@@ -1273,4 +1296,14 @@ char* aligntext(char text[MAXSTRING], Annotated_Field *field, int alignment)
    strcpy(text, alltext);
 
  return &text[0];
+}
+
+// does current page have clock fields
+int pagehasclockfields()
+{
+  for (int i=0;i<fieldsperrecord;i++)
+   if (record[i].type==CLOCK)
+    return 1;
+
+ return 0;
 }

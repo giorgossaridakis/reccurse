@@ -10,6 +10,8 @@ int Menu_Selector()
   mousemenucommands.clear();
   curs_set(0);
   Draw_Mouse_Box(mousemenus[cmenu].menuId);
+  if (cmenu>3) // add more in reccurse.cc 2598
+   cmenu=0;
   while (t!=ESC) {
 
    for (i=0;i<mousemenus[cmenu].menuEntries.size();i++) {
@@ -23,16 +25,21 @@ int Menu_Selector()
    t=sgetch();
    if (t==']') // imitate right mouse button
     t=ESC;
+   if (leftmousebuttondoubleclicked()) {
+    i1=locatemenuselectionbymouseclick(cmenu);
+    if (i1>-1) {
+     selection=i1;
+    t='\n'; }
+   }
    switch (t) {
     case KEY_MOUSE:
      if (rightmousebuttonclicked()) {
       t=ESC;
      break; }
-     for (i=0;i<mousemenus[cmenu].menuEntries.size()+1;i++)
-      for (i1=0;i1<width;i1++)
-       if (mouse.x+1==startx+i1 && mouse.y+1==starty+i)
-        selection=i-1;
-     if (mouse.x<startx || mouse.x>(startx+width)-1 || mouse.y<starty || mouse.y>(starty+height)-1)
+     i1=locatemenuselectionbymouseclick(cmenu);
+     if (i1>-1)
+      selection=i1;
+     else
       t=ESC;
     break;
     case '\n':
@@ -100,3 +107,18 @@ int Draw_Mouse_Box(int menuid)
     
  return 1;
 }
+
+// locate menu selection by mouse position
+int locatemenuselectionbymouseclick(int cmenu)
+{
+  int i, i1, selection=-1;
+  
+     for (i=0;i<mousemenus[cmenu].menuEntries.size()+1;i++)
+      for (i1=0;i1<width;i1++)
+       if (mouse.x+1==startx+i1 && mouse.y+1==starty+i) {
+        selection=i-1;
+       break; }
+       
+ return selection;
+}
+

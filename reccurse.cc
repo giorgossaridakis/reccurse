@@ -1,7 +1,7 @@
 // reccurse, the filemaker of ncurses
 #include "reccurse.h"
 
-const double version=0.435;
+const double version=0.436;
 
 
 int main(int argc, char *argv[])
@@ -1055,13 +1055,20 @@ int Show_Record_and_Menu()
      if (recordsdemoall && printscreenmode)
       blockunblockgetch(PRINTUNBLOCK);
      else
-     blockunblockgetch(UNBLOCK); // necessary to give live clock operational status
+     blockunblockgetch(pagehasclockfields() ? UNBLOCK : UNBLOCK/3); // necessary to give live clock operational status
      if (mousemenucommands.size())
       c=fetchmousemenucommand();
      else
       c=sgetch();
      blockunblockgetch();
      renewscreen=c=negatekeysforcurrentmenu(c);
+     // handle mouse double clicks
+     if (c==KEY_MOUSE && leftmousebuttondoubleclicked()) {
+      i=locatefieldbymouseclick();
+      if (i>-1) {
+       currentfield=i;
+      c='d'; }
+     }
      if (!alteredparameters && currentmenu!=5)
       for (i=0;i<strlen(alterscreenparameterskeys);i++)
        if (c==alterscreenparameterskeys[i])
@@ -1369,8 +1376,10 @@ int Show_Record_and_Menu()
         break;
        if (rightmousebuttonclicked())
         Menu_Selector();
-       else
-        currentfield=locatefieldbymouseclick();
+       else {
+        i=locatefieldbymouseclick();
+        currentfield=(i>-1) ? i : currentfield;
+       }
       break;
       case 'g': // from all menus
        if (recordsdemo)
@@ -1414,29 +1423,6 @@ int Show_Record_and_Menu()
          Read_Write_Current_Parameters(1, 1);
        }
        break;
-       
-       
-//        if (currentmenu==6) { // to menu 7
-//         Show_Menu_Bar(1);
-//         Show_Message(1, 24, 4, "<i>mport records, external <r>eferences editor ?", 0);
-//         if (mousemenucommands.size())
-//          c=fetchmousemenucommand();
-//         else {
-//          cleanstdin();
-//         c=sgetch(); }
-//         switch (c) {
-//          case 'i':
-//           Show_Menu_Bar(1);
-//           Show_Message(1, 24, 4, "external dbfile:", 0);
-//           Scan_Input();
-//           i=Import_External_db_File(input_string);
-//          break;
-//          case 'r':
-//           References_Editor();
-//         break; }
-//       }
-      
-      
      break;
      case 's':
       Show_Menu_Bar(1);
@@ -1499,6 +1485,8 @@ int Show_Record_and_Menu()
       if (record[currentfield].fieldlist && record[record[currentfield].fieldlist-1].buttonbox==BUTTONCOMMAND) {
        currentfield=record[currentfield].fieldlist-1;
       pushspaceonfield(); }
+      if (record[currentfield].buttonbox==BUTTONBOX)
+       pushspaceonfield();
       }
       if (currentmenu==6) {
        if (recordsnumber<2)

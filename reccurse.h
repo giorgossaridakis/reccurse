@@ -141,7 +141,7 @@ class Field {
   int color;
   int box;
   int box_color;
-  int type; // 0 number, 1 date&time, 2 string
+  int type; // 0 number, 1 date&time, 2 string, 3 mixed type etc
   int decimals;
   char suffix[MAXSUFFIXCHARS];
   int formula;
@@ -149,7 +149,7 @@ class Field {
   int editable;
   int active;
   char automatic_value[MAXSTRING];
-  int buttonbox; // 0 none, 1 tickbox, 2 button, 3 button screen
+  int buttonbox; // 0 none, 1 tickbox, 2 button, 3 button screen, 4 command, automatic script
   // constructors, destructor
   Field(int i1, char s1[MAXSTRING], int i2, char s2[9], int i3, int i4, int i5, int i6, int i7, char s3[9], int i8, int i9, int i10, int i11, char s4[MAXSUFFIXCHARS], int i12, int i13, int i14, int i15, int i16, char s5[MAXSTRING]) { id=i1; strcpy(title,s1); title_position=i2; strcpy(title_attributes,s2); title_color=i3; pt.x=i4; pt.y=i5; size.x=i6; size.y=i7; strcpy(attributes, s3); color=i8; box=i9; box_color=i10; type=i11; strcpy(suffix, s4);  decimals=i12, formula=i13; fieldlist=i14; editable=i15; active=i16;  strcpy(automatic_value, s5); buttonbox=NOBUTTON; } ;
   Field() { } ;
@@ -320,6 +320,7 @@ void stringquotesopener(char *tstring);
 int isinquotes(char tstring[]);
 int numberofdigits(long int n);
 int sgetch(int x_pos=78, int y_pos=24, int sleeptime=250, int showflag=1);
+int bgetch(int delay=BLOCK);
 void cleanstdin();
 void Show_Message(int x_pos, int y_pos, int color, char *message, int sleeptime=1500);
 void Show_Message(int x_pos, int y_pos, int color, const char *message, int sleeptime=1500);
@@ -346,6 +347,7 @@ void sortfieldsbyxpt(int field_id, vector <int> &fieldxidentities);
 void sortfieldsbyypt(int field_id, vector <int> &fieldyidentities);
 int locatefieldbymouseclick();
 bool rightmousebuttonclicked();
+bool leftmousebuttondoubleclicked();
 int findfieldege(int flag=0);
 int CalcDayNumFromDate(int y, int m, int d);
 int isleapyear(int year);
@@ -363,6 +365,7 @@ char *appendsuffix(char *text, int field_id);
 int limitspaces(char *tstring);
 void aligntextsingley(Annotated_Field *field, int alignment, int row=0);
 char* aligntext(char text[MAXSTRING], Annotated_Field *field, int alignment);
+int pagehasclockfields();
 
 // rcfre.cc
 int References_Editor();
@@ -372,6 +375,7 @@ void clearinputline();
 // rcmenusel.cc
 int Menu_Selector();
 int Draw_Mouse_Box(int menuid);
+int locatemenuselectionbymouseclick(int cmenu);
 
 // rcpc.cc
 int parenthesesincluderforpolishreversecalculator(char formula[]);
