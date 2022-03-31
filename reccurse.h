@@ -59,7 +59,7 @@ const char *programkeys="1234567890";
 const char *EMPTYSTRING="~";
 const int buttonkeystotal=30;
 const char *alterscreenparameterskeys="/*-+.!@";
-const char *menutexts[]={ "<tabshiftarrows|<>|homeend|<g>|<e>dit|<o>ptions|ex<t>ra|`|<m>enubar|<ESC>quit", "<a>utosave on/off|<l>oad database|<s>ave database|<h>elp page|`|<ESC>main menu", "e<d>it|<c>opy|<DEL>ete|<j>oin|di<v>ide|datestam<p>|<INS>more|`|<ESC>main menu", "database <i>nformation|<f>ind|so<r>t records|set<u>p database|`|<ESC>main menu", "really quit ?", "calculator: 0123456789/*-+^,.()= <enter> <backspace> <delete> <`>previous menu", "d<u>plicate, <d>elete record, <i>mport/e<x>port records, externa<l> .dbfiles", "<i>mport records, external <r>eferences editor" };  //main, options, edit, extra, quit, calculator, extra from edit, external db records
+const char *menutexts[]={ "<tabshiftarrows|<>|homeend|<g>|<e>dit|<o>ptions|ex<t>ra|`|<m>enubar|<ESC>quit", "<a>utosave on/off|<l>oad database|<s>ave database|<h>elp page|`|<ESC>main menu", "e<d>it|<c>opy|<DEL>ete|<j>oin|di<v>ide|datestam<p>|<INS>more|`|<ESC>main menu", "database <i>nformation|<f>ind|so<r>t records|set<u>p database|`|<ESC>main menu", "really quit ?", "calculator: 0123456789/*-+^,.()= <enter> <backspace> <delete> <`>previous menu", "d<u>plicate, <d>elete record, <i>mport/e<x>port records, externa<l> .dbfiles", "<i>mport records, external <r>eferences editor" };  //main, options, edit, extra, quit, calculator, extra from edit, external db records;
 
 // keyboard
 const int DOWN=258;
@@ -179,28 +179,16 @@ class Relationship {
   Relationship() { };
 ~Relationship() { } ; } ;
 
-class MenuEntry {
+class ButtonBarMenuEntry {
  public:
-  char entryText[MAXSTRING];
-  vector<int> returnCommands;
-  int menuDirectionId;
-  MenuEntry(char *text, vector<int> commands, int directionid) { strcpy(entryText, text); returnCommands=commands; menuDirectionId=directionid; };
-  MenuEntry(const char *text, vector<int> commands, int directionid) { strcpy(entryText, text); returnCommands=commands; menuDirectionId=directionid; };
-  MenuEntry() { };
-~MenuEntry() { }; };
- 
-class Menu {
- public:
-  int menuId;
-  int menuReference;
-  int fatherMenuId;
-  int fatherMenuPosition;
-  char menuTitle[MAXNAME];
-  vector<MenuEntry> menuEntries;
-  Menu(int id, int reference, int fatherid, int fatherposition, char *title) { menuId=id; menuReference=reference; fatherMenuId=fatherid; fatherMenuPosition=fatherposition; strcpy(menuTitle, title); };
-  Menu(int id, int reference, int fatherid, int fatherposition, const char *title) { menuId=id; menuReference=reference; fatherMenuId=fatherid;  fatherMenuPosition=fatherposition; strcpy(menuTitle, title); };
-  Menu() { };
-~Menu() { }; };
+  int choiceMenuId;
+  int choiceStartx;
+  int choiceEndx;
+  int choiceKey;
+  ButtonBarMenuEntry(int menuid, int startx, int endx, int key): choiceMenuId(menuid), choiceStartx(startx), choiceEndx(endx), choiceKey(key) { };
+  ButtonBarMenuEntry() { };
+~ButtonBarMenuEntry() { };
+};
 
 class Drawbox {
  public:
@@ -217,8 +205,8 @@ struct FindSchedule {
    int field_id;
 char texttolookfor[MAXSTRING]; } ;
  
-vector<Menu> mousemenus;
-vector<Drawbox> mousemenuboxes;
+// vectors
+vector<ButtonBarMenuEntry> buttonbarmenus;
 vector<Field> record, dummyrecord, externalrecord[MAXRELATIONSHIPS];
 vector<Annotated_Field> records, dummyrecords, externalrecords[MAXRELATIONSHIPS];
 vector<Relationship> relationships;
@@ -274,6 +262,7 @@ void Load_Database(int pagenumber);
 int Pages_Selector(int pagetochange=-1);
 int Clean_Database(char *filename);
 void Set_Mouse_Menus();
+int Activate_Menubar_Choice(int x);
 int fetchmousemenucommand();
 int Determine_Button_Box(int field_id);
 char *fetchcommand(char *text);
@@ -366,16 +355,15 @@ int limitspaces(char *tstring);
 void aligntextsingley(Annotated_Field *field, int alignment, int row=0);
 char* aligntext(char text[MAXSTRING], Annotated_Field *field, int alignment);
 int pagehasclockfields();
+int isfieldtextlink(Annotated_Field *field, int linkparameters[]);
+int assignstringvaluestoarray(char *line, char array[2][MAXSTRING], int entries);
+int readstringentry(char *line, char *linepart);
+unsigned int isseparationchar(char t);
 
 // rcfre.cc
 int References_Editor();
 void Field_Editor();
 void clearinputline();
-
-// rcmenusel.cc
-int Menu_Selector();
-int Draw_Mouse_Box(int menuid);
-int locatemenuselectionbymouseclick(int cmenu);
 
 // rcpc.cc
 int parenthesesincluderforpolishreversecalculator(char formula[]);
@@ -418,6 +406,5 @@ void Change_Attributes(int attribute);
 #include "rcpc.cc"
 #include "rcpclib.cc"
 #include "rcfre.cc"
-#include "rcmenusel.cc"
 #include "rccompar.cc"
 

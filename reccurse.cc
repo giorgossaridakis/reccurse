@@ -1,7 +1,7 @@
 // reccurse, the filemaker of ncurses
 #include "reccurse.h"
 
-const double version=0.436;
+const double version=0.441;
 
 
 int main(int argc, char *argv[])
@@ -10,6 +10,17 @@ int main(int argc, char *argv[])
   
   Init_Screen();
   Change_Color(58);
+  // wait until terminal window becomes 80x24
+  struct winsize w;
+  ioctl( STDOUT_FILENO, TIOCGWINSZ, &w );
+  while (w.ws_row != 24 || w.ws_col != 80) {
+   gotoxy(1,1);
+   printw("terminal size %dx%d, reccurse requires 80x24               ", w.ws_col, w.ws_row);
+   refresh();
+   sleep(1);
+   ioctl( STDOUT_FILENO, TIOCGWINSZ, &w );
+  }
+  clear();
   char tmessage[MAXSTRING], tfile[MAXSTRING];
   signal(SIGINT, INThandler);
   initiatemathematicalfunctions();
@@ -985,7 +996,7 @@ void Duplicate_Record(int record_id)
 // show record
 int Show_Record_and_Menu()
 {
-  int i, i1, n, trecordsnumber, run=1, c, backupmenu=0;
+  int i, i1, n, trecordsnumber, run=1, c, backupmenu=0, replaychar=0;
   int findresults[MAXSEARCHDEPTH+1][MAXRECORDS], tsortresults[MAXRECORDS];
   char input_text[MAXSTRING], ttext[MAXSTRING], tattributes[9];
   FindSchedule tfindschedule;
@@ -1059,16 +1070,10 @@ int Show_Record_and_Menu()
      if (mousemenucommands.size())
       c=fetchmousemenucommand();
      else
-      c=sgetch();
+      c=(replaychar) ? replaychar : sgetch();
+     replaychar=0;
      blockunblockgetch();
      renewscreen=c=negatekeysforcurrentmenu(c);
-     // handle mouse double clicks
-     if (c==KEY_MOUSE && leftmousebuttondoubleclicked()) {
-      i=locatefieldbymouseclick();
-      if (i>-1) {
-       currentfield=i;
-      c='d'; }
-     }
      if (!alteredparameters && currentmenu!=5)
       for (i=0;i<strlen(alterscreenparameterskeys);i++)
        if (c==alterscreenparameterskeys[i])
@@ -1167,7 +1172,8 @@ int Show_Record_and_Menu()
       case 'm': // from all menus
        ++menubar;
        menubar=(menubar==4) ? 0 : menubar;
-       Read_Write_Current_Parameters(2, 1);
+       if (autosave)
+        Read_Write_Current_Parameters(2, 1);
       break;
       case ESC: // from all menus
        if (recordsdemo) {
@@ -1368,14 +1374,25 @@ int Show_Record_and_Menu()
          if (i)
         currentfield=fieldxidentities[i-1]; }
       break;
-      case ']': // imitate mouse
-       Menu_Selector();
-      break;
       case KEY_MOUSE:
        if (recordsdemo)
         break;
-       if (rightmousebuttonclicked())
-        Menu_Selector();
+       if (leftmousebuttondoubleclicked()) {
+        if (mouse.y+1 == 24  && menubar==1 ) {
+         if ((i=Activate_Menubar_Choice(mouse.x)))
+          keyonnextloop.push_back(i);
+         break;
+        }
+        i=locatefieldbymouseclick();
+        if (i>-1) {
+         currentfield=i;
+         replaychar='d'; }
+        break;
+       }
+       if (rightmousebuttonclicked()) {
+        keyonnextloop.push_back(ESC);
+        break;
+       }
        else {
         i=locatefieldbymouseclick();
         currentfield=(i>-1) ? i : currentfield;
@@ -1422,7 +1439,7 @@ int Show_Record_and_Menu()
         if (autosave)
          Read_Write_Current_Parameters(1, 1);
        }
-       break;
+      break;      
      break;
      case 's':
       Show_Menu_Bar(1);
@@ -1928,6 +1945,7 @@ int Show_Field(Annotated_Field *field, int flag) // 1 highlight, 2 only in scree
   int i, i1, lima, limb, tposx, tposy, tcolor, columninprint, rowinprint;
   char ttext[MAXSTRING*24], ttcolor[4];
   int attributestable[9]; // normal, standout, underline, reverse, blink, dim, bold, protect, invisible
+  int linkparameters[2];
 
   if (!tfield->active || (tfield->type>MIXEDTYPE && tfield->type!=CLOCK))
    return -1;
@@ -2055,6 +2073,13 @@ int Show_Field(Annotated_Field *field, int flag) // 1 highlight, 2 only in scree
       case 'p': // alignment, handled before
        i+=3;
       break;
+      case '>': // internal link
+       if ((i1=isfieldtextlink(field, linkparameters))==0) {
+        i+=1;
+        break;
+       }
+       i+=i1 + 3;
+      break;
       default:
      break; }
      if (ttext[i]=='\\') { // if next char is \, will not appear and command will be skipped
@@ -2063,6 +2088,8 @@ int Show_Field(Annotated_Field *field, int flag) // 1 highlight, 2 only in scree
     }
     if (rowinprint+1>tfield->pt.y+tfield->size.y)
      break; 
+    if (i>=strlen(ttext))
+     break;
     gotoxy(columninprint, rowinprint);
     if (flag<2)
      addch(ttext[i]);
@@ -2594,84 +2621,156 @@ int Clean_Database(char *filename)
  return 0;
 }
 
-// setup mouse menus
+// setup mouse menubar choices
 void Set_Mouse_Menus()
-{  
-  // menus
-  Menu menu0(mousemenus.size(), 0, 0, 0, "main menu");
-  Menu menu1(1, 1, 0, 0, "options menu");
-  Menu menu2(2, 2, 0, 1, "edit menu");
-  Menu menu3(3, 3, 0, 2, "extra menu");
-  // menu boxes
-  Drawbox mousebox0(0, menucolors[0], 58, 25, 5, 22, 6);
-  Drawbox mousebox1(1, menucolors[1], 58, 27, 7, 22, 6);
-  Drawbox mousebox2(2, menucolors[2], 58, 29, 9, 22, 6);
-  Drawbox mousebox3(3, menucolors[3], 58, 31, 11, 22, 6);
-  mousemenuboxes.push_back(mousebox0);
-  mousemenuboxes.push_back(mousebox1);
-  mousemenuboxes.push_back(mousebox2);
-  mousemenuboxes.push_back(mousebox3);
-  // entries
-  vector<int> vzero;
-  MenuEntry entry00("options etc", vzero, 1);
-  menu0.menuEntries.push_back(entry00);
-  MenuEntry entry01("edit fields", vzero, 2);
-  menu0.menuEntries.push_back(entry01);
-  MenuEntry entry02("extras menu", vzero, 3);
-  menu0.menuEntries.push_back(entry02);
-  vector<int> e03{ PAGES_SELECTOR_KEY };
-  MenuEntry entry03("pages selection", e03, 0);
-  menu0.menuEntries.push_back(entry03);
-  vector<int> e04{ ESC };
-  MenuEntry entry04("quit Reccurse", e04, 0);
-  menu0.menuEntries.push_back(entry04);
-  mousemenus.push_back(menu0);
-  vector<int> e10{ 'a' };
-  MenuEntry entry10("autosave on/off", e10, 1); // use same direction as id for commands that intend to end menu
-  menu1.menuEntries.push_back(entry10);
-  vector<int> e11{ 'l'};
-  MenuEntry entry11("load database", e11, 1);
-  menu1.menuEntries.push_back(entry11);
-  vector<int> e12{ 's' };
-  MenuEntry entry12("save database", e12, 1);
-  menu1.menuEntries.push_back(entry12);
-  vector<int> e13{ '?' };
-  MenuEntry entry13("help page", e13, 1);
-  menu1.menuEntries.push_back(entry13);
-  MenuEntry entry14("back to main", vzero, 0);
-  menu1.menuEntries.push_back(entry14);
-  mousemenus.push_back(menu1);
-  vector<int> e20{ INSERT, 'i' };
-  MenuEntry entry20("import records", e20, 2);
-  menu2.menuEntries.push_back(entry20);
-  vector<int> e21{ INSERT, 'x' };
-  MenuEntry entry21("export records", e21, 2);
-  menu2.menuEntries.push_back(entry21);
-  vector<int> e22{ INSERT, 'l', 'i' };
-  MenuEntry entry22("import external .db", e22, 2);
-  menu2.menuEntries.push_back(entry22);
-  vector<int> e23{ INSERT, 'l', 'r' };
-  MenuEntry entry23("edit references", e23, 2);
-  refresh(); // again bug and had to call refresh
-  menu2.menuEntries.push_back(entry23);
-  MenuEntry entry24("back to main", vzero, 0);
-  menu2.menuEntries.push_back(entry24);
-  mousemenus.push_back(menu2);
-  vector<int> e30{ 'i' };
-  MenuEntry entry30("database information", e30, 3);  
-  menu3.menuEntries.push_back(entry30);
-  vector<int> e31{ 'f' };
-  MenuEntry entry31("find records", e31, 3);
-  menu3.menuEntries.push_back(entry31);
-  vector<int> e32{ 'r' };
-  MenuEntry entry32("sort records", e32, 3);
-  menu3.menuEntries.push_back(entry32);
-  vector<int> e33{ 'u' };
-  MenuEntry entry33("setup database", e33, 3);
-  menu3.menuEntries.push_back(entry33);
-  MenuEntry entry34("back to main", vzero, 0);
-  menu3.menuEntries.push_back(entry34);
-  mousemenus.push_back(menu3);
+{
+  // main
+  ButtonBarMenuEntry entry00(0, 27, 31, 'g');
+  ButtonBarMenuEntry entry01(0, 31, 38, 'e');
+  ButtonBarMenuEntry entry02(0, 38, 48, 'o'); 
+  ButtonBarMenuEntry entry03(0, 48, 56, 't');
+  ButtonBarMenuEntry entry04(0, 56, 58, '`');
+  ButtonBarMenuEntry entry05(0, 58, 67, 'm');
+  ButtonBarMenuEntry entry06(0, 68, 77, ESC);
+  buttonbarmenus.push_back(entry00);
+  buttonbarmenus.push_back(entry01);  
+  buttonbarmenus.push_back(entry02);
+  buttonbarmenus.push_back(entry03);
+  buttonbarmenus.push_back(entry04);
+  buttonbarmenus.push_back(entry05);
+  buttonbarmenus.push_back(entry06);
+  // options
+  ButtonBarMenuEntry entry10(1, 0, 18, 'a');
+  ButtonBarMenuEntry entry11(1, 18, 34, 'l');
+  ButtonBarMenuEntry entry12(1, 34, 50, 's');
+  ButtonBarMenuEntry entry13(1, 50, 62, 'h');
+  ButtonBarMenuEntry entry14(1, 62, 64, '`');
+  ButtonBarMenuEntry entry15(1, 64, 79, ESC);
+  buttonbarmenus.push_back(entry10);
+  buttonbarmenus.push_back(entry11);  
+  buttonbarmenus.push_back(entry12);
+  buttonbarmenus.push_back(entry13);
+  buttonbarmenus.push_back(entry14);
+  buttonbarmenus.push_back(entry15);
+  // edit
+  ButtonBarMenuEntry entry20(2, 0, 7, 'd');
+  ButtonBarMenuEntry entry21(2, 7, 14, 'c');
+  ButtonBarMenuEntry entry22(2, 14, 23, DELETE);
+  ButtonBarMenuEntry entry23(2, 23, 30, 'j');
+  ButtonBarMenuEntry entry24(2, 30, 39, 'v');
+  ButtonBarMenuEntry entry25(2, 39, 51, 'p');
+  ButtonBarMenuEntry entry26(2, 51, 61, INSERT);
+  ButtonBarMenuEntry entry27(2, 61, 63, '`');
+  ButtonBarMenuEntry entry28(2, 63, 78, ESC);
+  buttonbarmenus.push_back(entry20);
+  buttonbarmenus.push_back(entry21);  
+  buttonbarmenus.push_back(entry22);
+  buttonbarmenus.push_back(entry23);
+  buttonbarmenus.push_back(entry24);
+  buttonbarmenus.push_back(entry25);
+  buttonbarmenus.push_back(entry26);
+  buttonbarmenus.push_back(entry27);
+  buttonbarmenus.push_back(entry28);
+  // extra
+  ButtonBarMenuEntry entry30(3, 0, 23, 'i');
+  ButtonBarMenuEntry entry31(3, 23, 30, 'f');
+  ButtonBarMenuEntry entry32(3, 30, 45, 'r');
+  ButtonBarMenuEntry entry33(3, 45, 62, 'u');
+  ButtonBarMenuEntry entry34(3, 62, 64, '`');
+  ButtonBarMenuEntry entry35(3, 64, 79, ESC);
+  buttonbarmenus.push_back(entry30);
+  buttonbarmenus.push_back(entry31);  
+  buttonbarmenus.push_back(entry32);
+  buttonbarmenus.push_back(entry33);
+  buttonbarmenus.push_back(entry34);
+  buttonbarmenus.push_back(entry35);
+  // quit
+
+  // calculator
+  ButtonBarMenuEntry entry500(5, 12, 13, '0');
+  ButtonBarMenuEntry entry501(5, 13, 14, '1');
+  ButtonBarMenuEntry entry502(5, 14, 15, '2');
+  ButtonBarMenuEntry entry503(5, 15, 16, '3');
+  ButtonBarMenuEntry entry504(5, 16, 17, '4');
+  ButtonBarMenuEntry entry505(5, 17, 18, '5');
+  ButtonBarMenuEntry entry506(5, 18, 19, '6');
+  ButtonBarMenuEntry entry507(5, 19, 20, '7');
+  ButtonBarMenuEntry entry508(5, 20, 21, '8');
+  ButtonBarMenuEntry entry509(5, 21, 22, '9');
+  ButtonBarMenuEntry entry510(5, 22, 23, '/');
+  ButtonBarMenuEntry entry511(5, 23, 24, '*');
+  ButtonBarMenuEntry entry512(5, 24, 25, '-');
+  ButtonBarMenuEntry entry513(5, 25, 26, '+');
+  ButtonBarMenuEntry entry514(5, 26, 27, '^');
+  ButtonBarMenuEntry entry515(5, 27, 28, ',');
+  ButtonBarMenuEntry entry516(5, 28, 29, '.');
+  ButtonBarMenuEntry entry517(5, 29, 30, '(');
+  ButtonBarMenuEntry entry518(5, 30, 31, ')');
+  ButtonBarMenuEntry entry519(5, 31, 32, '=');
+  ButtonBarMenuEntry entry520(5, 33, 40, ENTER);
+  ButtonBarMenuEntry entry521(5, 41, 52, BACKSPACE);
+  ButtonBarMenuEntry entry522(5, 53, 62, DELETE);
+  ButtonBarMenuEntry entry523(5, 62, 78, '`');
+  buttonbarmenus.push_back(entry500);
+  buttonbarmenus.push_back(entry501);
+  buttonbarmenus.push_back(entry502);
+  buttonbarmenus.push_back(entry503);
+  buttonbarmenus.push_back(entry504);
+  buttonbarmenus.push_back(entry505); 
+  buttonbarmenus.push_back(entry506);
+  buttonbarmenus.push_back(entry507);
+  buttonbarmenus.push_back(entry508);
+  buttonbarmenus.push_back(entry509);
+  buttonbarmenus.push_back(entry510);
+  buttonbarmenus.push_back(entry511);
+  buttonbarmenus.push_back(entry512);
+  buttonbarmenus.push_back(entry513);
+  buttonbarmenus.push_back(entry514);
+  buttonbarmenus.push_back(entry515);
+  buttonbarmenus.push_back(entry516);
+  buttonbarmenus.push_back(entry517);
+  buttonbarmenus.push_back(entry518);
+  buttonbarmenus.push_back(entry519);
+  buttonbarmenus.push_back(entry520);
+  buttonbarmenus.push_back(entry521);
+  buttonbarmenus.push_back(entry522);
+  buttonbarmenus.push_back(entry523); 
+  // extra from edit
+  ButtonBarMenuEntry entry60(6, 0, 12, 'u');
+  ButtonBarMenuEntry entry61(6, 13, 29, 'd');
+  ButtonBarMenuEntry entry62(6, 30, 38, 'i');
+  ButtonBarMenuEntry entry63(6, 39, 47, 'x');
+  ButtonBarMenuEntry entry64(6, 57, 77, 'l');
+  buttonbarmenus.push_back(entry60);
+  buttonbarmenus.push_back(entry61);
+  buttonbarmenus.push_back(entry62);
+  buttonbarmenus.push_back(entry63);
+  buttonbarmenus.push_back(entry64);
+  // external db records
+  ButtonBarMenuEntry entry70(7, 0, 17, 'i');
+  ButtonBarMenuEntry entry71(7, 18, 46, 'r');
+  buttonbarmenus.push_back(entry70);
+  buttonbarmenus.push_back(entry71);
+}
+
+int Activate_Menubar_Choice(int x)
+{
+  int c=0, i;
+    
+   for (i=0;i<buttonbarmenus.size();i++)
+    if (currentmenu == buttonbarmenus[i].choiceMenuId && x>=buttonbarmenus[i].choiceStartx && x<buttonbarmenus[i].choiceEndx)
+     break;
+   if (i<buttonbarmenus.size()) {
+    Change_Color(highlightcolors[0]);
+    gotoxy(buttonbarmenus[i].choiceStartx + 1, 24);
+    for (x=buttonbarmenus[i].choiceStartx;x<buttonbarmenus[i].choiceEndx - 1;x++)
+     addch(menutexts[currentmenu][x]);
+    refresh();
+    Sleep(150);
+    c=buttonbarmenus[i].choiceKey;
+   }
+    
+ return c;
 }
 
 // parse mousemenucommands vector for commands
@@ -2757,6 +2856,7 @@ void Delete_Field_Entry(int field_id)
 void pushspaceonfield(int field_id)
 {
   int i1;
+  int linkparameters[2];
   char ttext[MAXSTRING];
   
   if (field_id==-1)
@@ -2812,6 +2912,10 @@ void pushspaceonfield(int field_id)
       fieldrepetitions[field_id]=0;
      runscript=1;
      scriptcommand=fetchcommand(record[field_id].automatic_value);
+    }
+    if (isfieldtextlink(&records[(currentrecord*fieldsperrecord)+currentfield], linkparameters)) {
+     currentrecord=linkparameters[0] - 1;
+     currentfield=linkparameters[1] - 1;
     }
 }
 
