@@ -1307,3 +1307,92 @@ int pagehasclockfields()
 
  return 0;
 }
+
+// does field text contain internal link
+int isfieldtextlink(Annotated_Field *tfield, int linkparameters[]) // 0 record, 1 field
+{
+  int i, i1;
+  char ttext[MAXSTRING], destination[2][MAXSTRING];
+  const char s[2]=",";
+//   linkparameters.clear();
+  i=i1=0;
+    
+   if (record[tfield->id].buttonbox!=NOBUTTON)
+    return 0;
+   while (tfield->text[i]!='\\' && i<strlen(tfield->text))
+    ++i;
+   while (tfield->text[i]!='>' && i<strlen(tfield->text))
+    ++i;
+   if (i++==strlen(tfield->text))
+    return 0;
+   while (tfield->text[i]!='<' && i<strlen(tfield->text))
+    ttext[i1++]=tfield->text[i++];
+   ttext[i1]='\0';
+   if (i==strlen(tfield->text) && ttext[i1-1]!='<')
+    return 0;
+   
+   if ((assignstringvaluestoarray(ttext, destination, 2)!=2))
+    return 0;
+   linkparameters[0]=atoi(destination[0]);
+   linkparameters[1]=atoi(destination[1]);
+//    linkparameters.push_back(atoi(destination[0]));
+//    linkparameters.push_back(atoi(destination[1]));
+   if (linkparameters[0]<1 || linkparameters[0]>recordsnumber)
+    return 0;
+   if (linkparameters[1]<1 || linkparameters[1]>fieldsperrecord)
+    return 0;
+    
+ return i1;
+}
+
+// using readstringentry, assign strings to array of pointers
+int assignstringvaluestoarray(char *line, char array[2][MAXSTRING], int entries)
+{
+  int actualentries=0;
+  char tline[MAXSTRING];
+
+   while ((readstringentry(line, tline)) && actualentries<entries)
+    strcpy(array[actualentries++], tline);
+
+ return actualentries;
+}
+
+// read entry from file
+int readstringentry(char *line, char *linepart)
+{
+  static int i=0; // source line position
+  int i1=0; // word position
+  static char tline[MAXSTRING];
+
+  // reset static
+  if (i==strlen(line)) {
+   i=0;
+   return i;
+  }
+  if ((i && strcmp(line, tline)) || i==0) {
+   i=0;
+   strcpy(tline, line);
+  }
+
+    while (line[i]) {
+     if (isseparationchar(line[i++])) {
+      if (i1==0)
+       continue;
+      break;
+     }
+    linepart[i1++]=line[i-1];
+   }
+   linepart[i1]='\0';
+
+ return i;
+}
+
+enum { NONE=0, WORD };
+// word separation characters
+unsigned int isseparationchar(char t)
+{
+  if (t==',')
+   return WORD;
+
+ return NONE;
+}
