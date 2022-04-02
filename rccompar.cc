@@ -25,7 +25,7 @@ vector<ScriptLine> scriptlines, bscriptlines;
 int runline=0;
 
 // parse by line
-int commandparser(char scriptcommand[])
+int commandparser(char scriptcommand[MAXSTRING])
 {
   int i, i1, noparameters, commandtorun, thisfield, FAIL=0;
   double d;

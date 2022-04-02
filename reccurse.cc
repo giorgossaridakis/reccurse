@@ -1,7 +1,7 @@
 // reccurse, the filemaker of ncurses
 #include "reccurse.h"
 
-const double version=0.441;
+const double version=0.443;
 
 
 int main(int argc, char *argv[])
@@ -1386,7 +1386,11 @@ int Show_Record_and_Menu()
         i=locatefieldbymouseclick();
         if (i>-1) {
          currentfield=i;
-         replaychar='d'; }
+         if (currentmenu == 2)
+          replaychar='d';
+         else
+          pushspaceonfield(); // in case it's a link
+        }
         break;
        }
        if (rightmousebuttonclicked()) {
@@ -2624,133 +2628,16 @@ int Clean_Database(char *filename)
 // setup mouse menubar choices
 void Set_Mouse_Menus()
 {
-  // main
-  ButtonBarMenuEntry entry00(0, 27, 31, 'g');
-  ButtonBarMenuEntry entry01(0, 31, 38, 'e');
-  ButtonBarMenuEntry entry02(0, 38, 48, 'o'); 
-  ButtonBarMenuEntry entry03(0, 48, 56, 't');
-  ButtonBarMenuEntry entry04(0, 56, 58, '`');
-  ButtonBarMenuEntry entry05(0, 58, 67, 'm');
-  ButtonBarMenuEntry entry06(0, 68, 77, ESC);
-  buttonbarmenus.push_back(entry00);
-  buttonbarmenus.push_back(entry01);  
-  buttonbarmenus.push_back(entry02);
-  buttonbarmenus.push_back(entry03);
-  buttonbarmenus.push_back(entry04);
-  buttonbarmenus.push_back(entry05);
-  buttonbarmenus.push_back(entry06);
-  // options
-  ButtonBarMenuEntry entry10(1, 0, 18, 'a');
-  ButtonBarMenuEntry entry11(1, 18, 34, 'l');
-  ButtonBarMenuEntry entry12(1, 34, 50, 's');
-  ButtonBarMenuEntry entry13(1, 50, 62, 'h');
-  ButtonBarMenuEntry entry14(1, 62, 64, '`');
-  ButtonBarMenuEntry entry15(1, 64, 79, ESC);
-  buttonbarmenus.push_back(entry10);
-  buttonbarmenus.push_back(entry11);  
-  buttonbarmenus.push_back(entry12);
-  buttonbarmenus.push_back(entry13);
-  buttonbarmenus.push_back(entry14);
-  buttonbarmenus.push_back(entry15);
-  // edit
-  ButtonBarMenuEntry entry20(2, 0, 7, 'd');
-  ButtonBarMenuEntry entry21(2, 7, 14, 'c');
-  ButtonBarMenuEntry entry22(2, 14, 23, DELETE);
-  ButtonBarMenuEntry entry23(2, 23, 30, 'j');
-  ButtonBarMenuEntry entry24(2, 30, 39, 'v');
-  ButtonBarMenuEntry entry25(2, 39, 51, 'p');
-  ButtonBarMenuEntry entry26(2, 51, 61, INSERT);
-  ButtonBarMenuEntry entry27(2, 61, 63, '`');
-  ButtonBarMenuEntry entry28(2, 63, 78, ESC);
-  buttonbarmenus.push_back(entry20);
-  buttonbarmenus.push_back(entry21);  
-  buttonbarmenus.push_back(entry22);
-  buttonbarmenus.push_back(entry23);
-  buttonbarmenus.push_back(entry24);
-  buttonbarmenus.push_back(entry25);
-  buttonbarmenus.push_back(entry26);
-  buttonbarmenus.push_back(entry27);
-  buttonbarmenus.push_back(entry28);
-  // extra
-  ButtonBarMenuEntry entry30(3, 0, 23, 'i');
-  ButtonBarMenuEntry entry31(3, 23, 30, 'f');
-  ButtonBarMenuEntry entry32(3, 30, 45, 'r');
-  ButtonBarMenuEntry entry33(3, 45, 62, 'u');
-  ButtonBarMenuEntry entry34(3, 62, 64, '`');
-  ButtonBarMenuEntry entry35(3, 64, 79, ESC);
-  buttonbarmenus.push_back(entry30);
-  buttonbarmenus.push_back(entry31);  
-  buttonbarmenus.push_back(entry32);
-  buttonbarmenus.push_back(entry33);
-  buttonbarmenus.push_back(entry34);
-  buttonbarmenus.push_back(entry35);
-  // quit
+  char entries[MAXWORDS][MAXSTRING];
+  int nentries, i, c;
 
-  // calculator
-  ButtonBarMenuEntry entry500(5, 12, 13, '0');
-  ButtonBarMenuEntry entry501(5, 13, 14, '1');
-  ButtonBarMenuEntry entry502(5, 14, 15, '2');
-  ButtonBarMenuEntry entry503(5, 15, 16, '3');
-  ButtonBarMenuEntry entry504(5, 16, 17, '4');
-  ButtonBarMenuEntry entry505(5, 17, 18, '5');
-  ButtonBarMenuEntry entry506(5, 18, 19, '6');
-  ButtonBarMenuEntry entry507(5, 19, 20, '7');
-  ButtonBarMenuEntry entry508(5, 20, 21, '8');
-  ButtonBarMenuEntry entry509(5, 21, 22, '9');
-  ButtonBarMenuEntry entry510(5, 22, 23, '/');
-  ButtonBarMenuEntry entry511(5, 23, 24, '*');
-  ButtonBarMenuEntry entry512(5, 24, 25, '-');
-  ButtonBarMenuEntry entry513(5, 25, 26, '+');
-  ButtonBarMenuEntry entry514(5, 26, 27, '^');
-  ButtonBarMenuEntry entry515(5, 27, 28, ',');
-  ButtonBarMenuEntry entry516(5, 28, 29, '.');
-  ButtonBarMenuEntry entry517(5, 29, 30, '(');
-  ButtonBarMenuEntry entry518(5, 30, 31, ')');
-  ButtonBarMenuEntry entry519(5, 31, 32, '=');
-  ButtonBarMenuEntry entry520(5, 33, 40, ENTER);
-  ButtonBarMenuEntry entry521(5, 41, 52, BACKSPACE);
-  ButtonBarMenuEntry entry522(5, 53, 62, DELETE);
-  ButtonBarMenuEntry entry523(5, 62, 78, '`');
-  buttonbarmenus.push_back(entry500);
-  buttonbarmenus.push_back(entry501);
-  buttonbarmenus.push_back(entry502);
-  buttonbarmenus.push_back(entry503);
-  buttonbarmenus.push_back(entry504);
-  buttonbarmenus.push_back(entry505); 
-  buttonbarmenus.push_back(entry506);
-  buttonbarmenus.push_back(entry507);
-  buttonbarmenus.push_back(entry508);
-  buttonbarmenus.push_back(entry509);
-  buttonbarmenus.push_back(entry510);
-  buttonbarmenus.push_back(entry511);
-  buttonbarmenus.push_back(entry512);
-  buttonbarmenus.push_back(entry513);
-  buttonbarmenus.push_back(entry514);
-  buttonbarmenus.push_back(entry515);
-  buttonbarmenus.push_back(entry516);
-  buttonbarmenus.push_back(entry517);
-  buttonbarmenus.push_back(entry518);
-  buttonbarmenus.push_back(entry519);
-  buttonbarmenus.push_back(entry520);
-  buttonbarmenus.push_back(entry521);
-  buttonbarmenus.push_back(entry522);
-  buttonbarmenus.push_back(entry523); 
-  // extra from edit
-  ButtonBarMenuEntry entry60(6, 0, 12, 'u');
-  ButtonBarMenuEntry entry61(6, 13, 29, 'd');
-  ButtonBarMenuEntry entry62(6, 30, 38, 'i');
-  ButtonBarMenuEntry entry63(6, 39, 47, 'x');
-  ButtonBarMenuEntry entry64(6, 57, 77, 'l');
-  buttonbarmenus.push_back(entry60);
-  buttonbarmenus.push_back(entry61);
-  buttonbarmenus.push_back(entry62);
-  buttonbarmenus.push_back(entry63);
-  buttonbarmenus.push_back(entry64);
-  // external db records
-  ButtonBarMenuEntry entry70(7, 0, 17, 'i');
-  ButtonBarMenuEntry entry71(7, 18, 46, 'r');
-  buttonbarmenus.push_back(entry70);
-  buttonbarmenus.push_back(entry71);
+   nentries=assignstringvaluestoarray(const_cast<char *>(menubaroptions), entries, MAXWORDS);
+   for (i=0;i<nentries;i+=4) {
+    if ((c=atoi(entries[i+3]))==0)
+     c=(int) entries[i+3][0];
+    ButtonBarMenuEntry tentry(atoi(entries[i]), atoi(entries[i+1]), atoi(entries[i+2]), c);
+    buttonbarmenus.push_back(tentry);
+   }
 }
 
 int Activate_Menubar_Choice(int x)
@@ -2819,13 +2706,13 @@ int Determine_Button_Box(int field_id)
 // return command from automatic value
 char *fetchcommand(char *text)
 {
-  static char *command=(char *) malloc((size_t) MAXSTRING);
+  static char command[MAXSTRING];
   char ttext[MAXSTRING];
   strcpy(ttext, text);
 
    scantextforcommand(restructurecommand(ttext), command);
   
- return command;
+ return &command[0];
 }
 
 // restructure command in automatic_value

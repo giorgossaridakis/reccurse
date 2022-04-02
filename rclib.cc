@@ -1346,7 +1346,7 @@ int isfieldtextlink(Annotated_Field *tfield, int linkparameters[]) // 0 record, 
 }
 
 // using readstringentry, assign strings to array of pointers
-int assignstringvaluestoarray(char *line, char array[2][MAXSTRING], int entries)
+int assignstringvaluestoarray(char *line, char array[MAXWORDS][MAXSTRING], int entries)
 {
   int actualentries=0;
   char tline[MAXSTRING];
@@ -1363,7 +1363,7 @@ int readstringentry(char *line, char *linepart)
   static int i=0; // source line position
   int i1=0; // word position
   static char tline[MAXSTRING];
-
+// 
   // reset static
   if (i==strlen(line)) {
    i=0;

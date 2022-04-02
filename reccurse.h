@@ -30,6 +30,7 @@ typedef unsigned long ul;
 // numericals
 const int MAXSTRING=80; // characters in a regular string
 const int MAXTITLE=20; // characters in a a title string
+const int MAXWORDS=256; // for buttton bar menus
 const int MAXNUMBERDIGITS=18; // digits in a number
 const int LMAXCOMMAND=9999; /* maximum operands etc to calculate for rcpc formula*/
 const int MAXSUFFIXCHARS=3; // max string for number suffixes
@@ -60,6 +61,7 @@ const char *EMPTYSTRING="~";
 const int buttonkeystotal=30;
 const char *alterscreenparameterskeys="/*-+.!@";
 const char *menutexts[]={ "<tabshiftarrows|<>|homeend|<g>|<e>dit|<o>ptions|ex<t>ra|`|<m>enubar|<ESC>quit", "<a>utosave on/off|<l>oad database|<s>ave database|<h>elp page|`|<ESC>main menu", "e<d>it|<c>opy|<DEL>ete|<j>oin|di<v>ide|datestam<p>|<INS>more|`|<ESC>main menu", "database <i>nformation|<f>ind|so<r>t records|set<u>p database|`|<ESC>main menu", "really quit ?", "calculator: 0123456789/*-+^,.()= <enter> <backspace> <delete> <`>previous menu", "d<u>plicate, <d>elete record, <i>mport/e<x>port records, externa<l> .dbfiles", "<i>mport records, external <r>eferences editor" };  //main, options, edit, extra, quit, calculator, extra from edit, external db records;
+const char *menubaroptions =  "0,27,31,g,0,31,38,e,0,38,48,o,0,48,56,t,0,56,58,`,0,58,68,m,0,68,78,27,1,0,18,a,1,18,34,l,1,34,50,s,1,50,62,h,1,62,64,`,1,64,79,27,2,0,7,d,2,7,14,c,2,14,23,330,2,23,30,j,2,30,39,v,2,39,51,p,2,51,61,331,2,61,63,`,2,63,78,27,3,0,23,i,3,23,30,f,3,30,45,r,3,45,62,u,3,62,64,`,3,64,79,27,5,12,13,48,5,13,14,49,5,14,15,50,5,15,16,51,5,16,17,52,5,17,18,53,5,18,19,54,5,19,20,55,5,20,21,56,5,21,22,57,5,22,23,/,5,23,24,*,5,24,25,-,5,25,26,+,5,26,27,^,5,27,28,5,28,29,.,5,29,30,(,5,30,31,),5,31,32,=,5,33,40,10,5,41,52,263,5,53,62,330,5,62,78,`,6,0,12,u,6,13,29,d,6,30,39,i,6,39,48,x,6,57,77,l,7,0,17,i,7,18,47,r";
 
 // keyboard
 const int DOWN=258;
@@ -276,7 +278,7 @@ int addorplayprogram(int programid);
 void outputscreenarraytofile();
 
 // rccompar.cc
-int commandparser(char scriptcommand[]);
+int commandparser(char scriptcommand[MAXSTRING]);
 int labelposition(char *label);
 int islinelabel(char *scriptcommand);
 int setvariablefromfield(char *parameter, int field_id);
@@ -356,7 +358,7 @@ void aligntextsingley(Annotated_Field *field, int alignment, int row=0);
 char* aligntext(char text[MAXSTRING], Annotated_Field *field, int alignment);
 int pagehasclockfields();
 int isfieldtextlink(Annotated_Field *field, int linkparameters[]);
-int assignstringvaluestoarray(char *line, char array[2][MAXSTRING], int entries);
+int assignstringvaluestoarray(char *line, char array[MAXWORDS][MAXSTRING], int entries);
 int readstringentry(char *line, char *linepart);
 unsigned int isseparationchar(char t);
 
