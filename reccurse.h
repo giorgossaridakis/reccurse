@@ -61,7 +61,7 @@ const char *EMPTYSTRING="~";
 const int buttonkeystotal=30;
 const char *alterscreenparameterskeys="/*-+.!@";
 const char *menutexts[]={ "<tabshiftarrows|<>|homeend|<g>|<e>dit|<o>ptions|ex<t>ra|`|<m>enubar|<ESC>quit", "<a>utosave on/off|<l>oad database|<s>ave database|<h>elp page|`|<ESC>main menu", "e<d>it|<c>opy|<DEL>ete|<j>oin|di<v>ide|datestam<p>|<INS>more|`|<ESC>main menu", "database <i>nformation|<f>ind|so<r>t records|set<u>p database|`|<ESC>main menu", "really quit ?", "calculator: 0123456789/*-+^,.()= <enter> <backspace> <delete> <`>previous menu", "d<u>plicate, <d>elete record, <i>mport/e<x>port records, externa<l> .dbfiles", "<i>mport records, external <r>eferences editor" };  //main, options, edit, extra, quit, calculator, extra from edit, external db records;
-const char *menubaroptions =  "0,27,31,g,0,31,38,e,0,38,48,o,0,48,56,t,0,56,58,`,0,58,68,m,0,68,78,27,1,0,18,a,1,18,34,l,1,34,50,s,1,50,62,h,1,62,64,`,1,64,79,27,2,0,7,d,2,7,14,c,2,14,23,330,2,23,30,j,2,30,39,v,2,39,51,p,2,51,61,331,2,61,63,`,2,63,78,27,3,0,23,i,3,23,30,f,3,30,45,r,3,45,62,u,3,62,64,`,3,64,79,27,5,12,13,48,5,13,14,49,5,14,15,50,5,15,16,51,5,16,17,52,5,17,18,53,5,18,19,54,5,19,20,55,5,20,21,56,5,21,22,57,5,22,23,/,5,23,24,*,5,24,25,-,5,25,26,+,5,26,27,^,5,27,28,5,28,29,.,5,29,30,(,5,30,31,),5,31,32,=,5,33,40,10,5,41,52,263,5,53,62,330,5,62,78,`,6,0,12,u,6,13,29,d,6,30,39,i,6,39,48,x,6,57,77,l,7,0,17,i,7,18,47,r";
+const char *menubaroptions =  "0,27,31,g,0,31,38,e,0,38,48,o,0,48,56,t,0,56,58,`,0,58,68,m,0,68,78,27,1,0,18,a,1,18,34,l,1,34,50,s,1,50,62,h,1,62,64,`,1,64,79,27,2,0,7,d,2,7,14,c,2,14,23,330,2,23,30,j,2,30,39,v,2,39,51,p,2,51,61,331,2,61,63,`,2,63,78,27,3,0,23,i,3,23,30,f,3,30,45,r,3,45,62,u,3,62,64,`,3,64,79,27,5,12,13,48,5,13,14,49,5,14,15,50,5,15,16,51,5,16,17,52,5,17,18,53,5,18,19,54,5,19,20,55,5,20,21,56,5,21,22,57,5,22,23,/,5,23,24,*,5,24,25,-,5,25,26,+,5,26,27,^,5,27,28,.,5,28,29,.,5,29,30,(,5,30,31,),5,31,32,=,5,33,40,10,5,41,52,263,5,53,62,330,5,62,79,`,6,0,12,u,6,13,29,d,6,30,39,i,6,39,48,x,6,57,77,l,7,0,17,i,7,18,47,r";
 
 // keyboard
 const int DOWN=258;
@@ -339,6 +339,8 @@ void sortfieldsbyypt(int field_id, vector <int> &fieldyidentities);
 int locatefieldbymouseclick();
 bool rightmousebuttonclicked();
 bool leftmousebuttondoubleclicked();
+bool middlemousebuttonpressed();
+int wheelmousemove();
 int findfieldege(int flag=0);
 int CalcDayNumFromDate(int y, int m, int d);
 int isleapyear(int year);

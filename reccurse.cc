@@ -1,7 +1,7 @@
 // reccurse, the filemaker of ncurses
 #include "reccurse.h"
 
-const double version=0.443;
+const double version=0.445;
 
 
 int main(int argc, char *argv[])
@@ -1393,6 +1393,14 @@ int Show_Record_and_Menu()
         }
         break;
        }
+       if (middlemousebuttonpressed()) {
+        Pages_Selector();
+        break;
+       }
+       if ((i=wheelmousemove())) {
+        keyonnextloop.push_back(i);
+        break;
+       }
        if (rightmousebuttonclicked()) {
         keyonnextloop.push_back(ESC);
         break;
@@ -1772,7 +1780,7 @@ int negatekeysforcurrentmenu(int t)
   if (t==6) { currentmenu=3; t='f'; return t; } // enter find mode
   if (t==5 || t==15 || t==20 || t==PAGES_SELECTOR_KEY) { // direct menu access with ctrl
    switch (t) {
-    case 5:currentmenu=2; break; case 15:currentmenu=1; break; case 20:currentmenu=3; break; case PAGES_SELECTOR_KEY: Pages_Selector();
+    case 5:currentmenu=2; break; case 15:currentmenu=1; break; case 20:currentmenu=3; break; case PAGES_SELECTOR_KEY: if (!printscreenmode) Pages_Selector();
    break; }
    Read_Write_Current_Parameters(1, 1);
   return 1; } // 1 will set renewscreen
@@ -2545,6 +2553,10 @@ int Pages_Selector(int pagetochange)
      t=DOWN;
     if (t==LEFT)
      t=UP;
+    // handle a bit of mouse
+    if ((t==KEY_MOUSE))
+     if (((t=wheelmousemove())))
+      t=(t==SHIFT_RIGHT) ? DOWN : UP;
     switch (t) {
      case INSERT:
       memset(input_string, 0, sizeof(input_string));
@@ -2631,7 +2643,7 @@ void Set_Mouse_Menus()
   char entries[MAXWORDS][MAXSTRING];
   int nentries, i, c;
 
-   nentries=assignstringvaluestoarray(const_cast<char *>(menubaroptions), entries, MAXWORDS);
+   nentries=assignstringvaluestoarray(const_cast<char *> (menubaroptions), entries, MAXWORDS);
    for (i=0;i<nentries;i+=4) {
     if ((c=atoi(entries[i+3]))==0)
      c=(int) entries[i+3][0];
@@ -2649,7 +2661,7 @@ int Activate_Menubar_Choice(int x)
      break;
    if (i<buttonbarmenus.size()) {
     Change_Color(highlightcolors[0]);
-    gotoxy(buttonbarmenus[i].choiceStartx + 1, 24);
+    gotoxy(buttonbarmenus[i].choiceStartx + 1, menulines[currentmenu]);
     for (x=buttonbarmenus[i].choiceStartx;x<buttonbarmenus[i].choiceEndx - 1;x++)
      addch(menutexts[currentmenu][x]);
     refresh();

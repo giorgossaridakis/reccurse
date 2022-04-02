@@ -907,6 +907,26 @@ bool leftmousebuttondoubleclicked()
  return false;       
 }
 
+// middle mouse button held down
+bool middlemousebuttonpressed()
+{
+  if (mouse.bstate & BUTTON2_PRESSED)
+   return true;
+
+ return false;       
+}
+
+// mouse wheel up or down
+int wheelmousemove()
+{
+  if (mouse.bstate & BUTTON4_PRESSED)
+   return SHIFT_LEFT;
+  if (mouse.bstate & BUTTON5_PRESSED)
+   return SHIFT_RIGHT;
+  
+ return 0;
+}
+
 // ----------------------------------------------------------------------
 // Given the year, month and day, return the day number.
 // (see: https://alcor.concordia.ca/~gpkatch/gdate-method.html)
