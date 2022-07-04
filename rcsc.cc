@@ -1,8 +1,96 @@
 // string formula parser
+// included libraries
+// C
+#include <unistd.h>
+#include <ncurses.h>
+#include <stdlib.h>
+#include <string.h>
+#include <math.h>
+#include <ctype.h>
+#include <termios.h>
+#include <sys/stat.h>
+#include <sys/ioctl.h>
+#include <sys/select.h>
+#include <signal.h>
+// C++ 
+#include <iostream>
+#include <iomanip>
+#include <fstream>
+#include <sstream>
+#include <cstdlib>
+// stl
+#include <vector>
+#include <string>
+#include <cstring>
+#include <array>
+#include <algorithm>
 
+using namespace std;
+
+// numericals
+const int MAXSTRING=80; // characters in a regular string
+const int MAXTITLE=20; // characters in a a title string
+const int MAXWORDS=256; // for buttton bar menus
+const int MAXNUMBERDIGITS=18; // digits in a number
+const int LMAXCOMMAND=9999; /* maximum operands etc to calculate for rcpc formula*/
+const int MAXSUFFIXCHARS=3; // max string for number suffixes
+const int DEFAULT_DECIMALS=2; // decimal positions
+const int MAXFIELDS=999; // fields per record
+const int MAXRECORDS=9999; // records limit
+const int MAXPAGES=25; // pages limit
+const int FIELDSIZE=MAXSTRING*2+MAXNUMBERDIGITS+15;  // +7 would do
+const int MAXNAME=80; // max chars in database filenames
+const int MAXMENUS=10; // mouse menus
+const int RELATIONSHIPSLENGTH=1024; // 1kb of external db files relationship data
+const int MAXRELATIONSHIPS=25; // will fit into above 1kb, same as MAXPAGES
+const int MAXSEARCHDEPTH=5;
+const int INSTRUCTION='%';
+enum { HORIZONTALLY=1, VERTICALLY };
+const int NUMERICALLIMIT=32765;
+enum { NOBUTTON=0, TICKBOX, BUTTONBOX, BUTTONSCREEN, BUTTONCOMMAND, AUTOMATICSCRIPT };
+enum { NUMERICAL=0, CALENDAR, STRING, MIXEDTYPE, VARIABLE, PROGRAM, CLOCK };
+enum { NORMAL=0, STANDOUT, UNDERLINE, REVERSE, BLINK, DIM, BOLD, PROTECT, INVISIBLE };
+enum { TOLEFT=1, CENTER, TORIGHT };
 enum { SAME=0, LOWER, UPPER };
+
 int nextletterssize;
 const char *commands[]={ "mid$(", "left$(", "right$(", "toupper$(", "tolower$(" };
+extern int fieldsperrecord;
+extern int changedrecord, editoroption;
+extern int currentrecord;
+extern int recordsnumber;
+extern int currentfield;
+extern int alteredparameters;
+extern int separatort, separatord, suffixposition;
+
+class Annotated_Field {
+  // to be annotated in each record
+  public:
+   int id; // same as Field
+   double number;
+   char text[MAXSTRING];
+   char formula[MAXSTRING];
+   // constructors, destructor
+   Annotated_Field(int i1, double f1, char s1[MAXSTRING], char s2[MAXSTRING]) { id=i1; number=f1; strcpy(text, s1); strcpy(formula, s2); } ;
+   Annotated_Field(int i1, double f1, const char s1[MAXSTRING], const char s2[MAXSTRING]) { id=i1; number=f1; strcpy(text, s1); strcpy(formula, s2); } ;
+   Annotated_Field(int i1, double f1, char s1[MAXSTRING], const char s2[MAXSTRING]) { id=i1; number=f1; strcpy(text, s1); strcpy(formula, s2); } ;
+   Annotated_Field() { } ;
+~Annotated_Field() { } ; } ;
+
+extern vector<Annotated_Field> records, dummyrecords, externalrecords[MAXRELATIONSHIPS];
+
+// function declarations
+int stringformulacalculator(char formula[MAXSTRING], int record_id);
+void replacepartoftextwithcorrespondingvalue(char ttext[MAXSTRING], int record_id);
+int extracttextpart(char source[MAXSTRING], char dest[MAXSTRING], int startpt, int endpt);
+void inserttextpart(char text[MAXSTRING], char part[MAXSTRING], int point);
+int commandparser(int reference, char tcommand[MAXSTRING]);
+char* formatreplacer(char source[MAXSTRING], int field_id);
+char *performinstruction(char instruction[MAXSTRING], int field_id);
+extern void replacepartoftextwithcorrespondingvalue(char ttext[MAXSTRING], int record_id);
+extern int extracttextpart(char source[MAXSTRING], char dest[MAXSTRING], int startpt, int endpt);
+extern void inserttextpart(char text[MAXSTRING], char part[MAXSTRING], int point);
+extern int findsimple(char text[], char token[]);
 
 int stringformulacalculator(char formula[MAXSTRING], int record_id)
 {

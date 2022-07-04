@@ -4,7 +4,7 @@ const int QUOTE=34;
 const int COMMA=44;
 
 // variables
-char input_string[MAXSTRING];
+extern char input_string[MAXSTRING];
 const char *daysofweek[] = {
     "Wednesday",
     "Thursday",
@@ -14,58 +14,22 @@ const char *daysofweek[] = {
     "Monday",
     "Tuesday"
 };
+const char *months[]= {
+    "January",
+    "February",
+    "March",
+    "April",
+    "May",
+    "June",
+    "July",
+    "August",
+    "September",
+    "October",
+    "November",
+    "December"
+};
 
 //functions
-// remainder from division
-int mod (double a, double b)
-{
-int tmp =a/b;
-
-return a-(b*tmp);
-}
-
-// return numerical value of char
-int ctoi(char c)
-{
- return c-'0';
-}
-
-// integer to string
-char *itoa(long int val, int base)
-{
- 	static char buf[32] = {0};
-	int sign_flag=0, v = 30;
-    buf[31]='\0';
-    
-	if (!val) {
-     buf[v]='0';
-    return &buf[v]; }
-    if (val<0) {
-     val*=-1;
-    sign_flag=1; }
-    
-	for(; val && v ; --v, val /= base)
-	 buf[v] = "0123456789abcdef"[val % base];
-    if (sign_flag) {
-     buf[v]='-';
-	return &buf[v]; }
-	else
-     return &buf[v+1];
-}
-
-// dtoa to string
-char *dtoa(long double val)
-{
-  static char result[50];
-  int i;
-  std::string str = std::to_string(val);
-  
-  for (i=0;i<str.size();i++)
-   result[i]=str[i];
-  result[i]='\0';
-  
- return &result[0];
-}
 
 // simple code and decode char
 char charcoder(char d, int mode) // 0 encrypt, 1 decrypt
@@ -96,26 +60,6 @@ int filecodedecode(char *source, char *destination, int mode) // 0 code, 1 decod
  return 0;
 }
 
-// use charcoder to encode-decode string
-void stringcodedecode(char *source, char *destination, int mode) // 0 code, 1 decode
-{
-  while (*source)
-   *destination++=charcoder(*source++, mode);
-}
-
-// int try if file exists
-int tryfile(char *file) 
-{
-  FILE *f;
-   
-  f=fopen(file, "r");
-  if (!f)
-   return 0;
-  fclose (f);
-  
- return 1;
-}
-
 // show error for file access
 void Show_File_Error(char *filename)
 {
@@ -128,26 +72,11 @@ void Show_File_Error(char *filename)
   getchar();
 }
 
-/* copy source to destination file */
-int Copy_File(char *source, char *dest)
+// use charcoder to encode-decode string
+void stringcodedecode(char *source, char *destination, int mode) // 0 code, 1 decode
 {
-  FILE *f;
-  FILE *w;
-  char c;
-  char buf[BUFSIZ];
-  size_t size;
-  
-   f=fopen(source, "rb");
-   w=fopen(dest, "wb");
-   if (!f || !w)
-	return -1;
-   
-    while (size = fread(buf, 1, BUFSIZ, f)) 
-     fwrite(buf, 1, size, w);
-	
-	fclose(f);
-	fclose(w);	
-  return 0;
+  while (*source)
+   *destination++=charcoder(*source++, mode);
 }
 
 // checkpoint
@@ -260,7 +189,7 @@ char Scan_Input(char istring[MAXSTRING], int x_pos, int y_pos, int color)
          if (i==column-1)
           iistring[t++]=SPACE;
          iistring[t++]=tstring[i]; }
-         iistring[MAXSTRING]='\0';
+         iistring[MAXSTRING-1]='\0';
         strcpy(tstring, iistring); }
       break;
       case BACKSPACE:
@@ -296,7 +225,7 @@ char Scan_Input(char istring[MAXSTRING], int x_pos, int y_pos, int color)
 }
 
 // scan date
-void Scan_Date(int x_pos, int y_pos, char tdate[])
+void Scan_Date(int x_pos, int y_pos, char tdate[], int flag) // 0 entire date, 1 month and year
 {
   int weekday, c, y, m, d;
   int highlight=0; // 0 y, 1 m, 2 d
@@ -307,6 +236,8 @@ void Scan_Date(int x_pos, int y_pos, char tdate[])
    y=1900 + ltm->tm_year;
    m=1 + ltm->tm_mon;
    d=ltm->tm_mday;
+   if (flag)
+    d=1;
    while (c!=ESC && c!='\n') {
     Show_Menu_Bar(1);
     Change_Color(3);
@@ -339,7 +270,7 @@ void Scan_Date(int x_pos, int y_pos, char tdate[])
      c=getch();
     switch (c) {
      case LEFT:
-      if (highlight<2)
+      if (highlight<2-flag)
        ++highlight;
      break;
      case RIGHT:
@@ -386,6 +317,11 @@ void Scan_Date(int x_pos, int y_pos, char tdate[])
   if (c==ESC) 
    return;
 
+  // scan_date for calendar
+  if (flag) {
+   sprintf(tdate, "%d/%d", m, y);
+   return;
+  }
   // pass new values to time structure and rearrange
   ltm->tm_year=y-1900;
   ltm->tm_mon=m-1;
@@ -452,41 +388,12 @@ void addleadingspaces(char ttext[], int overallsize)
   strcpy(ttext, ttext2);
 }
 
-// crop string from it's end or beginning
-void cropstring(char ttext[], int noofcharacters, int flag) // 0 end, 1 beginning
-{
-  int i;
-  char ttext2[MAXSTRING];
-   
-  if (flag) {
-   for (i=noofcharacters;i<strlen(ttext);i++)
-    ttext2[i-noofcharacters]=ttext[i];
-   ttext2[i-noofcharacters]='\0'; 
-  strcpy(ttext, ttext2); }
-  else if (noofcharacters<=strlen(ttext))
-   ttext[noofcharacters]='\0';
-}
-
 // count text length without spaces
 int fieldlength(char *fieldtext)
 {
   int size=(strlen(fieldtext)==1 && isspace(fieldtext[0])) ? 0 : strlen(fieldtext);
  
  return size;
-}
-
-// measure file size
-long int filesize(char *filename)
-{
-  long int i=0;
-  char t;
-  ifstream testfile(filename, ios::binary);
-  
-   while ((t=testfile.get())!=EOF && testfile)
-    ++i;
-   testfile.close();
-    
- return i;
 }
 
 // enclose string in quotes, add comma if wanted
@@ -526,18 +433,6 @@ int isinquotes(char tstring[])
          
  return 0;
 }
-
-// number of digits
-int numberofdigits(long int n)
-{
-  int i=0;
-  
-   while (n) {
-    n/=10;
-   ++i; }
-  
- return i;
-}  
 
 // show key pressed
 int sgetch(int x_pos, int y_pos, int sleeptime, int showflag)
@@ -646,72 +541,6 @@ void replaceunderscoresandbrackets(char dataname[], int flag) // 0 place undersc
   dataname[i1]='\0';
 }
 
-// char to null terminated string
-char *ctos(int t)
-{
-  static char s[3];
-  
-   s[0]=(char) t;
-   s[1]='\0';
-   
- return s;
-}
-
-
-// divide param1/param2 and bring fraction part*scale
-double bringfractionpartofdivision(int param1, int param2, int scale)
-{
-  double param = (double) param1/param2;
-  double fractpart, intpart;
-  
-  fractpart = modf (param , &intpart);
- return fractpart*scale;
-}
-
-// isspace
-int isspace(char t)
-{
-  if (t==32) 
-   return 1;
-  
- return 0;
-}
-
-int iscalculationsign(char t)
-{
-   if (t=='+' || t=='-' || t=='*' || t=='/' || t=='%' || t=='^')
-    return 1;
-    
-  return 0;
-}
-
-// isdecimalseparator
-int isdecimalseparator(char t)
-{
-  if (t==',' || t=='.')
-   return 1;
-  
- return 0;
-}
-
-// parenthesis
-int isparenthesis(char t)
-{
-  if (t=='(' || t==')')
-   return 1;
- 
- return 0;
-}
-
-// is printable character
-int isprintablecharacter(int t)
-{
-  if (t>31 && t<127)
-   return 1;
-  
- return 0;
-}
-
 // corrupt string check
 int iscorruptstring(char *tstring)
 {
@@ -739,53 +568,6 @@ int limitsignificantnumbers(char *s, int digits)
     return -1;
     
   return 0;
-}
-
-// find part in text
-int find(char text[], char token[])
-{ 
-  int i, n, arraypositions=0, hits=0, tokenstried=0;
-  char ttoken[MAXSTRING], tokens[MAXTOKENS][MAXSTRING];
-  
-   for (i=0;i<strlen(token);i++) {
-    n=0;
-    while (token[i]!='*' && i<strlen(token))
-    ttoken[n++]=tolower(token[i++]);
-    ttoken[n]='\0';
-   strcpy(tokens[arraypositions++], ttoken); }
-   i=0;
-   while (tokenstried<arraypositions && i<strlen(text)) { // token to look for
-    for (;i<strlen(text);i++) {
-     if (tolower(text[i])==tokens[tokenstried][0]) {
-      for (n=0;n<strlen(tokens[tokenstried]);n++)
-       ttoken[n]=tolower(text[i+n]);
-      ttoken[n]='\0';
-      if (!strcmp(ttoken, tokens[tokenstried])) {
-       ++hits;
-      i+=n;
-   ++tokenstried; } } } }
-   
- return (hits==arraypositions) ? 1 : 0;;
-}
-
-// find command in text
-int findsimple(char text[], char token[])
-{ 
-  int i, n, hit=0;
-  char ttoken[MAXSTRING];
-  
-   for (i=0;i<strlen(text);i++) {
-    if (text[i]==token[0]) {
-     hit=i+1;
-     for (n=0;n<strlen(token);n++)
-      ttoken[n]=text[i+n];
-     ttoken[n]='\0';
-     if (strcmp(ttoken, token))
-      hit=0; 
-     else
-   break; } }
-   
- return hit;
 }
 
 // sort records from sequence in parameter array
@@ -819,20 +601,12 @@ int sortrecords(int field_id, int recordssequence[], int mode) // 0 ascending 1 
 // return table with sorted by x.pt fields
 void sortfieldsbyxpt(int field_id, vector <int> &fieldxidentities)
 {
- int i, t, operation=1;
+ int i;
 
    for (i=0;i<fieldsperrecord;i++)
-    if (record[field_id].pt.y==record[i].pt.y && record[i].editable && record[i].active)
+    if ( record[field_id].pt.y == record[i].pt.y && record[i].editable && record[i].active )
      fieldxidentities.push_back(i);
-   i=0;
-   while (operation) {
-    operation=0;
-    for (i=0;i<fieldxidentities.size()-1;i++) {
-     if (record[fieldxidentities[i+1]].pt.x<record[fieldxidentities[i]].pt.x) {
-      operation=1;
-      t=fieldxidentities[i];
-      fieldxidentities[i]=fieldxidentities[i+1];
-   fieldxidentities[i+1]=t; } } }
+   sort(fieldxidentities.begin(), fieldxidentities.end());
 }
 
 // return table with sorted by y.pt fields
@@ -843,15 +617,7 @@ void sortfieldsbyypt(int field_id, vector <int> &fieldyidentities)
    for (i=0;i<fieldsperrecord;i++)
     if (record[field_id].pt.x==record[i].pt.x && record[i].editable && record[i].active)
      fieldyidentities.push_back(i);
-   i=0;
-   while (operation) {
-    operation=0;
-    for (i=0;i<fieldyidentities.size()-1;i++) {
-     if (record[fieldyidentities[i+1]].pt.y<record[fieldyidentities[i]].pt.y) {
-      operation=1;
-      t=fieldyidentities[i];
-      fieldyidentities[i]=fieldyidentities[i+1];
-   fieldyidentities[i+1]=t; } } }
+   sort(fieldyidentities.begin(), fieldyidentities.end());   
 }
 
 // find first/last active & editable field
@@ -925,34 +691,6 @@ int wheelmousemove()
    return SHIFT_RIGHT;
   
  return 0;
-}
-
-// ----------------------------------------------------------------------
-// Given the year, month and day, return the day number.
-// (see: https://alcor.concordia.ca/~gpkatch/gdate-method.html)
-// ----------------------------------------------------------------------
-int CalcDayNumFromDate(int y, int m, int d)
-{
-  m = (m + 9) % 12;
-  y -= m / 10;
-  int dn = 365*y + y/4 - y/100 + y/400 + (m*306 + 5)/10 + (d - 1);
-
-  return dn % 7;
-}
-
-// return 1 if year is leap
-int isleapyear(int year)
-{ 
-  if ((year%400==0 || year%100!=0) && (year%4==0)) // is a leap year
-   return 1;
-
- return 0;
-}
-
-// days in month
-int daysinmonth(int year, int month)
-{
- return (month==2) ? (28 + isleapyear(year)) : 31 - (month - 1) % 7 % 2;
 }
 
 // handle ctrl+c
@@ -1132,6 +870,16 @@ int isautomaticvalueformatinstruction(int field_id)
  return 0;
 }
 
+// see if automatic value contains script command
+int isautomaticvaluescriptcommand(int field_id)
+{ 
+   for (int i=0;i<strlen(record[field_id].automatic_value);i++)
+    if (record[field_id].automatic_value[i]==COMMAND)
+     return 1;
+    
+ return 0;
+}
+
 // separate thousands and decimals
 char *formatmonetarystring(char *text)
 {
@@ -1181,31 +929,6 @@ char *appendsuffix(char *text, int field_id)
   strcpy(text, ttext);
    
  return text;
-}
-
-// trim spaces at start and end of string
-int limitspaces(char *tstring)
-{
-  int i, n, spaces;
-  char ttstring[MAXSTRING];
-  
-    i=n=spaces=0;
-    while (isspace(tstring[i]) && i<strlen(tstring)) {
-     ++i;
-    ++spaces; } 
-    for (;i<strlen(tstring);i++)
-     ttstring[n++]=tstring[i];
-    ttstring[n]='\0';
-    i=strlen(ttstring)-1;
-    while (isspace(ttstring[i])) {
-     --i;
-    ++spaces; }
-    ttstring[++i]='\0';
-    if (!strlen(ttstring))
-     strcpy(ttstring, " ");
-    strcpy(tstring, ttstring);
-  
- return spaces;
 }
 
 // align text for single sized y fields
@@ -1377,42 +1100,124 @@ int assignstringvaluestoarray(char *line, char array[MAXWORDS][MAXSTRING], int e
  return actualentries;
 }
 
-// read entry from file
-int readstringentry(char *line, char *linepart)
+// fields adjoining field
+int fieldsadjoiningfields(Annotated_Field *tfield, vector<int>& adjoiningfields)
 {
-  static int i=0; // source line position
-  int i1=0; // word position
-  static char tline[MAXSTRING];
-// 
-  // reset static
-  if (i==strlen(line)) {
-   i=0;
-   return i;
-  }
-  if ((i && strcmp(line, tline)) || i==0) {
-   i=0;
-   strcpy(tline, line);
-  }
-
-    while (line[i]) {
-     if (isseparationchar(line[i++])) {
-      if (i1==0)
-       continue;
-      break;
+  int i, i1, i2, recordid=tfield->id, pos=0;
+  adjoiningfields.push_back(recordid);
+  Annotated_Field *ttfield;
+  
+   while (pos<adjoiningfields.size()) {
+    ttfield=&records[(currentrecord*fieldsperrecord)+adjoiningfields[pos++]];
+    recordid=ttfield->id;
+     
+     if (ttfield->text[strlen(ttfield->text)-1]=='>') {
+      for (i1=0;i1<fieldsperrecord;i1++)
+       if (records[(currentrecord*fieldsperrecord)+i1].text[0]=='<') {
+        if ((findinintvector(i1, adjoiningfields)) || ((arefieldsneighbours(recordid, i1)==0)))
+         continue;
+        else 
+         adjoiningfields.push_back(i1); }
      }
-    linepart[i1++]=line[i-1];
-   }
-   linepart[i1]='\0';
+     if (ttfield->text[0]=='<') {
+      for (i1=0;i1<fieldsperrecord;i1++)
+       if (records[(currentrecord*fieldsperrecord)+i1].text[strlen(records[(currentrecord*fieldsperrecord)+i1].text)-1]=='>')
+        if ((findinintvector(i1, adjoiningfields)) || ((arefieldsneighbours(i1, recordid)==0)))
+        continue;
+       else
+        adjoiningfields.push_back(i1);
+     }
+       
+    }
+    sort(adjoiningfields.begin(), adjoiningfields.end());
 
- return i;
+ return adjoiningfields.size();
 }
 
-enum { NONE=0, WORD };
-// word separation characters
-unsigned int isseparationchar(char t)
+// fields touch borders
+int arefieldsneighbours(int id1, int id2) // id1 is always to the left or above of id2
 {
-  if (t==',')
-   return WORD;
+  int x1, y1, x2, y2, tresult, result;
+  tresult=result=0;
 
- return NONE;
+    // horizontal neighbours  
+    if (record[id1].pt.x+record[id1].size.x==record[id2].pt.x)
+     for (y1=record[id1].pt.y;y1<record[id1].pt.y+record[id1].size.y+1;y1++)
+      for (y2=record[id2].pt.y;y2<record[id2].pt.y+record[id2].size.y+1;y2++)
+       if (y1==y2)
+        tresult=HORIZONTALLY;
+    if (tresult)
+     result+=tresult;
+    
+    // vertical neighbours
+    tresult=0;
+    if (record[id1].pt.y+record[id1].size.y==record[id2].pt.y)
+     for (x1=record[id1].pt.x;x1<record[id1].pt.x+record[id1].size.x+1;x1++)
+      for (x2=record[id2].pt.x;x2<record[id2].pt.x+record[id2].size.x+1;x2++)
+       if (x1==x2)
+        tresult=VERTICALLY;
+    if (tresult)
+     result+=tresult;
+    
+ return result;
+}
+
+// int vector contais element
+int findinintvector(int element, vector<int>& tv)
+{
+  int i;
+  
+   for (i=0;i<tv.size();i++)
+    if (element == tv[i])
+     break;
+    
+ return (i==tv.size()) ? 0 : i;
+} 
+
+// generate calendar
+char *Generate_Calendar(int m, int y)
+{
+  const int SPACES=4;
+  int i, i1=0, day, d=1, spaces, daysinmonth;
+  static char calendar[256], ttext[MAXSTRING];
+  time_t now = time(0);
+  struct tm *ltm = localtime(&now);
+    
+    sprintf(calendar, "          %s %d>", months[m], y);
+    for (i=4;i<7;i++) {
+     leavespaces(calendar, SPACES-3);
+    sprintf(ttext, "%.3s", daysofweek[i]); 
+    strcat(calendar, ttext); }
+    for (i=0;i<4;i++) {
+     leavespaces(calendar, SPACES-3);
+     sprintf(ttext, "%.3s", daysofweek[i]); 
+    strcat(calendar, ttext); }
+    strcat(calendar, ">");
+    day=CalcDayNumFromDate(y, m+1, d);
+    if (day>3)
+     spaces=(day-4)*SPACES;
+    else
+     spaces=(SPACES*3)+((day)*SPACES);
+    leavespaces(calendar, spaces);
+    daysinmonth=(m==1) ? (28 + isleapyear(y)) : 31 - m % 7 % 2;
+    for (i=d;i<daysinmonth+1;i++) {
+     spaces=(d>9) ? 1 : 0;
+     leavespaces(calendar, (SPACES-1)-spaces);
+     sprintf(ttext, "%d", d);
+     strcat(calendar, ttext);
+     day=CalcDayNumFromDate(y, m+1, d);
+     if (day==3) // next line after Saturday
+      strcat(calendar, ">");
+    ++d; }
+    
+ return &calendar[0];
+}
+
+// leave spaces (calendar required)
+void leavespaces(char *calendar, int spaces)
+{
+  int i;
+  
+   for (i=0;i<spaces;i++)
+    strcat(calendar, " ");
 }

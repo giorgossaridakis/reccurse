@@ -1,17 +1,119 @@
-const int MAXOP=100; /* max size of operand or operator */
+// Polish Calculator library
+
+// included libraries
+// C
+#include <unistd.h>
+#include <ncurses.h>
+#include <stdlib.h>
+#include <string.h>
+#include <math.h>
+#include <ctype.h>
+#include <termios.h>
+#include <sys/stat.h>
+#include <sys/ioctl.h>
+#include <sys/select.h>
+#include <signal.h>
+// C++ 
+#include <iostream>
+#include <iomanip>
+#include <fstream>
+#include <sstream>
+#include <cstdlib>
+// stl
+#include <vector>
+#include <string>
+#include <cstring>
+#include <array>
+#include <algorithm>
+
+using namespace std;
+
+// constants
+const int MAXSTRING=80; // characters in a regular string
+const int MAXTITLE=20; // characters in a a title string
+const int MAXWORDS=256; // for buttton bar menus
+const int MAXSUFFIXCHARS=3; // max string for number suffixes
+const int MAXNAME=80; // max chars in database filenames
+const int MAXOP=1000; /* max size of operand or operator */
 const char NUMBER='0'; /* signal that a number was found */
 const int MAXCOMMAND=9999; /* maximum number of operands etc to calculate */
 const int NUMLIMIT=32767; /* maximum limit in input */
-const int MAXVAL=100; /* maximum depth of val stack */
+const int MAXVAL=1000; /* maximum depth of val stack */
 const int MAXFUNCTIONMAME=10; // max chars in function names
 const int MAXFUNCTIONPARAMETERS=5; // max parameters in functions, separated with comma
+enum { NOBUTTON=0, TICKBOX, BUTTONBOX, BUTTONSCREEN, BUTTONCOMMAND, AUTOMATICSCRIPT };
+extern int fieldsperrecord;
+const int MAXRELATIONSHIPS=25;
 
-// char formula[MAXCOMMAND];
-int pos;
-int sp = 0; /* next free stack position */
+int pos, sp; /* next free stack position */
 double val[MAXVAL]; /* value stack */
 int isfunction=0; // flag to take functions symbols into account
 int openparentheses; // parentheses open for parser
+
+struct Points {
+ int x;
+int y; } ;
+
+class Field {
+ public:
+  // from .rc file
+  int id;
+  char title[MAXTITLE];
+  int title_position;
+  char title_attributes[9];
+  int title_color;
+  struct Points pt;
+  struct Points size;
+  char attributes[9];
+  int color;
+  int box;
+  int box_color;
+  int type; // 0 number, 1 date&time, 2 string, 3 mixed type etc
+  int decimals;
+  char suffix[MAXSUFFIXCHARS];
+  int formula;
+  int fieldlist;
+  int editable;
+  int active;
+  char automatic_value[MAXSTRING];
+  int buttonbox; // 0 none, 1 tickbox, 2 button, 3 button screen, 4 command, automatic script
+  // constructors, destructor
+  Field(int i1, char s1[MAXSTRING], int i2, char s2[9], int i3, int i4, int i5, int i6, int i7, char s3[9], int i8, int i9, int i10, int i11, char s4[MAXSUFFIXCHARS], int i12, int i13, int i14, int i15, int i16, char s5[MAXSTRING]) { id=i1; strcpy(title,s1); title_position=i2; strcpy(title_attributes,s2); title_color=i3; pt.x=i4; pt.y=i5; size.x=i6; size.y=i7; strcpy(attributes, s3); color=i8; box=i9; box_color=i10; type=i11; strcpy(suffix, s4);  decimals=i12, formula=i13; fieldlist=i14; editable=i15; active=i16;  strcpy(automatic_value, s5); buttonbox=NOBUTTON; } ;
+  Field() { } ;
+~Field() { } ; } ;
+
+class Annotated_Field {
+  // to be annotated in each record
+  public:
+   int id; // same as Field
+   double number;
+   char text[MAXSTRING];
+   char formula[MAXSTRING];
+   // constructors, destructor
+   Annotated_Field(int i1, double f1, char s1[MAXSTRING], char s2[MAXSTRING]) { id=i1; number=f1; strcpy(text, s1); strcpy(formula, s2); } ;
+   Annotated_Field(int i1, double f1, const char s1[MAXSTRING], const char s2[MAXSTRING]) { id=i1; number=f1; strcpy(text, s1); strcpy(formula, s2); } ;
+   Annotated_Field(int i1, double f1, char s1[MAXSTRING], const char s2[MAXSTRING]) { id=i1; number=f1; strcpy(text, s1); strcpy(formula, s2); } ;
+   Annotated_Field() { } ;
+~Annotated_Field() { } ; } ;
+
+// vectors
+extern vector<Field> record, dummyrecord, externalrecord[MAXRELATIONSHIPS];
+extern vector<Annotated_Field> records, dummyrecords, externalrecords[MAXRELATIONSHIPS];
+
+// function declarations
+int parenthesesincluderforpolishreversecalculator(char formula[]);
+int reversepolishcalculatorequalizer(char formula[], int record_id=-1);
+int isformulainpolishcalculatorsyntax(char formula[]);
+double reversepolishcalculator(char formula[]);
+int getop(char s[], char formula[]);
+void push(double f);
+double pop(void);
+extern int isdecimalseparator(char t);
+extern char *ctos(int t);
+extern char *dtoa(long double val);
+extern int mod(double a, double b);
+
+#include "rcpclib.cc"
 
 // reverse Polish calculator start
 
@@ -22,7 +124,7 @@ int type;
 double op2,op3;
 char s[MAXOP];
 
-    pos=0;
+    pos=sp=0;
     while ((type = getop(s, formula)) != EOF) {
      switch (type) {
       case NUMBER:
@@ -141,8 +243,6 @@ void push(double f)
 {
   if (sp < MAXVAL)
    val[sp++] = f;
-//   else
-//    printf("\nerror: stack full, can't push %g", f);
 }
 
 /* pop: pop and return top value from stack */

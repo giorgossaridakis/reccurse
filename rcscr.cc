@@ -1,11 +1,68 @@
 // reccurse ncurses screen modules
+// included libraries
+// C
+#include <unistd.h>
+#include <ncurses.h>
+#include <stdlib.h>
+#include <string.h>
+#include <math.h>
+#include <ctype.h>
+#include <termios.h>
+#include <sys/stat.h>
+#include <sys/ioctl.h>
+#include <sys/select.h>
+#include <signal.h>
+// C++ 
+#include <iostream>
+#include <iomanip>
+#include <fstream>
+#include <sstream>
+#include <cstdlib>
+// stl
+#include <vector>
+#include <string>
+#include <cstring>
+#include <array>
+#include <algorithm>
 
+// global constants
+enum { NORMAL=0, STANDOUT, UNDERLINE, REVERSE, BLINK, DIM, BOLD, PROTECT, INVISIBLE };
+
+struct Points {
+ int x;
+int y; } ;
+
+class Drawbox {
+ public:
+  int menuId;
+  int drawcolor;
+  int paintcolor;
+  struct Points pt;
+  struct Points size;
+  Drawbox(int id, int color1, int color2, int ptx, int pty, int sizex, int sizey) { menuId=id; drawcolor=color1; paintcolor=color2; pt.x=ptx; pt.y=pty; size.x=sizex; size.y=sizey; };
+  Drawbox() { };
+~Drawbox() { }; };
+
+// local variables
 WINDOW *win1=newwin(80, 24, 1, 1);
-
 const int UNDERSCORE=95;
 const char BOXCHAR='*';
-
 int highlightcolors[2]={ 34, 23 };
+
+// external
+extern int screen[81][25];
+extern int printscreenmode;
+const int SPACE=32;
+
+// function declarations
+int Init_Screen();
+void End_Screen();
+void Change_Color(int choice=58);
+void Draw_Box(int color, int x_pos, int x_size, int y_pos, int y_size, int paintcolor=0);
+void Draw_Box(char t, int color, int x_pos, int x_size, int y_pos, int y_size, int paintcolor=0);
+void Draw_Box(Drawbox &tdrawbox);
+void gotoxy(int x, int y);
+void Change_Attributes(int attribute);
 
 // Initialize screen
 int Init_Screen()

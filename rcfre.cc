@@ -1,5 +1,191 @@
 // reccurse field&references editor
 
+// included libraries
+// C
+#include <unistd.h>
+#include <ncurses.h>
+#include <stdlib.h>
+#include <string.h>
+#include <math.h>
+#include <ctype.h>
+#include <termios.h>
+#include <sys/stat.h>
+#include <sys/ioctl.h>
+#include <sys/select.h>
+#include <signal.h>
+// C++ 
+#include <iostream>
+#include <iomanip>
+#include <fstream>
+#include <sstream>
+#include <cstdlib>
+// stl
+#include <vector>
+#include <string>
+#include <cstring>
+#include <array>
+#include <algorithm>
+
+using namespace std;
+
+// constants
+const int MAXSTRING=80; // characters in a regular string
+const int MAXTITLE=20; // characters in a a title string
+const int MAXWORDS=256; // for buttton bar menus
+const int MAXSUFFIXCHARS=3; // max string for number suffixes
+const int MAXNAME=80; // max chars in database filenames
+const int MAXOP=100; /* max size of operand or operator */
+const char NUMBER='0'; /* signal that a number was found */
+const int MAXCOMMAND=9999; /* maximum number of operands etc to calculate */
+const int NUMLIMIT=32767; /* maximum limit in input */
+const int MAXVAL=100; /* maximum depth of val stack */
+const int MAXFUNCTIONMAME=10; // max chars in function names
+const int MAXFUNCTIONPARAMETERS=5; // max parameters in functions, separated with comma
+const int MAXRELATIONSHIPS=25;
+const int UNDERSCORE=95;
+const char BOXCHAR='*';
+extern const char *onoff[];
+extern int fieldsperrecord;
+extern int changedrecord, editoroption;
+extern int currentrecord;
+extern int recordsnumber;
+extern int alteredparameters;
+
+// keyboard
+const int DOWN=258;
+const int UP=259;
+const int LEFT=260;
+const int RIGHT=261;
+const int SHIFT_LEFT=393;
+const int SHIFT_RIGHT=402;
+const int ESC=27;
+const int SPACE=32;
+const int ENTER=10;
+const int BACKSPACE=263; 
+const int DELETE=330;
+const int INSERT=331;
+const int HOME=262;
+const int END=360;
+const int COPY=11;
+const int PASTE=22;
+const int TAB=9;
+const int SHIFT_TAB=353;
+const int END_OF_RECORDS=336;
+const int START_OF_RECORDS=337;
+const int PAGES_SELECTOR_KEY=23;
+const int SCRIPT_PLAYER=19;
+const int MAXFIELDS=999; // fields per record
+const int MAXRECORDS=9999; // records limit
+
+enum { NOBUTTON=0, TICKBOX, BUTTONBOX, BUTTONSCREEN, BUTTONCOMMAND, AUTOMATICSCRIPT };
+enum { NUMERICAL=0, CALENDAR, STRING, MIXEDTYPE, VARIABLE, PROGRAM, CLOCK };
+enum { NORMAL=0, STANDOUT, UNDERLINE, REVERSE, BLINK, DIM, BOLD, PROTECT, INVISIBLE };
+enum { TOLEFT=1, CENTER, TORIGHT };
+
+struct Points {
+ int x;
+int y; } ;
+
+class Field {
+ public:
+  // from .rc file
+  int id;
+  char title[MAXTITLE];
+  int title_position;
+  char title_attributes[9];
+  int title_color;
+  struct Points pt;
+  struct Points size;
+  char attributes[9];
+  int color;
+  int box;
+  int box_color;
+  int type; // 0 number, 1 date&time, 2 string, 3 mixed type etc
+  int decimals;
+  char suffix[MAXSUFFIXCHARS];
+  int formula;
+  int fieldlist;
+  int editable;
+  int active;
+  char automatic_value[MAXSTRING];
+  int buttonbox; // 0 none, 1 tickbox, 2 button, 3 button screen, 4 command, automatic script
+  // constructors, destructor
+  Field(int i1, char s1[MAXSTRING], int i2, char s2[9], int i3, int i4, int i5, int i6, int i7, char s3[9], int i8, int i9, int i10, int i11, char s4[MAXSUFFIXCHARS], int i12, int i13, int i14, int i15, int i16, char s5[MAXSTRING]) { id=i1; strcpy(title,s1); title_position=i2; strcpy(title_attributes,s2); title_color=i3; pt.x=i4; pt.y=i5; size.x=i6; size.y=i7; strcpy(attributes, s3); color=i8; box=i9; box_color=i10; type=i11; strcpy(suffix, s4);  decimals=i12, formula=i13; fieldlist=i14; editable=i15; active=i16;  strcpy(automatic_value, s5); buttonbox=NOBUTTON; } ;
+  Field() { } ;
+~Field() { } ; } ;
+
+class Annotated_Field {
+  // to be annotated in each record
+  public:
+   int id; // same as Field
+   double number;
+   char text[MAXSTRING];
+   char formula[MAXSTRING];
+   // constructors, destructor
+   Annotated_Field(int i1, double f1, char s1[MAXSTRING], char s2[MAXSTRING]) { id=i1; number=f1; strcpy(text, s1); strcpy(formula, s2); } ;
+   Annotated_Field(int i1, double f1, const char s1[MAXSTRING], const char s2[MAXSTRING]) { id=i1; number=f1; strcpy(text, s1); strcpy(formula, s2); } ;
+   Annotated_Field(int i1, double f1, char s1[MAXSTRING], const char s2[MAXSTRING]) { id=i1; number=f1; strcpy(text, s1); strcpy(formula, s2); } ;
+   Annotated_Field() { } ;
+~Annotated_Field() { } ; } ;
+
+class Relationship {
+ public:
+  char extDbname[MAXNAME];
+  // will be declared equal, local will reflect external if ext[0]=local[0]. if local field is fieldreference active, relationship will occur anyway
+  int extFields[2]; 
+  int localFields[2];
+  Relationship(char name[MAXNAME], int e1, int e2, int l1, int l2) { strcpy(extDbname, name); extFields[0]=e1; extFields[1]=e2; localFields[0]=l1; localFields[1]=l2; } ;
+  Relationship() { };
+~Relationship() { } ; } ;
+
+class Drawbox {
+ public:
+  int menuId;
+  int drawcolor;
+  int paintcolor;
+  struct Points pt;
+  struct Points size;
+  Drawbox(int id, int color1, int color2, int ptx, int pty, int sizex, int sizey) { menuId=id; drawcolor=color1; paintcolor=color2; pt.x=ptx; pt.y=pty; size.x=sizex; size.y=sizey; };
+  Drawbox() { };
+~Drawbox() { }; };
+
+// vectors
+extern vector<Field> record, dummyrecord, externalrecord[MAXRELATIONSHIPS];
+extern vector<Annotated_Field> records, dummyrecords, externalrecords[MAXRELATIONSHIPS];
+extern vector<Relationship> relationships;
+
+// function declarations
+int References_Editor();
+void Field_Editor();
+void clearinputline();
+extern void Change_Color(int choice=58);
+extern void Draw_Box(int color, int x_pos, int x_size, int y_pos, int y_size, int paintcolor=0);
+extern void Draw_Box(char t, int color, int x_pos, int x_size, int y_pos, int y_size, int paintcolor=0);
+extern void Draw_Box(Drawbox &tdrawbox);
+extern void gotoxy(int x, int y);
+extern void Change_Attributes(int attribute);
+extern int sgetch(int x_pos=78, int y_pos=24, int sleeptime=250, int showflag=1);
+extern int Show_Field(Annotated_Field *tfield, int flag=0);
+extern int Show_Field_ID(Annotated_Field *tfield);
+extern void Show_Menu_Bar(int mode=0);
+extern void cleanstdin();
+extern void Show_Message(int x_pos, int y_pos, int color, char *message, int sleeptime=1500);
+void Show_Message(int x_pos, int y_pos, int color, const char *message, int sleeptime=1500);
+extern int Scan_Input(int flag=0, int lim_a=0, int lim_b=1, int length=0);
+extern char Scan_Input(char istring[MAXSTRING], int x_pos, int y_pos, int color=58);
+extern void Scan_Date(int x_pos, int y_pos, char tdate[], int flag=0);
+extern int Add_Field(int type=NUMERICAL, char *name=NULL, char *textvalue=NULL);
+extern void Delete_Field(int field_id);
+extern int Join_Fields(int field_id, int mode);
+extern void Renumber_Field_References(int startingfield);
+extern void Renumber_Field_Relationships(int startingfield);
+extern int Divide_Field(int field_id, int mode);
+extern char *itoa(long int val, int base=10);
+extern int Read_Write_db_File(int mode=0);
+extern char* Reccurse_File_Extension(char *filename, int flag=0);
+extern int tryfile(char *file);
+extern void cropstring(char ttext[], int noofcharacters, int flag=0);
+
 // field editor and setup routine
 void Field_Editor()
 {

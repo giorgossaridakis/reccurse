@@ -82,6 +82,9 @@ declared to change the calendar/time format shown for every field (see below)
 to be pressed automatically, a script key
 6 - clock, a live calendar/clock. automatic value can be utilized, see
 calendar above
+
+text formatting
+---------------
  
 special field types
 -------------------
@@ -142,9 +145,8 @@ to avoid long path in filenames.
 
 automatic values
 ----------------
-
-text formatting
----------------
+an automatic value of a field can be a script command, if the field's type is STRING and 
+the decimal positions of that field are declared as follows: 1 execute on entry, 2 execute on exit, 3 execute both on entry and exit on the field.
 
 script commands
 ---------------
@@ -380,4 +382,4 @@ you to how to install it.
 
 Reccurse is distributed under the GNU Public Licence.
 
-Written between 2019-2021 by Giorgos Saridakis.
+Written between 2019-2022 by Giorgos Saridakis.

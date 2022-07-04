@@ -1,8 +1,7 @@
 // reccurse, the filemaker of ncurses
 #include "reccurse.h"
 
-const double version=0.445;
-
+const double version=0.455;
 
 int main(int argc, char *argv[])
 {
@@ -21,7 +20,7 @@ int main(int argc, char *argv[])
    ioctl( STDOUT_FILENO, TIOCGWINSZ, &w );
   }
   clear();
-  char tmessage[MAXSTRING], tfile[MAXSTRING];
+  char tmessage[MAXSTRING*MAXPAGES], tfile[MAXSTRING];
   signal(SIGINT, INThandler);
   initiatemathematicalfunctions();
   Set_Mouse_Menus();
@@ -33,10 +32,10 @@ int main(int argc, char *argv[])
      strcpy(dbfile, argv[1]);
      Reccurse_File_Extension(rcfile, 1);
     Reccurse_File_Extension(dbfile, 2); }
-    if (!tryfile(rcfile) && !tryfile(dbfile)) {
+    if (!tryfile(rcfile) && !tryfile(dbfile) ) {
      strcpy(tmessage, "open file:");
      Show_Message(8, 19, 4, tmessage, 0);
-     if (argc>1)
+     if ( argc > 1 )
       strcpy(input_string, argv[1]);
      Scan_Input(input_string, 18, 19, 5);
      limitspaces(input_string);
@@ -61,16 +60,15 @@ int main(int argc, char *argv[])
       strcpy(tmessage, "created file: ");
     Read_rc_File(); } }
     // setup pages workgroup
-    strcpy(pages[0], dbfile);
-    ++pagesnumber;
+    strcpy(pages[pagesnumber++], dbfile);
     strcat(tmessage, dbfile);
-    for (i=2;i<argc;i++) {
-     strcpy(tfile, argv[i]);
+    for (i=2;i<argc && i<MAXPAGES+1;i++) {
+     strcpy( tfile, argv[i] );
      Reccurse_File_Extension(tfile, 2);
-     if (tryfile(tfile)) {
-      strcpy(pages[i-1], tfile);
-    ++pagesnumber; } }
-    if (pagesnumber>1) {
+     if ( tryfile(tfile) ) 
+      strcpy(pages[pagesnumber++], tfile);
+    }
+    if ( pagesnumber > 1 ) {
      strcat(tmessage, " and ");
      strcat(tmessage, itoa(pagesnumber-1));
     strcat(tmessage, " more"); }
@@ -997,6 +995,7 @@ void Duplicate_Record(int record_id)
 int Show_Record_and_Menu()
 {
   int i, i1, n, trecordsnumber, run=1, c, backupmenu=0, replaychar=0;
+  int previousfield=-1, scriptdirection=NOSCRIPT;
   int findresults[MAXSEARCHDEPTH+1][MAXRECORDS], tsortresults[MAXRECORDS];
   char input_text[MAXSTRING], ttext[MAXSTRING], tattributes[9];
   FindSchedule tfindschedule;
@@ -1011,6 +1010,7 @@ int Show_Record_and_Menu()
     // handle field repetitions
     if (changedrecord) {
      lastfieldrepeated=-1;
+     previousfield=-1;
      for (i=0;i<fieldsperrecord;i++)
       fieldrepetitions[i]=((record[i].color) ? record[i].color : -1);
     }
@@ -1018,8 +1018,12 @@ int Show_Record_and_Menu()
     // show fields
     if (renewscreen)
      clear();
+    vector<int> adjoiningfields;
+    fieldsadjoiningfields(&records[(currentrecord*fieldsperrecord)+currentfield], adjoiningfields);
     for (i=0;i<fieldsperrecord;i++)
-      Show_Field(&records[(currentrecord*fieldsperrecord)+i], printscreenmode);
+     for (i1=0;i1<adjoiningfields.size();i1++)
+      if (adjoiningfields[i1]!=i)
+       Show_Field(&records[(currentrecord*fieldsperrecord)+i], printscreenmode);
     if (printscreenmode) {
      clear();
      for (i1=1;i1<25;i1++) {
@@ -1029,15 +1033,31 @@ int Show_Record_and_Menu()
        }
       }
     }
-    if (currentfield>-1 && !recordsdemo)
-     Show_Field(&records[(currentrecord*fieldsperrecord)+currentfield], 1);
+    for (i=0;i<adjoiningfields.size();i++)
+     Show_Field(&records[(currentrecord*fieldsperrecord)+adjoiningfields[i]], 1);
     refresh();
+
     if (!recordsdemo) {
      for (i=0;i<=recordsnumber;i++)
       findresults[0][i]=i;
      for (;i<MAXRECORDS;i++)
       findresults[0][i]=-1;
     }
+    
+    // if changed field had script command in automatic value
+    if ( previousfield != currentfield ) {
+        
+     if ( scriptdirection == ONEXIT || scriptdirection == ONENTRYANDEXIT )
+      Execute_Script_Command(previousfield);
+     
+     scriptdirection=Determine_Script_Direction(currentfield);
+     if ( scriptdirection > ONENTRYANDEXIT )
+      scriptdirection=NOSCRIPT;
+     if ( scriptdirection == ONENTRY || scriptdirection == ONENTRYANDEXIT )
+      Execute_Script_Command(currentfield);
+
+    }     
+    previousfield=currentfield; 
        
     Show_Menu_Bar();
     cleanstdin();
@@ -1291,7 +1311,7 @@ int Show_Record_and_Menu()
       case DOWN: // from all menus
        if (recordsdemo)
         break;
-       { 
+       {
          vector <int> fieldyidentities;
          n=0;
          sortfieldsbyypt(currentfield, fieldyidentities);
@@ -1307,7 +1327,10 @@ int Show_Record_and_Menu()
           while (!record[currentfield].active || !record[currentfield].editable) {
            ++currentfield;
            if (currentfield>fieldsperrecord-1)
-       currentfield=0; } } }
+            currentfield=0;
+          }
+         }
+       }
       break;
       case TAB: // keep a simple navigational button
        ++currentfield;
@@ -1337,7 +1360,10 @@ int Show_Record_and_Menu()
           while (!record[currentfield].active || !record[currentfield].editable) {
            --currentfield;
            if (currentfield<0)
-       currentfield=fieldsperrecord-1; } } }
+            currentfield=fieldsperrecord-1;
+          }
+         }
+       }
       break;
       case SHIFT_TAB: // one more simple navigational button
        --currentfield;
@@ -1358,8 +1384,11 @@ int Show_Record_and_Menu()
          for (i=0;i<fieldxidentities.size();i++) 
           if (currentfield==fieldxidentities[i])
            break;
-         if (i<fieldxidentities.size()-1)
-        currentfield=fieldxidentities[i+1]; }
+         if ( i < fieldxidentities.size()-1 )
+          currentfield=fieldxidentities[i+1];
+         if ( i == fieldxidentities.size()-1 )
+          currentfield=fieldxidentities[0];   
+       }
       break;
       case LEFT:
        if (recordsdemo)
@@ -1371,8 +1400,11 @@ int Show_Record_and_Menu()
          for (i=0;i<fieldxidentities.size();i++) 
           if (currentfield==fieldxidentities[i])
            break;
-         if (i)
-        currentfield=fieldxidentities[i-1]; }
+         if ( i )
+          currentfield=fieldxidentities[i-1];
+         if ( i == 0 )
+          currentfield=fieldxidentities[fieldxidentities.size()-1];
+       }
       break;
       case KEY_MOUSE:
        if (recordsdemo)
@@ -1532,6 +1564,40 @@ int Show_Record_and_Menu()
        Bring_DateTime_Stamp(records[(currentrecord*fieldsperrecord)+currentfield].text, record[records[(currentrecord*fieldsperrecord)+currentfield].id].id);
       Read_Write_Field(records[(currentrecord*fieldsperrecord)+currentfield], fieldposition(currentrecord, currentfield), 1); }
      break;
+     case 'k':
+      // calendar requires 8 consecutive fields with least x size 29, y size 1
+      for (i=0;i<8;i++)
+       if (record[currentfield+i].type!=STRING || record[currentfield+i].size.x<29 || record[currentfield+i].size.y!=1)
+        break;
+      for (i1=0;i1<6;i1++)
+       if ((arefieldsneighbours(currentfield+i1, currentfield+i1+1)!=VERTICALLY))
+        break;
+      if (i<8 || i1<6) {
+       Show_Menu_Bar(1);
+       Show_Message(1, 24, 1, "suitable records not found", 750);
+       break;
+      }
+      Scan_Date(1, 24, input_string, 1);
+      int m, y, i2; char *calendar;
+      m = atoi(strtok(input_string, "/"));
+      y = atoi(strtok(NULL, "/"));
+      calendar=Generate_Calendar(m-1, y);
+      // now fill current&neighbouring fields
+      for (i=i1=i2=0;i1<strlen(calendar);i1++) {
+       records[(currentrecord*fieldsperrecord)+currentfield+i].text[i2++]=calendar[i1];
+       if (calendar[i1]=='>') {
+        records[(currentrecord*fieldsperrecord)+currentfield+i].text[i2++]='\0';
+        i2=0; ++i; 
+        records[(currentrecord*fieldsperrecord)+currentfield+i].text[i2++]='<';
+       }
+      }
+      records[(currentrecord*fieldsperrecord)+currentfield+i].text[i2++]='\0';
+      if (i==6) // last field may not be needed
+       Delete_Field_Entry(currentfield+7);
+      if (autosave)
+       for (i=0;i<8;i++)
+        Read_Write_Field(records[(currentrecord*fieldsperrecord)+currentfield+i], fieldposition(currentrecord, currentfield+i), 1);
+     break;
      case SPACE:
       pushspaceonfield();
      break;
@@ -1579,10 +1645,15 @@ int Show_Record_and_Menu()
       strcpy(records[(currentrecord*fieldsperrecord)+n-1].text, records[(currentrecord*fieldsperrecord)+i-1].text); 
       Read_Write_Field(records[(currentrecord*fieldsperrecord)+n-1], fieldposition(currentrecord, n-1), 1);
      break;
-     case DELETE:
-      Delete_Field_Entry(currentfield);
-      Read_Write_Field(records[(currentrecord*fieldsperrecord)+currentfield], fieldposition(currentrecord, currentfield), 1);
-     break;
+     case DELETE: {
+      vector<int> fieldstodelete;
+      fieldsadjoiningfields(&records[(currentrecord*fieldsperrecord)+currentfield], fieldstodelete);
+      for (i=0;i<fieldstodelete.size();i++) {
+       Delete_Field_Entry(fieldstodelete[i]);
+       if (autosave)
+        Read_Write_Field(records[(currentrecord*fieldsperrecord)+fieldstodelete[i]], fieldposition(currentrecord, fieldstodelete[i]), 1);
+      }
+     break; }
      case INSERT:
       if (currentmenu==2) {
        currentmenu=6;
@@ -2014,7 +2085,7 @@ int Show_Field(Annotated_Field *field, int flag) // 1 highlight, 2 only in scree
     // remove attributes
     Change_Attributes(NORMAL);
    } }
- 
+
    // field string to field size and lines
    fieldhasdependancy=Generate_Dependant_Field_String(field, ttext);
    if (fieldhasdependancy!=1)
@@ -2039,7 +2110,7 @@ int Show_Field(Annotated_Field *field, int flag) // 1 highlight, 2 only in scree
     aligntext(ttext, field, ctoi(ttext[i+2])); 
    }
    // highlight field
-   if (flag) {
+   if (flag == 1) {
     tcolor=(tfield->color==highlightcolors[0]) ? highlightcolors[1] : highlightcolors[0];
     for (i=strlen(ttext);i<((tfield->size.x)+1)*((tfield->size.y)+1);i++)
      ttext[i]=SPACE;
@@ -2063,6 +2134,8 @@ int Show_Field(Annotated_Field *field, int flag) // 1 highlight, 2 only in scree
        ttcolor[i1]='\0';
        if (!flag && atoi(ttcolor) && !printscreenmode)
         Change_Color(atoi(ttcolor));
+       if (!flag && atoi(ttcolor)==0) // restore original
+        Change_Color(tcolor);
       break;
       case 'n': // newline
        i+=2;
@@ -2164,6 +2237,7 @@ void Generate_Field_String(Annotated_Field *field, char *ttext)
      field->number=reversepolishcalculator(formula); }
      else
     field->number=0; }
+//     field->number=0; }
     strcpy(ttext, dtoa(field->number));
     limitsignificantnumbers(ttext, tfield->decimals);
     if (isautomaticvalueformatinstruction(tfield->id))
@@ -2175,7 +2249,7 @@ void Generate_Field_String(Annotated_Field *field, char *ttext)
    break;
    case STRING:
     strcpy(ttext, field->text);
-    if (strcmp(tfield->automatic_value, EMPTYSTRING) && !isautomaticvalueformatinstruction(tfield->id))
+    if ( strcmp(tfield->automatic_value, EMPTYSTRING) && !isautomaticvalueformatinstruction(tfield->id) && !isautomaticvaluescriptcommand(tfield->id) )
      strcpy(ttext, tfield->automatic_value);
     if (tfield->formula) {
      strcpy(formula, field->text);
@@ -2188,10 +2262,10 @@ void Generate_Field_String(Annotated_Field *field, char *ttext)
    break; 
    case MIXEDTYPE:
     strcpy(ttext, field->text);
-    if (strcmp(tfield->automatic_value, EMPTYSTRING))
+    if ( strcmp(tfield->automatic_value, EMPTYSTRING) )
      strcpy(ttext, tfield->automatic_value);
     if (tfield->formula) {
-     if (strcmp(tfield->automatic_value, EMPTYSTRING))
+     if ( strcmp(tfield->automatic_value, EMPTYSTRING) )
       strcpy(field->text, tfield->automatic_value);
      strcpy(formula, field->text);
      // parse string functions
@@ -2208,6 +2282,7 @@ void Generate_Field_String(Annotated_Field *field, char *ttext)
       field->number=reversepolishcalculator(formula);
      else
     field->number=0; }
+//     field->number=0; }
     if (field->number || record[field->id].buttonbox==BUTTONSCREEN) {
      strcpy(ttext, dtoa(field->number));
      limitsignificantnumbers(ttext, tfield->decimals);
@@ -2228,6 +2303,14 @@ void Generate_Field_String(Annotated_Field *field, char *ttext)
     default:
   break; }
   strcpy(field->text, ttext);
+  // clear neighbouring signs
+  if (ttext[0]=='<') {
+   for (i=0;i<strlen(ttext);i++)
+    ttext[i]=ttext[i+1];
+   ttext[i]='\0';
+  }
+  if (ttext[strlen(ttext)-1]=='>')
+   ttext[strlen(ttext)-1]='\0';
   
   // restore button screen
   if (record[field->id].buttonbox==BUTTONSCREEN)
@@ -2554,7 +2637,7 @@ int Pages_Selector(int pagetochange)
     if (t==LEFT)
      t=UP;
     // handle a bit of mouse
-    if ((t==KEY_MOUSE))
+    if (t==KEY_MOUSE)
      if (((t=wheelmousemove())))
       t=(t==SHIFT_RIGHT) ? DOWN : UP;
     switch (t) {
@@ -2715,6 +2798,24 @@ int Determine_Button_Box(int field_id)
  return record[field_id].buttonbox;
 }
 
+// determine if automatic value is a script command
+int Determine_Script_Direction(int field_id)
+{
+  int scriptdirection=NOSCRIPT;
+  
+  if ( record[field_id].type != STRING || (isautomaticvaluescriptcommand(field_id)) == 0 || (scriptdirection=record[field_id].decimals) == 0 )
+   return scriptdirection;
+    
+ return scriptdirection;
+}
+
+// execute script command
+void Execute_Script_Command(int field_id)
+{
+  runscript=1;
+  scriptcommand=fetchcommand(record[field_id].automatic_value);
+}
+
 // return command from automatic value
 char *fetchcommand(char *text)
 {
@@ -2732,7 +2833,7 @@ char *restructurecommand(char *command)
 {
   char tcommand[MAXSTRING];
     
-   if (command[0]=='@') {
+   if (command[0]==COMMAND) {
     strcpy(tcommand, " ");
    strcat(tcommand, command); }
    else

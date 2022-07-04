@@ -24,6 +24,10 @@
 #include <string>
 #include <cstring>
 #include <array>
+#include <algorithm>
+
+using namespace std;
+extern WINDOW *win1;
 
 // definitions
 typedef unsigned long ul;
@@ -39,13 +43,14 @@ const int MAXFIELDS=999; // fields per record
 const int MAXRECORDS=9999; // records limit
 const int MAXPAGES=25; // pages limit
 const int FIELDSIZE=MAXSTRING*2+MAXNUMBERDIGITS+15;  // +7 would do
-const int MAXNAME=20; // max chars in database filenames
+const int MAXNAME=80; // max chars in database filenames
 const int MAXMENUS=10; // mouse menus
 const int RELATIONSHIPSLENGTH=1024; // 1kb of external db files relationship data
 const int MAXRELATIONSHIPS=25; // will fit into above 1kb, same as MAXPAGES
 const int MAXSEARCHDEPTH=5;
 const int INSTRUCTION='%';
-enum { HORIZONTALLY=0, VERTICALLY };
+const int COMMAND='@';
+enum { HORIZONTALLY=1, VERTICALLY };
 const int NUMERICALLIMIT=32765;
 int BLOCK=-1, UNBLOCK=1000, PRINTUNBLOCK=25, SCANUNBLOCK=10000; // wait times for getch()
 int separatort=46, separatord=44, suffixposition=1;
@@ -53,7 +58,8 @@ enum { NOBUTTON=0, TICKBOX, BUTTONBOX, BUTTONSCREEN, BUTTONCOMMAND, AUTOMATICSCR
 enum { NUMERICAL=0, CALENDAR, STRING, MIXEDTYPE, VARIABLE, PROGRAM, CLOCK };
 enum { NORMAL=0, STANDOUT, UNDERLINE, REVERSE, BLINK, DIM, BOLD, PROTECT, INVISIBLE };
 enum { TOLEFT=1, CENTER, TORIGHT };
-const char *menukeys[]={ "eot`", "alsh`", "dcpjv+-*/.!@`", "ifru`", "yn`", "0123456789/*-+^,.()=`", "udixl`", "ir`" }; // m works in all menus
+enum { NOSCRIPT = 0, ONENTRY, ONEXIT, ONENTRYANDEXIT };
+const char *menukeys[]={ "eot`", "alsh`", "dckpjv+-*/.!@`", "ifru`", "yn`", "0123456789/*-+^,.()=`", "udixl`", "ir`" }; // m works in all menus
 const char *buttonkeys[]={ "0", "1", "2", "3", "4", "5", "6", "7", "8", "9", "/", "*", 
 "-", "+", "^", ",", ".", "(", ")", "=", "sin", "cos", "tan", "cotan", "sqr", "abs", "log", "AC", "DEL", "EXEC" };
 const char *programkeys="1234567890";
@@ -86,8 +92,6 @@ const int END_OF_RECORDS=336;
 const int START_OF_RECORDS=337;
 const int PAGES_SELECTOR_KEY=23;
 const int SCRIPT_PLAYER=19;
-
-using namespace std;
 
 // global variables
 int menubar;
@@ -124,6 +128,8 @@ int screen[81][25];
 FILE *out;
 int fieldrepetitions[MAXFIELDS], lastfieldrepeated;
 int changedrecord=1, editoroption=0;
+char input_string[MAXSTRING];
+extern int scriptsleeptime;
 
 struct Points {
  int x;
@@ -206,13 +212,19 @@ class Drawbox {
 struct FindSchedule {
    int field_id;
 char texttolookfor[MAXSTRING]; } ;
- 
+
 // vectors
 vector<ButtonBarMenuEntry> buttonbarmenus;
 vector<Field> record, dummyrecord, externalrecord[MAXRELATIONSHIPS];
 vector<Annotated_Field> records, dummyrecords, externalrecords[MAXRELATIONSHIPS];
 vector<Relationship> relationships;
 vector <FindSchedule> findschedule;
+
+// external variables
+// rcscr.cc
+const int UNDERSCORE=95;
+const char BOXCHAR='*';
+extern int highlightcolors[2];
 
 // function declarations
 
@@ -267,6 +279,8 @@ void Set_Mouse_Menus();
 int Activate_Menubar_Choice(int x);
 int fetchmousemenucommand();
 int Determine_Button_Box(int field_id);
+int Determine_Script_Direction(int field_id);
+void Execute_Script_Command(int field_id);
 char *fetchcommand(char *text);
 char *restructurecommand(char *command);
 void Delete_Field_Entry(int field_id);
@@ -277,39 +291,23 @@ void toggleautosave();
 int addorplayprogram(int programid);
 void outputscreenarraytofile();
 
-// rccompar.cc
-int commandparser(char scriptcommand[MAXSTRING]);
-int labelposition(char *label);
-int islinelabel(char *scriptcommand);
-int setvariablefromfield(char *parameter, int field_id);
-void stopscript();
-int isvariable(char *parameter);
-
 // rclib.cc
-int ctoi(char c);
-char *dtoa(long double val);
-char *itoa(long int val, int base=10);
 char charcoder(char d, int mode=0);
 int filecodedecode(char *source, char *destination, int mode=0);
-void stringcodedecode(char *source, char *destination, int mode=0);
-int tryfile(char *file);
 void Show_File_Error(char *filename);
-int Copy_File(char *source, char *dest);
+void stringcodedecode(char *source, char *destination, int mode=0);
 void checkpoint(int id, int color=58);
 int Scan_Input(int flag=0, int lim_a=0, int lim_b=1, int length=0);
 char Scan_Input(char istring[MAXSTRING], int x_pos, int y_pos, int color=58);
-void Scan_Date(int x_pos, int y_pos, char tdate[]);
+void Scan_Date(int x_pos, int y_pos, char tdate[], int flag=0);
 char *addmissingzeros(char tstring[], int zeros);
 void terminatestringatcharactersend(char *ttext);
 void addleadingzeros(char ttext[], Annotated_Field *tfield, int flag=0);
 void addleadingspaces(char ttext[], int overallsize);
-void cropstring(char ttext[], int noofcharacters, int flag=0);
 int fieldlength(char *fieldtext);
-long int filesize(char *filename);
 void stringquotesencloser(char *tstring, int flag=0);
 void stringquotesopener(char *tstring);
 int isinquotes(char tstring[]);
-int numberofdigits(long int n);
 int sgetch(int x_pos=78, int y_pos=24, int sleeptime=250, int showflag=1);
 int bgetch(int delay=BLOCK);
 void cleanstdin();
@@ -322,17 +320,7 @@ void Sleep(ul sleepMs) { sleep(sleepMs/1000); }
 void Sleep(ul sleepMs) { usleep(sleepMs*1000); }
 #endif
 void replaceunderscoresandbrackets(char dataname[], int flag);
-char *ctos(int t);
-double bringfractionpartofdivision(int param1, int param2, int scale=10);
-int isspace(char t);
-int iscalculationsign(char t);
-int isdecimalseparator(char t);
-int isparenthesis(char t);
-int isprintablecharacter(int t);
-int iscorruptstring(char *tstring);
 int limitsignificantnumbers(char *s, int digits);
-int find(char text[], char token[]);
-int findsimple(char text[], char token[]);
 int sortrecords(int field_id, int recordssequence[], int mode=0);
 void sortfieldsbyxpt(int field_id, vector <int> &fieldxidentities);
 void sortfieldsbyypt(int field_id, vector <int> &fieldyidentities);
@@ -342,9 +330,6 @@ bool leftmousebuttondoubleclicked();
 bool middlemousebuttonpressed();
 int wheelmousemove();
 int findfieldege(int flag=0);
-int CalcDayNumFromDate(int y, int m, int d);
-int isleapyear(int year);
-int daysinmonth(int year, int month);
 void INThandler(int sig);
 char* bringstringtomiddle(char *text, int width);
 int scantextforcommand(char *text, char *command, char separator='@');
@@ -355,7 +340,6 @@ int blockunblockgetch(int delay=BLOCK);
 int isautomaticvalueformatinstruction(int field_id);
 char *formatmonetarystring(char *text);
 char *appendsuffix(char *text, int field_id);
-int limitspaces(char *tstring);
 void aligntextsingley(Annotated_Field *field, int alignment, int row=0);
 char* aligntext(char text[MAXSTRING], Annotated_Field *field, int alignment);
 int pagehasclockfields();
@@ -363,52 +347,86 @@ int isfieldtextlink(Annotated_Field *field, int linkparameters[]);
 int assignstringvaluestoarray(char *line, char array[MAXWORDS][MAXSTRING], int entries);
 int readstringentry(char *line, char *linepart);
 unsigned int isseparationchar(char t);
+int fieldsadjoiningfields(Annotated_Field *tfield, vector<int>& adjoiningfields);
+int arefieldsneighbours(int id1, int id2);
+int findinintvector(int element, vector<int>& tv);
+char *Generate_Calendar(int m, int y);
+void leavespaces(char *calendar, int spaces);
+
+// rcutil.cc
+extern int mod(double a, double b);
+extern int ctoi(char c);
+extern char *dtoa(long double val);
+extern char *itoa(long int val, int base=10);
+extern int tryfile(char *file);
+extern int Copy_File(char *source, char *dest);
+extern void cropstring(char ttext[], int noofcharacters, int flag=0);
+extern long int filesize(char *filename);
+extern int numberofdigits(long int n);
+extern char *ctos(int t);
+extern double bringfractionpartofdivision(int param1, int param2, int scale=10);
+extern int isspace(char t);
+extern int iscalculationsign(char t);
+extern int isdecimalseparator(char t);
+extern int isparenthesis(char t);
+extern int isprintablecharacter(int t);
+extern int iscorruptstring(char *tstring);
+extern int find(char text[], char token[]);
+extern int findsimple(char text[], char token[]);
+extern int CalcDayNumFromDate(int y, int m, int d);
+extern int isleapyear(int year);
+extern int daysinmonth(int year, int month);
+extern int limitspaces(char *tstring);
+extern int readstringentry(char *line, char *linepart);
+extern unsigned int isseparationchar(char t);
 
 // rcfre.cc
-int References_Editor();
-void Field_Editor();
-void clearinputline();
+extern int References_Editor();
+extern void Field_Editor();
+extern void clearinputline();
 
 // rcpc.cc
-int parenthesesincluderforpolishreversecalculator(char formula[]);
-int reversepolishcalculatorequalizer(char formula[], int record_id=-1);
-int isformulainpolishcalculatorsyntax(char formula[]);
-double reversepolishcalculator(char formula[]);
-int getop(char s[], char formula[]);
-void push(double f);
-double pop(void);
+extern int parenthesesincluderforpolishreversecalculator(char formula[]);
+extern int reversepolishcalculatorequalizer(char formula[], int record_id=-1);
+extern int isformulainpolishcalculatorsyntax(char formula[]);
+extern double reversepolishcalculator(char formula[]);
+extern int getop(char s[], char formula[]);
+extern void push(double f);
+extern double pop(void);
 
 // rcpclib.cc
-void initiatemathematicalfunctions();
-int parseformulaforfunctions(char formula[]);
-int mathfunctionsparser(int function_id, char tcommand[MAXSTRING]);
-int parseformulaforerrors(char formula[]);
+extern void initiatemathematicalfunctions();
+extern int parseformulaforfunctions(char formula[]);
+extern int mathfunctionsparser(int function_id, char tcommand[MAXSTRING]);
+extern int parseformulaforerrors(char formula[]);
 
 // rcsc.cc
-int stringformulacalculator(char formula[MAXSTRING], int record_id);
-void replacepartoftextwithcorrespondingvalue(char ttext[MAXSTRING], int record_id);
-int extracttextpart(char source[MAXSTRING], char dest[MAXSTRING], int startpt, int endpt);
-void inserttextpart(char text[MAXSTRING], char part[MAXSTRING], int point);
-int commandparser(int reference, char tcommand[MAXSTRING]);
-char* formatreplacer(char source[MAXSTRING], int field_id);
-char *performinstruction(char instruction[MAXSTRING], int field_id);
+extern int stringformulacalculator(char formula[MAXSTRING], int record_id);
+extern void replacepartoftextwithcorrespondingvalue(char ttext[MAXSTRING], int record_id);
+extern int extracttextpart(char source[MAXSTRING], char dest[MAXSTRING], int startpt, int endpt);
+extern void inserttextpart(char text[MAXSTRING], char part[MAXSTRING], int point);
+extern int commandparser(int reference, char tcommand[MAXSTRING]);
+extern char* formatreplacer(char source[MAXSTRING], int field_id);
+extern char *performinstruction(char instruction[MAXSTRING], int field_id);
+
+// rccompar.cc
+extern int commandparser(char scriptcommand[MAXSTRING]);
+extern int labelposition(char *label);
+extern int islinelabel(char *scriptcommand);
+extern int setvariablefromfield(char *parameter, int field_id);
+extern void stopscript();
+extern int isvariable(char *parameter);
 
 // rcscr.cc
-int Init_Screen();
-void End_Screen();
-void Change_Color(int choice=58);
-void Draw_Box(int color, int x_pos, int x_size, int y_pos, int y_size, int paintcolor=0);
-void Draw_Box(char t, int color, int x_pos, int x_size, int y_pos, int y_size, int paintcolor=0);
-void Draw_Box(Drawbox &tdrawbox);
-void gotoxy(int x, int y);
-void Change_Attributes(int attribute);
+extern int Init_Screen();
+extern void End_Screen();
+extern void Change_Color(int choice=58);
+extern void Draw_Box(int color, int x_pos, int x_size, int y_pos, int y_size, int paintcolor=0);
+extern void Draw_Box(char t, int color, int x_pos, int x_size, int y_pos, int y_size, int paintcolor=0);
+extern void Draw_Box(Drawbox &tdrawbox);
+extern void gotoxy(int x, int y);
+extern void Change_Attributes(int attribute);
 
 // to be compiled together
-#include "rcscr.cc"
 #include "rclib.cc"
-#include "rcsc.cc"
-#include "rcpc.cc"
-#include "rcpclib.cc"
-#include "rcfre.cc"
-#include "rccompar.cc"
 
