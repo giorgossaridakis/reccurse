@@ -1,14 +1,14 @@
 // reccurse, the filemaker of ncurses
 #include "reccurse.h"
 
-const double version=0.455;
+const double version=0.467;
 
 int main(int argc, char *argv[])
 {
   int i;
   
   Init_Screen();
-  Change_Color(58);
+  Change_Color(WHITEONBLACK);
   // wait until terminal window becomes 80x24
   struct winsize w;
   ioctl( STDOUT_FILENO, TIOCGWINSZ, &w );
@@ -74,8 +74,7 @@ int main(int argc, char *argv[])
     strcat(tmessage, " more"); }
     // read record fields and records from dbfile
     Load_Database(currentpage);
-    if (fieldhasdependancy)
-     Show_Message(8, 20, 2, tmessage, 1750);
+    Show_Message(8, 20, 2, tmessage, 2250);
     Show_Record_and_Menu();
    
   End_Program(0);
@@ -88,31 +87,28 @@ void Intro_Screen()
 {
    char c;
    FILE *f;
+   const char *pic=
+   "       OOOOOO  OOOOOOO  OOOOOO  OOOOOO OO    OO OOOOOO  OOOOOOO OOOOOOO\n       OO   OO OO      OO      OO      OO    OO OO   OO OO      OO\n       OO   OO OO      OO      OO      OO    OO OO   OO OO      OO\n       OO   OO OO      OO      OO      OO    OO OO   OO OO      OO\n       OOOOOO  OOOOO   OO      OO      OO    OO OOOOOO  OOOOOOO OOOOO  \n       OO   OO OO      OO      OO      OO    OO OO   OO      OO OO \n       OO   OO OO      OO      OO      OO    OO OO   OO      OO OO \n       OO   OO OO      OO      OO      OO    OO OO   OO      OO OO \n       OO   OO OOOOOOO  OOOOOO  OOOOOO  OOOOOO  OO   OO OOOOOOO OOOOOOO\n";
     
     // intro screen
-    Change_Color(34);
-    gotoxy(27,1);
-    printw("Reccurse version %.3f", version);
-    f=fopen("reccurse.pic", "rb");
-    if (f) {
-     fieldhasdependancy=1; // use this to signal screen file exists
+     Change_Color(34);
+     gotoxy(27,1);
+     printw("Reccurse version %.3f", version);
      attron(A_BLINK);
      gotoxy(1,6);
-     while (c!=EOF) {
-      c=charcoder(fgetc(f), 1);
-      Change_Color(50);
-      if (isalpha(c))
+     while (*pic) {
+      Change_Color(BLACK);
+      if (isalpha(*pic))
        Change_Color(24);
-      if (c!=EOF)
-     addch(c); }
+      addch(*(pic++));
+     }
      attroff(A_BLINK);
-     fclose(f);
      Change_Color(2);
      gotoxy(55, 5);
      printw("multipage edition");
-     Change_Color(5);
+     Change_Color(MAGENTA);
      gotoxy(8,15);
-    printw("the record maker with Linux ncurses"); }
+     printw("the record maker with Linux ncurses");
     
   refresh();
 }
@@ -669,8 +665,6 @@ int Add_Field(int type, char *name, char *textvalue)
   int i, tx=1, ty=1;
   vector <Annotated_Field>::iterator p;
   char ttext[MAXSTRING]; // for Generate_Field_String
-  char autovalue[MAXSTRING];
-  strcpy(autovalue, EMPTYSTRING);
   
    if (!recordsnumber) // initialization precaution
     return -1;
@@ -684,8 +678,8 @@ int Add_Field(int type, char *name, char *textvalue)
      textvalue=(char *) malloc(MAXSTRING);
     strcpy(textvalue, " "); }
     if (type==VARIABLE) {
-     strcpy(autovalue, textvalue);
-    tx=99; ty=99; }
+     tx=99; ty=99; 
+    }
     Field tfield(fieldsperrecord, name, 0, const_cast <char *> ("000000000"), 58, tx, ty, 1, 1, const_cast <char *> ("000000000"), 58, 0, 58, type, const_cast <char *> (EMPTYSTRING), 2, 0, 0, 1, (type==VARIABLE || type==PROGRAM) ? 0 : 1, (type==VARIABLE) ? textvalue : const_cast <char *> (EMPTYSTRING));
     record.push_back(tfield);
     Annotated_Field ttfield(fieldsperrecord, atof(textvalue), textvalue, " ");
@@ -746,14 +740,23 @@ int Join_Fields(int field_id, int mode)
     break;
   if (i==fieldidentities.size()-1)
    return -1;
+  Field trecord=record[fieldidentities[i]];
   // adjust to bigger y size if HORIZONTAL join
   if (mode==HORIZONTALLY) {
    n=(record[fieldidentities[i]].size.y>record[fieldidentities[i+1]].size.y) ? record[fieldidentities[i]].size.y : record[fieldidentities[i+1]].size.y;
-   record[fieldidentities[i]].size.y=n;
-  record[fieldidentities[i]].size.x+=record[fieldidentities[i+1]].size.x+1; }
+   trecord.size.y=n;
+   trecord.size.x+=record[fieldidentities[i+1]].size.x; 
+   if ( trecord.size.x % 2 && record[fieldidentities[i+1]].size.x % 2 )
+    trecord.size.x++;
+  }
   else
-   record[fieldidentities[i]].size.y+=record[fieldidentities[i+1]].size.y;
-//   if (strcmp(records[(currentrecord*fieldsperrecord)+fieldidentities[i+1]].text, EMPTYSTRING)) {
+   trecord.size.y+=record[fieldidentities[i+1]].size.y;
+  if ( trecord.size.x * trecord.size.y > MAXSTRING ) {
+   Show_Menu_Bar(1);
+   Show_Message(1, 24, 1, "joined size would exceed maximum!", 1500);
+   return -1;
+  }
+  record[fieldidentities[i]]=trecord;
   strcat(records[(currentrecord*fieldsperrecord)+field_id].text, " ");
   strcat(records[(currentrecord*fieldsperrecord)+field_id].text, records[(currentrecord*fieldsperrecord)+fieldidentities[i+1]].text);
   Delete_Field(fieldidentities[i+1]);
@@ -816,7 +819,8 @@ void Renumber_Field_Relationships(int startingfield) // autoremove if same field
 // divide a field into two parts
 int Divide_Field(int field_id, int mode)
 {
-  int i;
+  int i, add;
+  add=( record[field_id].size.x % 2 ) ? 1 : 0;
   
   if (mode==HORIZONTALLY && record[field_id].size.x<2)
    return -1;
@@ -827,7 +831,8 @@ int Divide_Field(int field_id, int mode)
   if (mode==HORIZONTALLY) {
    record[field_id].size.x/=2;
    record[records[records.size()-1].id].size.x/=2;
-  record[records[records.size()-1].id].pt.x+=record[field_id].size.x; }
+   record[records[records.size()-1].id].size.x+=add;
+   record[records[records.size()-1].id].pt.x+=record[field_id].size.x; }
   else {
    record[field_id].size.y/=2;
    record[records[records.size()-1].id].size.y/=2;
@@ -1098,10 +1103,15 @@ int Show_Record_and_Menu()
       for (i=0;i<strlen(alterscreenparameterskeys);i++)
        if (c==alterscreenparameterskeys[i])
         alteredparameters=1;
-     if (currentmenu!=5)
-      for (i=0;i<strlen(programkeys);i++)
-       if (c==programkeys[i])
+     if ( altpressed ) {
+      for (i=0;i<strlen(programkeys);i++) {
+       if (c==programkeys[i]) {
         addorplayprogram(c);
+        c=0;
+       }
+      }
+      altpressed=0;
+     }
        
      if (recordsdemoall) {
       if (c==ESC)
@@ -1244,7 +1254,7 @@ int Show_Record_and_Menu()
          --currentrecord;
         break; }
         Show_Menu_Bar(1);
-        Change_Color(1);
+        Change_Color(RED);
         gotoxy(1,24);
         printw("initiate record (y/n):");
         c=sgetch();
@@ -1446,7 +1456,7 @@ int Show_Record_and_Menu()
        if (recordsdemo)
         break;
        Show_Menu_Bar(1);
-       Change_Color(58);
+       Change_Color(WHITEONBLACK);
        gotoxy(1, 24);
        printw("jump to record:");
        i=Scan_Input(1, 1, recordsnumber)-1;
@@ -1634,11 +1644,11 @@ int Show_Record_and_Menu()
        Show_Field_ID(&records[(currentrecord*fieldsperrecord)+i]);
       Show_Menu_Bar(1);
       Show_Message(1, 24, 3, "source field:", 0);
-      Change_Color(4);
+      Change_Color(BLUE);
       i=Scan_Input(1, 1, MAXFIELDS);
       Show_Menu_Bar(1);
       Show_Message(1, 24, 3, "destination field:", 0);
-      Change_Color(4);
+      Change_Color(BLUE);
       n=Scan_Input(1, 1, MAXFIELDS);
       if (!n)
        break;
@@ -1714,14 +1724,14 @@ int Show_Record_and_Menu()
        tsortresults[i]=findresults[0][i];
       while (findschedule.size()<MAXSEARCHDEPTH) {
        Show_Menu_Bar(1);
-       Change_Color(4);
+       Change_Color(BLUE);
        gotoxy(1, 24);
        tfindschedule.field_id=Scan_Input(1, 1, MAXFIELDS);
        if (!tfindschedule.field_id)
         break;
        --tfindschedule.field_id;
        Show_Menu_Bar(1);
-       Change_Color(4);
+       Change_Color(BLUE);
        gotoxy(1, 24);
        Scan_Input();
        strcpy(tfindschedule.texttolookfor, input_string);
@@ -1751,14 +1761,14 @@ int Show_Record_and_Menu()
         findresults[n][i]=-1;
       while (findschedule.size()<MAXSEARCHDEPTH) {
        Show_Menu_Bar(1);
-       Change_Color(4);
+       Change_Color(BLUE);
        gotoxy(1, 24);
        tfindschedule.field_id=Scan_Input(1, 1, MAXFIELDS);
        if (!tfindschedule.field_id) // return or non-numerical input_string
         break;
        --tfindschedule.field_id;
        Show_Menu_Bar(1);
-       Change_Color(4);
+       Change_Color(BLUE);
        gotoxy(1, 24);
        Scan_Input();
        strcpy(tfindschedule.texttolookfor, input_string);
@@ -1884,7 +1894,7 @@ void Show_Menu_Bar(int mode) // 0 show, 1 remove
 {  
   int i, recordsize=0;
 
-  Change_Color(50);
+  Change_Color(BLACK);
   gotoxy(1, menulines[currentmenu]);
   for (i=0;i<79;i++)
    addch(SPACE);
@@ -1904,7 +1914,7 @@ void Show_Menu_Bar(int mode) // 0 show, 1 remove
     for (i=0;i<fieldsperrecord;i++)
      recordsize+=fieldlength(records[(currentrecord*fieldsperrecord)+i].text);
     if (recordsdemo) {
-     Change_Color(4);
+     Change_Color(BLUE);
     printw("find results->"); }
     Change_Color(2);
     strcpy(infotext, "record ");
@@ -1933,7 +1943,7 @@ void Show_Help_Screen()
   string helpinfo;
   int lines=0, c;
   clear();
-  Change_Color(58);
+  Change_Color(WHITEONBLACK);
     
    while (helpfile) {
     getline(helpfile, helpinfo);
@@ -2249,8 +2259,11 @@ void Generate_Field_String(Annotated_Field *field, char *ttext)
    break;
    case STRING:
     strcpy(ttext, field->text);
-    if ( strcmp(tfield->automatic_value, EMPTYSTRING) && !isautomaticvalueformatinstruction(tfield->id) && !isautomaticvaluescriptcommand(tfield->id) )
+    if ( strcmp(tfield->automatic_value, EMPTYSTRING) && !isautomaticvalueformatinstruction(tfield->id) ) {
      strcpy(ttext, tfield->automatic_value);
+     if ( (i=isfieldscriptdirector(tfield->id)) )
+      ttext[i-1]='\0';
+    }
     if (tfield->formula) {
      strcpy(formula, field->text);
      if (strcmp(tfield->automatic_value, EMPTYSTRING))
@@ -2479,16 +2492,16 @@ int Import_External_db_File(char *filename)
   int endofappend=recordsnumber, chosendestinationfield;
 
   Show_Menu_Bar(3);
-  Change_Color(3);
+  Change_Color(YELLOW);
   gotoxy(1, 24);
   printw("external .db file has %d fields per record and a total of %d records", dummyfieldsperrecord, dummyrecordsnumber);
   refresh();
   Sleep(2000);
   
-   Change_Color(4);
+   Change_Color(BLUE);
    while (t!=ESC && t!='\n') {
     Show_Menu_Bar(1);
-    Change_Color(4);
+    Change_Color(BLUE);
     gotoxy(1, 24);
     printw("id:%d title:%.15s type:%d formula:%d automatic value:%.10s", fieldshown+1, dummyrecord[fieldshown].title, dummyrecord[fieldshown].type, dummyrecord[fieldshown].formula, dummyrecord[fieldshown].automatic_value);
     refresh();
@@ -2624,10 +2637,10 @@ int Pages_Selector(int pagetochange)
   tpage=currentpage;
   
   if (pagetochange==-1) {
-   Change_Color(4);
+   Change_Color(BLUE);
    while (t!=ESC && t!='\n') {
     Show_Menu_Bar(1);
-    Change_Color(4);
+    Change_Color(BLUE);
     gotoxy(1, 24);
     printw("database #%d:%s", currentpage+1, pages[currentpage]);
     refresh();
@@ -2801,27 +2814,30 @@ int Determine_Button_Box(int field_id)
 // determine if automatic value is a script command
 int Determine_Script_Direction(int field_id)
 {
-  int scriptdirection=NOSCRIPT;
-  
-  if ( record[field_id].type != STRING || (isautomaticvaluescriptcommand(field_id)) == 0 || (scriptdirection=record[field_id].decimals) == 0 )
-   return scriptdirection;
+  if ( isfieldscriptdirector(field_id) == NOSCRIPT )
+   return NOSCRIPT;
     
- return scriptdirection;
+ return record[field_id].decimals;
 }
 
 // execute script command
 void Execute_Script_Command(int field_id)
 {
+  int startpt=isfieldscriptdirector(field_id)-1;
   runscript=1;
-  scriptcommand=fetchcommand(record[field_id].automatic_value);
+  scriptcommand=fetchcommand(record[field_id].automatic_value, startpt);
 }
 
 // return command from automatic value
-char *fetchcommand(char *text)
+char *fetchcommand(char *text, int startpt)
 {
   static char command[MAXSTRING];
   char ttext[MAXSTRING];
-  strcpy(ttext, text);
+  int i, i1=0;
+  
+  for (i=startpt;i<strlen(text);i++)
+   ttext[i1++]=text[i];
+  ttext[i1]='\0';
 
    scantextforcommand(restructurecommand(ttext), command);
   
@@ -2833,6 +2849,7 @@ char *restructurecommand(char *command)
 {
   char tcommand[MAXSTRING];
     
+   limitspaces(command);
    if (command[0]==COMMAND) {
     strcpy(tcommand, " ");
    strcat(tcommand, command); }
@@ -2901,8 +2918,7 @@ void pushspaceonfield(int field_id)
        keyonnextloop.push_back(SPACE);
        runscript=0;
       return; }
-      runscript=1;
-      scriptcommand=fetchcommand(record[field_id].automatic_value);
+      Execute_Script_Command(field_id);
     }
     if (record[field_id].buttonbox==AUTOMATICSCRIPT) {
      lastfieldrepeated=field_id;
@@ -2910,8 +2926,7 @@ void pushspaceonfield(int field_id)
       --fieldrepetitions[field_id];
      if (fieldrepetitions[field_id]==59)
       fieldrepetitions[field_id]=0;
-     runscript=1;
-     scriptcommand=fetchcommand(record[field_id].automatic_value);
+     Execute_Script_Command(field_id);
     }
     if (isfieldtextlink(&records[(currentrecord*fieldsperrecord)+currentfield], linkparameters)) {
      currentrecord=linkparameters[0] - 1;
@@ -2954,10 +2969,12 @@ int addorplayprogram(int programid)
      break;
    
    if (i==record.size()) {
-    Change_Color(5);
+    Change_Color(MAGENTA);
     gotoxy(1, 24);
     printw("keys:");
     Scan_Input(input_string, 6, 24, 5);
+    for (i=0;i<strlen(input_string);i++)
+     input_string[i]=tolower(input_string[i]);
     Add_Field(PROGRAM, itoa(programid), input_string);
     strcpy(input_string, " ");
     Show_Menu_Bar(1);

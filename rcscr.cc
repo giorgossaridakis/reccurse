@@ -26,6 +26,7 @@
 #include <algorithm>
 
 // global constants
+enum { RED = 1, GREEN, YELLOW, BLUE, MAGENTA, CYAN, WHITE, BLACK = 50, WHITEONBLACK = 58 };
 enum { NORMAL=0, STANDOUT, UNDERLINE, REVERSE, BLINK, DIM, BOLD, PROTECT, INVISIBLE };
 
 struct Points {

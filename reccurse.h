@@ -56,6 +56,7 @@ int BLOCK=-1, UNBLOCK=1000, PRINTUNBLOCK=25, SCANUNBLOCK=10000; // wait times fo
 int separatort=46, separatord=44, suffixposition=1;
 enum { NOBUTTON=0, TICKBOX, BUTTONBOX, BUTTONSCREEN, BUTTONCOMMAND, AUTOMATICSCRIPT };
 enum { NUMERICAL=0, CALENDAR, STRING, MIXEDTYPE, VARIABLE, PROGRAM, CLOCK };
+enum { RED = 1, GREEN, YELLOW, BLUE, MAGENTA, CYAN, WHITE, BLACK = 50, WHITEONBLACK = 58 };
 enum { NORMAL=0, STANDOUT, UNDERLINE, REVERSE, BLINK, DIM, BOLD, PROTECT, INVISIBLE };
 enum { TOLEFT=1, CENTER, TORIGHT };
 enum { NOSCRIPT = 0, ONENTRY, ONEXIT, ONENTRYANDEXIT };
@@ -130,6 +131,7 @@ int fieldrepetitions[MAXFIELDS], lastfieldrepeated;
 int changedrecord=1, editoroption=0;
 char input_string[MAXSTRING];
 extern int scriptsleeptime;
+int altpressed;
 
 struct Points {
  int x;
@@ -281,7 +283,7 @@ int fetchmousemenucommand();
 int Determine_Button_Box(int field_id);
 int Determine_Script_Direction(int field_id);
 void Execute_Script_Command(int field_id);
-char *fetchcommand(char *text);
+char *fetchcommand(char *text, int startpt=0);
 char *restructurecommand(char *command);
 void Delete_Field_Entry(int field_id);
 void pushspaceonfield(int field_id=-1);
@@ -338,6 +340,7 @@ int decimatestringtokey(char *text);
 int breaktexttokeys(char *text);
 int blockunblockgetch(int delay=BLOCK);
 int isautomaticvalueformatinstruction(int field_id);
+int isfieldscriptdirector(int field_id);
 char *formatmonetarystring(char *text);
 char *appendsuffix(char *text, int field_id);
 void aligntextsingley(Annotated_Field *field, int alignment, int row=0);

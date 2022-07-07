@@ -447,6 +447,12 @@ int sgetch(int x_pos, int y_pos, int sleeptime, int showflag)
   return t; }
    
     t=getch();
+    if ( t == ESC ) { // possible alt held down
+     t=bgetch(10);
+     if ( t == -1 ) // escape key pressed
+      return ESC;
+     altpressed=1;
+    }
     // mouse activity
     if (t==KEY_MOUSE)
      if(getmouse(&mouse) == OK)
@@ -871,11 +877,14 @@ int isautomaticvalueformatinstruction(int field_id)
 }
 
 // see if automatic value contains script command
-int isautomaticvaluescriptcommand(int field_id)
-{ 
+int isfieldscriptdirector(int field_id)
+{
+   if ( record[field_id].type != STRING || record[field_id].decimals == 0 || record[field_id].decimals > ONENTRYANDEXIT )
+    return NOSCRIPT;
+    
    for (int i=0;i<strlen(record[field_id].automatic_value);i++)
     if (record[field_id].automatic_value[i]==COMMAND)
-     return 1;
+     return i+1;
     
  return 0;
 }
