@@ -315,12 +315,7 @@ int bgetch(int delay=BLOCK);
 void cleanstdin();
 void Show_Message(int x_pos, int y_pos, int color, char *message, int sleeptime=1500);
 void Show_Message(int x_pos, int y_pos, int color, const char *message, int sleeptime=1500);
-#if defined(__FreeBSD__) || defined(__NetBSD__) || defined(__DragonFly__)
-void Sleep(ul sleepMs) { sleep(sleepMs/1000); }
-#endif
-#ifdef __linux__ 
 void Sleep(ul sleepMs) { usleep(sleepMs*1000); }
-#endif
 void replaceunderscoresandbrackets(char dataname[], int flag);
 int limitsignificantnumbers(char *s, int digits);
 int sortrecords(int field_id, int recordssequence[], int mode=0);

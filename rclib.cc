@@ -693,8 +693,10 @@ int wheelmousemove()
 {
   if (mouse.bstate & BUTTON4_PRESSED)
    return SHIFT_LEFT;
+#ifdef  BUTTON5_PRESSED
   if (mouse.bstate & BUTTON5_PRESSED)
    return SHIFT_RIGHT;
+#endif
   
  return 0;
 }

@@ -1,7 +1,7 @@
 // reccurse, the filemaker of ncurses
 #include "reccurse.h"
 
-const double version=0.467;
+const double version=0.468;
 
 int main(int argc, char *argv[])
 {
