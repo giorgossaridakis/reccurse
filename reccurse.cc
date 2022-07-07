@@ -1,7 +1,7 @@
 // reccurse, the filemaker of ncurses
 #include "reccurse.h"
 
-const double version=0.468;
+const double version=0.469;
 
 int main(int argc, char *argv[])
 {
@@ -999,7 +999,7 @@ void Duplicate_Record(int record_id)
 // show record
 int Show_Record_and_Menu()
 {
-  int i, i1, n, trecordsnumber, run=1, c, backupmenu=0, replaychar=0;
+  int i, i1, n, trecordsnumber, c, backupmenu=0, replaychar=0;
   int previousfield=-1, scriptdirection=NOSCRIPT;
   int findresults[MAXSEARCHDEPTH+1][MAXRECORDS], tsortresults[MAXRECORDS];
   char input_text[MAXSTRING], ttext[MAXSTRING], tattributes[9];
@@ -1007,7 +1007,7 @@ int Show_Record_and_Menu()
   vector<Annotated_Field> trecords;
   vector<int>::iterator p;
   
-   while (run) {
+   while ( true ) {
     // clear screen array
     for (i=1;i<81;i++)
      for (i1=1;i1<25;i1++)
@@ -1220,16 +1220,8 @@ int Show_Record_and_Menu()
         if (autosave)
          Read_Write_Current_Parameters(1, 1);
        break; }
-       if (currentmenu==0) {
-        currentmenu=4;
-        menubar=1;
-        Show_Menu_Bar();
-        gotoxy(strlen(menutexts[currentmenu])+1, menulines[currentmenu]);
-        c=sgetch();
-        if (c==ESC || c=='y')
-         run=0;
-        else
-         currentmenu=0; }
+       if (currentmenu==0)
+        INThandler(SIGINT);
        else
         currentmenu=0;
        if (autosave)
@@ -2124,7 +2116,9 @@ int Show_Field(Annotated_Field *field, int flag) // 1 highlight, 2 only in scree
     tcolor=(tfield->color==highlightcolors[0]) ? highlightcolors[1] : highlightcolors[0];
     for (i=strlen(ttext);i<((tfield->size.x)+1)*((tfield->size.y)+1);i++)
      ttext[i]=SPACE;
-   ttext[i]='\0';
+    ttext[i]='\0';
+    if ( terminalhascolor == 0 )
+     Change_Attributes(REVERSE);
    }
    Change_Color(tcolor); 
    columninprint=tfield->pt.x, rowinprint=tfield->pt.y;

@@ -704,22 +704,19 @@ int wheelmousemove()
 // handle ctrl+c
 void INThandler(int sig)
 {
-     char  c;
+ char c;
 
-     signal(sig, SIG_IGN);
-     Show_Menu_Bar(1);
-     Change_Color(1);
-     gotoxy(1,24);
-     blockunblockgetch(UNBLOCK);
-     printw("really quit ?");
-     c = sgetch();
-     if (tolower(c) == 'y')
-      End_Program();
+    Show_Menu_Bar(1);
+    Change_Color(RED);
+    gotoxy(1,24);
+    printw("really quit ?");
+    blockunblockgetch(QUITUNBLOCK);
+    c = sgetch();
+    if ( c == ESC || c == 'y' )
+     End_Program();
      
-     signal(SIGINT, INThandler);
-     Show_Menu_Bar();
+    Show_Menu_Bar();
 }
-
 
 // add spaces to bring text in the middle of width
 char* bringstringtomiddle(char *text, int width)
@@ -1131,12 +1128,15 @@ int fieldsadjoiningfields(Annotated_Field *tfield, vector<int>& adjoiningfields)
          adjoiningfields.push_back(i1); }
      }
      if (ttfield->text[0]=='<') {
-      for (i1=0;i1<fieldsperrecord;i1++)
-       if (records[(currentrecord*fieldsperrecord)+i1].text[strlen(records[(currentrecord*fieldsperrecord)+i1].text)-1]=='>')
-        if ((findinintvector(i1, adjoiningfields)) || ((arefieldsneighbours(i1, recordid)==0)))
-        continue;
+      for (i1=0;i1<fieldsperrecord;i1++) {
+       if (records[(currentrecord*fieldsperrecord)+i1].text[strlen(records[(currentrecord*fieldsperrecord)+i1].text)-1]=='>') {
+        if ((findinintvector(i1, adjoiningfields)) || ((arefieldsneighbours(i1, recordid)==0))) {
+         continue;
+        }
        else
         adjoiningfields.push_back(i1);
+       }
+      }
      }
        
     }

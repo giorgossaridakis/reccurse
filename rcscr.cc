@@ -49,6 +49,7 @@ WINDOW *win1=newwin(80, 24, 1, 1);
 const int UNDERSCORE=95;
 const char BOXCHAR='*';
 int highlightcolors[2]={ 34, 23 };
+int terminalhascolor=1;
 
 // external
 extern int screen[81][25];
@@ -73,10 +74,8 @@ int Init_Screen()
   cbreak();
   keypad(win1, TRUE);
   mousemask(ALL_MOUSE_EVENTS, NULL);
-  if (has_colors() == FALSE) {
-   endwin();
-   printf("Your terminal does not support color\n");
-  raise(2); }
+  if (has_colors() == FALSE) 
+   terminalhascolor=0;
   curs_set(1);
   start_color();
   
@@ -180,16 +179,11 @@ void End_Screen()
 // change color
 void Change_Color(int choice)
 {
-  int color;
   
-  if (!choice)
-   scanf("%d", &color);
-//   if (choice<1 || choice>58)
-//    choice=58;
-  else
-   color=choice;
+  if ( terminalhascolor == 0 )
+   return;
   
-   attron(COLOR_PAIR(color));
+   attron(COLOR_PAIR(choice));
 }
 
 // draw a usual box
