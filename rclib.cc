@@ -94,7 +94,7 @@ void checkpoint(int id, int color)
 // scan integer and string
 int Scan_Input(int flag, int lim_a, int lim_b, int length) // 0 string, 1 integer
 {
-  int x, y, c;
+  int x, y;
   int res=NUMERICALLIMIT;
   getyx(win1, y, x);
   
@@ -112,7 +112,7 @@ int Scan_Input(int flag, int lim_a, int lim_b, int length) // 0 string, 1 intege
 // scan input overloaded
 char Scan_Input(char istring[MAXSTRING], int x_pos, int y_pos, int color)
 {
-  int i, t, column=strlen(istring)-1, fieldreferenceflag=0, fieldreferencelist, dummyfieldreferencelist, fieldreferencerecord=currentrecord;
+  int i, t=0, column=strlen(istring)-1, fieldreferenceflag=0, fieldreferencelist, dummyfieldreferencelist, fieldreferencerecord=currentrecord;
   char tstring[MAXSTRING], iistring[MAXSTRING];
   
   if (record.size() && records.size() && record[currentfield].fieldlist && !editoroption) {
@@ -227,7 +227,7 @@ char Scan_Input(char istring[MAXSTRING], int x_pos, int y_pos, int color)
 // scan date
 void Scan_Date(int x_pos, int y_pos, char tdate[], int flag) // 0 entire date, 1 month and year
 {
-  int weekday, c, y, m, d;
+  int c=0, y, m, d;
   int highlight=0; // 0 y, 1 m, 2 d
   time_t now = time(0);
   char date[MAXSTRING];
@@ -547,17 +547,6 @@ void replaceunderscoresandbrackets(char dataname[], int flag) // 0 place undersc
   dataname[i1]='\0';
 }
 
-// corrupt string check
-int iscorruptstring(char *tstring)
-{
-    while (*tstring) {
-     if (!isprintablecharacter(*tstring) && *tstring!='\n') 
-      return 1;
-     ++tstring; }
-    
-  return 0;
-}
-
 // limit significant numbers
 int limitsignificantnumbers(char *s, int digits)
 {
@@ -618,7 +607,7 @@ void sortfieldsbyxpt(int field_id, vector <int> &fieldxidentities)
 // return table with sorted by y.pt fields
 void sortfieldsbyypt(int field_id, vector <int> &fieldyidentities)
 {
- int i, t, operation=1;
+ int i;
 
    for (i=0;i<fieldsperrecord;i++)
     if (record[field_id].pt.x==record[i].pt.x && record[i].editable && record[i].active)
@@ -705,7 +694,8 @@ int wheelmousemove()
 void INThandler(int sig)
 {
  char c;
-
+ 
+    signal(sig, SIG_IGN);
     Show_Menu_Bar(1);
     Change_Color(RED);
     gotoxy(1,24);
@@ -715,6 +705,7 @@ void INThandler(int sig)
     if ( c == ESC || c == 'y' )
      End_Program();
      
+    signal(SIGINT, INThandler);
     Show_Menu_Bar();
 }
 
@@ -786,8 +777,8 @@ int decimatestringtokey(char *text)
   char ttext[MAXSTRING];
   strcpy(ttext, text);
   
-  for (i=0;i<strlen(ttext);i++)
-   ttext[i]=tolower(ttext[i]);
+   for (i=0;i<strlen(ttext);i++)
+    ttext[i]=tolower(ttext[i]);
   
    if (!strcmp(ttext, "down"))
     key=DOWN;
@@ -894,7 +885,7 @@ char *formatmonetarystring(char *text)
   if (separatort==0)
    return text;
   
-  int i, i1, separatord, length, separatod;
+  int i, i1, separatord, length;
   separatord=(separatort==46) ? 44 : 46;
   length=strlen(text);
   
@@ -987,7 +978,7 @@ void aligntextsingley(Annotated_Field *field, int alignment, int row)
 // align text
 char* aligntext(char text[MAXSTRING], Annotated_Field *field, int alignment)
 {
-  int i, spaces, printablechars, row=0, operation=1;
+  int i, printablechars, row=0, operation=1;
   char alltext[MAXSTRING], fieldcopy[MAXSTRING], ttext[MAXSTRING];
   Annotated_Field tfield=*field;
   strcpy(fieldcopy, text);
@@ -1064,8 +1055,6 @@ int isfieldtextlink(Annotated_Field *tfield, int linkparameters[]) // 0 record, 
 {
   int i, i1;
   char ttext[MAXSTRING], destination[2][MAXSTRING];
-  const char s[2]=",";
-//   linkparameters.clear();
   i=i1=0;
     
    if (record[tfield->id].buttonbox!=NOBUTTON)
@@ -1111,7 +1100,7 @@ int assignstringvaluestoarray(char *line, char array[MAXWORDS][MAXSTRING], int e
 // fields adjoining field
 int fieldsadjoiningfields(Annotated_Field *tfield, vector<int>& adjoiningfields)
 {
-  int i, i1, i2, recordid=tfield->id, pos=0;
+  int i1, recordid=tfield->id, pos=0;
   adjoiningfields.push_back(recordid);
   Annotated_Field *ttfield;
   
@@ -1189,10 +1178,8 @@ int findinintvector(int element, vector<int>& tv)
 char *Generate_Calendar(int m, int y)
 {
   const int SPACES=4;
-  int i, i1=0, day, d=1, spaces, daysinmonth;
+  int i, day, d=1, spaces, daysinmonth;
   static char calendar[256], ttext[MAXSTRING];
-  time_t now = time(0);
-  struct tm *ltm = localtime(&now);
     
     sprintf(calendar, "          %s %d>", months[m], y);
     for (i=4;i<7;i++) {

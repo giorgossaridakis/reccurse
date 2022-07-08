@@ -56,37 +56,41 @@ int parseformulaforfunctions(char formula[])
   
    while (findinstructions) {
     findinstructions=0;
-    for (i=0;i<functions.size();i++)
-     if ((startpt=findsimple(ttext, functions[i].functionName)))
+    for (i=0;i<functions.size();i++) {
+     if ((startpt=findsimple(ttext, functions[i].functionName))) {
       break;
-     if (i<functions.size()) {
-      findinstructions=1;
-      --startpt;
-      n=startpt;
-      // empty function callname so it will not be parsed again
-      while (ttext[n]!='(' && n<strlen(ttext))
-       ttext[n++]=' ';
-      endpt=n+1;
-      openparentheses=1;
-      while (openparentheses && endpt<strlen(ttext)) {
-       if (ttext[endpt]=='(')
-        ++openparentheses;
-       if (ttext[endpt]==')')
-        --openparentheses;
-      ++endpt; }
-      if (openparentheses) // not all parentheses closed
-       return openparentheses;
-      extracttextpart(ttext, tcommand, startpt, endpt);
-      // call routine recursively
-      n=parseformulaforfunctions(tcommand);
-      if (n)
-       return n;
-      // parse tcommand
-      parseresult=mathfunctionsparser(i, tcommand);
-      // now insert tcommand into startpt
-      if (parseresult)
-       return parseresult;
-   inserttextpart(ttext, tcommand, startpt); } }
+     }
+    }
+    if (i<functions.size()) {
+     findinstructions=1;
+     --startpt;
+     n=startpt;
+     // empty function callname so it will not be parsed again
+     while (ttext[n]!='(' && n<strlen(ttext))
+      ttext[n++]=' ';
+     endpt=n+1;
+     openparentheses=1;
+     while (openparentheses && endpt<strlen(ttext)) {
+      if (ttext[endpt]=='(')
+       ++openparentheses;
+      if (ttext[endpt]==')')
+       --openparentheses;
+     ++endpt; }
+     if (openparentheses) // not all parentheses closed
+      return openparentheses;
+     extracttextpart(ttext, tcommand, startpt, endpt);
+     // call routine recursively
+     n=parseformulaforfunctions(tcommand);
+     if (n)
+      return n;
+     // parse tcommand
+     parseresult=mathfunctionsparser(i, tcommand);
+     // now insert tcommand into startpt
+     if (parseresult)
+      return parseresult;
+     inserttextpart(ttext, tcommand, startpt); 
+    }
+   }
    
   strcpy(formula, ttext);
       
@@ -133,14 +137,19 @@ int mathfunctionsparser(int function_id, char tcommand[MAXSTRING])
     while (operation) {
      operation=0;
      for (i=0;i<functions[function_id].functionParameters;i++) {
-      for (n=0;n<strlen(tcommand);n++)
-       if (tcommand[n]==i+97 && tcommand[n-1]=='#') // find a,b,c,d,e ..MAXFUNCTIONPARAMETERS
+      for (n=0;n<strlen(tcommand);n++) {
+       if (tcommand[n]==i+97 && tcommand[n-1]=='#') { // find a,b,c,d,e ..MAXFUNCTIONPARAMETERS
         break;
-       if (n<strlen(tcommand)) {
-        operation=1;
-        tcommand[n-1]=' ';
-        tcommand[n]=' ';
-    inserttextpart(tcommand, tparameter[i], n-1); } } }
+       }
+      }
+      if (n<strlen(tcommand)) {
+       operation=1;
+       tcommand[n-1]=' ';
+       tcommand[n]=' ';
+       inserttextpart(tcommand, tparameter[i], n-1);
+      }
+     }
+    }
     
  return 0;
 }

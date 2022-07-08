@@ -60,6 +60,8 @@ enum { RED = 1, GREEN, YELLOW, BLUE, MAGENTA, CYAN, WHITE, BLACK = 50, WHITEONBL
 enum { NORMAL=0, STANDOUT, UNDERLINE, REVERSE, BLINK, DIM, BOLD, PROTECT, INVISIBLE };
 enum { TOLEFT=1, CENTER, TORIGHT };
 enum { NOSCRIPT = 0, ONENTRY, ONEXIT, ONENTRYANDEXIT };
+enum { NOACTIVEFIELDS = -2, FILEERROR, NORMALEXIT = 0 };
+const char *exittexts[]= { "NO ACTIVE FIELDS", "FILE I/O ERROR", "NORMAL" };
 const char *menukeys[]={ "eot`", "alsh`", "dckpjv+-*/.!@`", "ifru`", "yn`", "0123456789/*-+^,.()=`", "udixl`", "ir`" }; // m works in all menus
 const char *buttonkeys[]={ "0", "1", "2", "3", "4", "5", "6", "7", "8", "9", "/", "*", 
 "-", "+", "^", ",", ".", "(", ")", "=", "sin", "cos", "tan", "cotan", "sqr", "abs", "log", "AC", "DEL", "EXEC" };
@@ -233,7 +235,7 @@ extern int highlightcolors[2];
 
 // reccurse.cc
 void Intro_Screen();
-int End_Program(int code=0);
+int End_Program(int code=NORMALEXIT);
 int checkalteredparameters();
 char* Reccurse_File_Extension(char *filename, int flag=0);
 int Read_rc_File();
@@ -277,7 +279,6 @@ int Read_Write_Relationships(int mode=0);
 void Initialize_Database_Parameters(int mode=0);
 void Load_Database(int pagenumber);
 int Pages_Selector(int pagetochange=-1);
-int Clean_Database(char *filename);
 void Set_Mouse_Menus();
 int Activate_Menubar_Choice(int x);
 int fetchmousemenucommand();
@@ -369,7 +370,6 @@ extern int iscalculationsign(char t);
 extern int isdecimalseparator(char t);
 extern int isparenthesis(char t);
 extern int isprintablecharacter(int t);
-extern int iscorruptstring(char *tstring);
 extern int find(char text[], char token[]);
 extern int findsimple(char text[], char token[]);
 extern int CalcDayNumFromDate(int y, int m, int d);

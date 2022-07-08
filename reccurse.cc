@@ -1,7 +1,7 @@
 // reccurse, the filemaker of ncurses
 #include "reccurse.h"
 
-const double version=0.469;
+const double version=0.472;
 
 int main(int argc, char *argv[])
 {
@@ -41,7 +41,7 @@ int main(int argc, char *argv[])
      limitspaces(input_string);
      if (!strlen(input_string)) {
       Show_File_Error(input_string);
-     End_Program(-1); }
+     End_Program(FILEERROR); }
      strcpy(rcfile, input_string);
      strcpy(dbfile, rcfile);
      Reccurse_File_Extension(rcfile, 1); 
@@ -77,7 +77,7 @@ int main(int argc, char *argv[])
     Show_Message(8, 20, 2, tmessage, 2250);
     Show_Record_and_Menu();
    
-  End_Program(0);
+  End_Program(NORMALEXIT);
   
  return 0;
 }
@@ -85,8 +85,6 @@ int main(int argc, char *argv[])
 // introduction screen
 void Intro_Screen()
 {
-   char c;
-   FILE *f;
    const char *pic=
    "       OOOOOO  OOOOOOO  OOOOOO  OOOOOO OO    OO OOOOOO  OOOOOOO OOOOOOO\n       OO   OO OO      OO      OO      OO    OO OO   OO OO      OO\n       OO   OO OO      OO      OO      OO    OO OO   OO OO      OO\n       OO   OO OO      OO      OO      OO    OO OO   OO OO      OO\n       OOOOOO  OOOOO   OO      OO      OO    OO OOOOOO  OOOOOOO OOOOO  \n       OO   OO OO      OO      OO      OO    OO OO   OO      OO OO \n       OO   OO OO      OO      OO      OO    OO OO   OO      OO OO \n       OO   OO OO      OO      OO      OO    OO OO   OO      OO OO \n       OO   OO OOOOOOO  OOOOOO  OOOOOO  OOOOOO  OO   OO OOOOOOO OOOOOOO\n";
     
@@ -94,7 +92,11 @@ void Intro_Screen()
      Change_Color(34);
      gotoxy(27,1);
      printw("Reccurse version %.3f", version);
-     attron(A_BLINK);
+     if ( terminalhascolor == 0 ) {
+      Change_Attributes(DIM);
+      printw(" (monochrome)");
+     }
+     Change_Attributes(BLINK);
      gotoxy(1,6);
      while (*pic) {
       Change_Color(BLACK);
@@ -102,7 +104,7 @@ void Intro_Screen()
        Change_Color(24);
       addch(*(pic++));
      }
-     attroff(A_BLINK);
+     Change_Attributes(NORMAL);
      Change_Color(2);
      gotoxy(55, 5);
      printw("multipage edition");
@@ -116,21 +118,20 @@ void Intro_Screen()
 // goodbye
 int End_Program(int code)
 {
-  if (!code)
-   checkalteredparameters();
-  
-  Clean_Database(dbfile); 
-  Read_Write_Current_Parameters(4, 1);
   char tmessage[MAXSTRING];
-  strcpy(tmessage, "database closed, exiting reccurse with code ");
-  strcat(tmessage, itoa(code, 10));
-  strcat(tmessage, "...");
-    
-  Show_Menu_Bar(1);
-  Show_Message(1, 24, 1, tmessage, 1500);
-  End_Screen();
   
- exit(EXIT_SUCCESS);
+   if ( code == 0 )
+    checkalteredparameters();
+   Read_Write_Current_Parameters(4, 1);
+
+   sprintf(tmessage, "reccurse exiting in state [%s]", exittexts[code+2]);
+    
+   Show_Menu_Bar(1);
+   Show_Message(1, 24, YELLOW, tmessage, 1500);
+   End_Screen();
+   system("clear");
+  
+ exit(code);
 }
 
 // altered parameters
@@ -138,12 +139,12 @@ int checkalteredparameters()
 {
  char c;   
     
-  if (!alteredparameters)
-   return 0;
+   if (!alteredparameters)
+    return 0;
 
    Show_Message(1, 24, 2, "save altered parameters (y/n):", 0);
    c=sgetch();
-   if (tolower(c)=='y')
+   if ( c == 'y' )
     Read_Write_db_File(4);
    alteredparameters=0;
 
@@ -181,8 +182,7 @@ char* Reccurse_File_Extension(char *filename, int flag) // 0 remove, 1 add .rc, 
 // read .rc file
 int Read_rc_File()
 {
-  int i;
-  char c;
+  char c=0;
   Field tfield;
   
   ifstream rcinput(rcfile); 
@@ -237,8 +237,7 @@ int Write_rc_File(char *file)
 int Read_Write_db_File(int mode) // 0 read, 1 write, 2 create from file, 3&4 recreate from istringstream
 {
   int i, i1=0;
-  char c;
-  char ttext2[FIELDSIZE];
+  char c=0;
   Annotated_Field tfield;
   Field tfield2;
   string ttext;
@@ -265,9 +264,6 @@ int Read_Write_db_File(int mode) // 0 read, 1 write, 2 create from file, 3&4 rec
      tttext[i]=ttext[i];
     tttext[i]='\0';
     istringstream ttext2(tttext);
-    if (iscorruptstring(tttext)) {
-     Show_Message(1, 24, 1, "corrupt database file!", 1500);
-    End_Program(-3); }
     while (ttext2) {
      c=ttext2.peek();
      if (c=='#' || c==EOF)
@@ -296,7 +292,7 @@ int Read_Write_db_File(int mode) // 0 read, 1 write, 2 create from file, 3&4 rec
     recordsnumber=records.size()/fieldsperrecord;
     if (!activefields) {
      Show_Message(1, 24, 1, "no active fields in database");
-    End_Program(-2); }
+    End_Program(NOACTIVEFIELDS); }
    Read_Write_Relationships(); }
    
    if (mode==3) { // recreate rc data into string and rewrite dbfile, relationships
@@ -368,8 +364,8 @@ int Read_Write_db_File(int mode) // 0 read, 1 write, 2 create from file, 3&4 rec
 // read external .db files to vectors
 int Read_External_Database(int externaldatabaseid)
 {
-  int i, activefields=0, tfieldsperrecord=0, tstartofrecords=0;
-  char c, ttext3[FIELDSIZE];
+  int i, activefields=0, tfieldsperrecord=0;
+  char c=0, ttext3[FIELDSIZE];
   string ttext;
   Field tfield2;
   Annotated_Field tfield;
@@ -393,9 +389,6 @@ int Read_External_Database(int externaldatabaseid)
      tttext[i]=ttext[i];
     tttext[i]='\0';
     istringstream ttext2(tttext);
-    if (iscorruptstring(tttext)) {
-     Show_Message(1, 24, 1, "corrupt database file!", 1500);
-    End_Program(-3); }
     while (ttext2) {
      c=ttext2.peek();
      if (c=='#' || c==EOF)
@@ -440,13 +433,13 @@ int Read_External_Database(int externaldatabaseid)
 // read & write current record
 int Read_Write_Current_Parameters(int item, int mode) // item:0 currentrecord, 1 currentmenu, 2 menubar 3 autosave 4 currentfield| mode:0 read, 1 write
 {
-  int i, tvalue;
+  int i, tvalue=0;
   char *ttext=new char[5];
   int parameterpositions[]={ 0, 4, 5, 6, 7 };
   int parametersize=(!item || item==4) ? 4 : 1;
   fstream dbfileaccess(dbfile, ios::in | ios::out | ios::binary);
 
-  if (!mode) {
+  if ( mode == 0 ) {
    dbfileaccess.seekg(RELATIONSHIPSLENGTH+startofrecords+parameterpositions[item], ios::beg);
    for (i=0;i<parametersize;i++)
     dbfileaccess.get(ttext[i]);
@@ -477,7 +470,10 @@ int Read_Write_Current_Parameters(int item, int mode) // item:0 currentrecord, 1
    ttext[i]='\0';
    stringcodedecode(ttext, ttext);
    for (i=0;i<parametersize;i++)
-  dbfileaccess.put(ttext[i]); }
+    dbfileaccess.put(ttext[i]); 
+  }
+  
+  dbfileaccess.flush();
   dbfileaccess.close();
     
  return tvalue;
@@ -666,17 +662,21 @@ int Add_Field(int type, char *name, char *textvalue)
   vector <Annotated_Field>::iterator p;
   char ttext[MAXSTRING]; // for Generate_Field_String
   
-   if (!recordsnumber) // initialization precaution
+   if (!recordsnumber) { // initialization precaution
     return -1;
-   if (fieldsperrecord>MAXFIELDS-1)
+   }
+   if (fieldsperrecord>MAXFIELDS-1) {
     return -1;
+   }
    
-    if (name==NULL) {
+    if ( name == NULL ) {
      name=(char *) malloc(MAXSTRING);
-    strcpy(name, EMPTYSTRING); }
-    if (textvalue==NULL) {
+     strcpy(name, EMPTYSTRING); 
+    }
+    if ( textvalue == NULL ) {
      textvalue=(char *) malloc(MAXSTRING);
-    strcpy(textvalue, " "); }
+     strcpy(textvalue, " "); 
+    }
     if (type==VARIABLE) {
      tx=99; ty=99; 
     }
@@ -728,7 +728,6 @@ void Delete_Field(int field_id)
 int Join_Fields(int field_id, int mode)
 {
   int i, n=0;
-  char ttext[MAXSTRING];
   vector <int> fieldidentities;
   
   if (mode==HORIZONTALLY)
@@ -819,7 +818,7 @@ void Renumber_Field_Relationships(int startingfield) // autoremove if same field
 // divide a field into two parts
 int Divide_Field(int field_id, int mode)
 {
-  int i, add;
+  int add;
   add=( record[field_id].size.x % 2 ) ? 1 : 0;
   
   if (mode==HORIZONTALLY && record[field_id].size.x<2)
@@ -862,7 +861,7 @@ void Bring_DateTime_Stamp(char tdatetime[MAXSTRING], int field_id)
   if (isautomaticvalueformatinstruction(field_id))
    strcpy(calendarformat, record[field_id].automatic_value);
   
-   strftime(tdatetime, MAXSTRING,const_cast <char *> (calendarformat), timeinfo);
+  strftime(tdatetime, MAXSTRING,const_cast <char *> (calendarformat), timeinfo);
   
   for (i=0;i<strlen(tdatetime);i++)
    if (tdatetime[i]=='\n')
@@ -970,12 +969,12 @@ int fieldparameterstoserial(int record_id, int field_id)
 // delete a record from the series
 void Delete_Record(int record_id)
 {
-  int i;
   vector<Annotated_Field>::iterator p=records.begin();
   p+=record_id*fieldsperrecord;
   --recordsnumber;
-  if (currentrecord)
+  if (currentrecord) {
    --currentrecord;
+  }
   
    records.erase(p, p+fieldsperrecord);
    Read_Write_db_File(3);
@@ -1002,10 +1001,9 @@ int Show_Record_and_Menu()
   int i, i1, n, trecordsnumber, c, backupmenu=0, replaychar=0;
   int previousfield=-1, scriptdirection=NOSCRIPT;
   int findresults[MAXSEARCHDEPTH+1][MAXRECORDS], tsortresults[MAXRECORDS];
-  char input_text[MAXSTRING], ttext[MAXSTRING], tattributes[9];
+  char ttext[MAXSTRING];
   FindSchedule tfindschedule;
   vector<Annotated_Field> trecords;
-  vector<int>::iterator p;
   
    while ( true ) {
     // clear screen array
@@ -1766,32 +1764,37 @@ int Show_Record_and_Menu()
        strcpy(tfindschedule.texttolookfor, input_string);
       findschedule.push_back(tfindschedule); }
       // now run find for all findschedule size
-      for (i1=0, trecordsnumber=0, i=0;i<findschedule.size();i1=0, trecordsnumber=0, i++)
-       while ((n=findresults[i][trecordsnumber++])>-1)
-        if (find(records[(n*fieldsperrecord)+findschedule[i].field_id].text, findschedule[i].texttolookfor))
+      for (i1=0, trecordsnumber=0, i=0;i<findschedule.size();i1=0, trecordsnumber=0, i++) {
+       while ((n=findresults[i][trecordsnumber++])>-1) {
+        if (find(records[(n*fieldsperrecord)+findschedule[i].field_id].text, findschedule[i].texttolookfor)) {
          findresults[i+1][i1++]=n;
-       if (findresults[1][0]==-1) {
-        Show_Menu_Bar(1);
-        Show_Message(1, 24, 4, "no records with given criteria found", 1500);
-       break; }
-       for (trecordsnumber=MAXRECORDS;trecordsnumber>-1;trecordsnumber--)
-        if (findresults[i][trecordsnumber]>-1)
-         break;
-        ++trecordsnumber;
-       recordsdemo=1;
-       // copy last find results into findresults[0], when in demo check if currentrecord is there to show
-       for (n=0;n<MAXRECORDS;n++)
-        findresults[0][n]=findresults[i][n];
-       strcpy(input_string, "found "); // just use input_string
-       strcat(input_string, itoa(trecordsnumber));
-       strcat(input_string, " record");
-       if (trecordsnumber>1)
-        strcat(input_string, "s");
-       strcat(input_string, " with given criteria");
-       Show_Message(1, 24, 4, input_string, 1500);
-       trecordsnumber=currentrecord; // keep value of currentrecord
-       currentrecord=findresults[0][0];
-    break; } 
+        }
+       }
+      }
+      if (findresults[1][0]==-1) {
+       Show_Menu_Bar(1);
+       Show_Message(1, 24, 4, "no records with given criteria found", 1500);
+       break; 
+       }
+      for (trecordsnumber=MAXRECORDS;trecordsnumber>-1;trecordsnumber--)
+       if (findresults[i][trecordsnumber]>-1)
+        break;
+      ++trecordsnumber;
+      recordsdemo=1;
+      // copy last find results into findresults[0], when in demo check if currentrecord is there to show
+      for (n=0;n<MAXRECORDS;n++)
+       findresults[0][n]=findresults[i][n];
+      strcpy(input_string, "found "); // just use input_string
+      strcat(input_string, itoa(trecordsnumber));
+      strcat(input_string, " record");
+      if (trecordsnumber>1)
+       strcat(input_string, "s");
+      strcat(input_string, " with given criteria");
+      Show_Message(1, 24, 4, input_string, 1500);
+      trecordsnumber=currentrecord; // keep value of currentrecord
+      currentrecord=findresults[0][0];
+     break;
+    }
        
     // calculator keys
     if (currentmenu==5 && c) {
@@ -1821,8 +1824,6 @@ int Show_Record_and_Menu()
 int Screen_String_Editor(Annotated_Field &tfield)
 {
   char t, tstring[MAXSTRING];
-  long int tfieldposition;
-  tfieldposition=fieldposition(currentrecord, tfield.id);
   fstream dbfileaccess(dbfile, ios::in | ios::out | ios::binary);
    
    strcpy(tstring, tfield.text);
@@ -1957,7 +1958,6 @@ void Show_Help_Screen()
 // show database information screen
 void Show_DB_Information()
 {
-  char dbinfo[1000];
   int i, n, averagerecordsize, averagefieldsize, tfieldsize=0, numericalfields=0, mixedfields=0, stringfields=0, datestampfields=0, variablefields=0, extrawindowlength;
   long int totalrecordssize=0;
 
@@ -2070,12 +2070,13 @@ int Show_Field(Annotated_Field *field, int flag) // 1 highlight, 2 only in scree
      tposy=tfield->pt.y;
    break; }
    if (tposx>0 && tposx<80 && tposy>0 && tposy<24 && strcmp(tfield->title, EMPTYSTRING)) {
-   for (i=0;i<9;i++)
-    attributestable[i]=ctoi(record[tfield->id].title_attributes[i]);
-    if (!printscreenmode)
+    for (i=0;i<9;i++)
+     attributestable[i]=ctoi(record[tfield->id].title_attributes[i]);
+    if (!printscreenmode) {
      for (i=0;i<9;i++) {
       if (attributestable[i])
        Change_Attributes(i);
+     }
     }
     if (!printscreenmode)
      Change_Color(tfield->title_color);
@@ -2086,7 +2087,8 @@ int Show_Field(Annotated_Field *field, int flag) // 1 highlight, 2 only in scree
      screen[tposx+i][tposy]=tfield->title[i];
     // remove attributes
     Change_Attributes(NORMAL);
-   } }
+   }
+  }
 
    // field string to field size and lines
    fieldhasdependancy=Generate_Dependant_Field_String(field, ttext);
@@ -2200,8 +2202,9 @@ int Show_Field_ID(Annotated_Field *tfield)
   int trecord=tfield->id;
   int highlightcolor=(record[trecord].color==highlightcolors[1]) ? highlightcolors[0] : highlightcolors[1];
   
-  if (!record[trecord].active)
+  if (!record[trecord].active) {
    return -1;
+  }
   
    Change_Color(highlightcolor);
    attron(A_BLINK);
@@ -2399,8 +2402,8 @@ int Export_Database(char *filename)
 // import from comma separated values file
 int Import_Database(char *filename)
 {
-  int i1, i, n, fieldsreadperline=0, trecordsnumber=0, recordid=0;
-  char t, tstring[MAXSTRING*2];
+  int i1, n, fieldsreadperline=0, trecordsnumber=0, recordid=0;
+  char t=0, tstring[MAXSTRING*2];
   vector <Annotated_Field> trecords;
   ifstream infile(filename);
   if (!infile) {
@@ -2466,14 +2469,13 @@ int Import_Database(char *filename)
 // selectively import fields from external dbfile
 int Import_External_db_File(char *filename)
 {
-  int i, fieldshown=0, t;
+  int i, fieldshown=0, t=0;
   char tstring[MAXSTRING];
   strcpy(tstring, dbfile);
   strcpy(dbfile, filename);
   Reccurse_File_Extension(dbfile, 2);
-  if (!tryfile(dbfile)) {
-   Show_Message(1, 24, 1, "external database file unreachable", 2000);
-  return -1; }
+  if (!tryfile(dbfile)) 
+   End_Program(FILEERROR);
   
   Read_Write_db_File();
   dummyrecord=record;
@@ -2626,7 +2628,7 @@ void Load_Database(int pagenumber)
 // pages selector - editor
 int Pages_Selector(int pagetochange)
 {
-  int i, t, tpage;
+  int i, t=0, tpage;
   
   tpage=currentpage;
   
@@ -2704,29 +2706,6 @@ int Pages_Selector(int pagetochange)
  return currentpage;
 }
 
-// remove garbage from database file
-int Clean_Database(char *filename)
-{
-  char t;
-  int i=0;
-    
-   fstream dbfileaccess(dbfile, ios::in | ios::out | ios::binary);
-   if (!dbfileaccess)
-    return -1;
-   dbfileaccess.seekg(0, ios::beg);
-   dbfileaccess.seekp(0, ios::beg);
-    
-    while (dbfileaccess) {
-     t=(charcoder(dbfileaccess.get(), 1));
-     ++i;
-     if (!isprintablecharacter(t) && t!='\n')
-      t=SPACE;
-     dbfileaccess.seekp(i-1, ios::beg);
-    dbfileaccess.put(charcoder(t)); }
-
- return 0;
-}
-
 // setup mouse menubar choices
 void Set_Mouse_Menus()
 {
@@ -2788,19 +2767,19 @@ int Determine_Button_Box(int field_id)
      if (!strcmp(buttonkeys[i], record[field_id].automatic_value) && record[field_id].type!=VARIABLE) { // button box
       if (record[field_id].fieldlist-1!=field_id)
        record[field_id].buttonbox=BUTTONBOX;
-       record[record[field_id].fieldlist-1].buttonbox=BUTTONSCREEN; // button screen
-       record[record[field_id].fieldlist-1].type=MIXEDTYPE;
-//        record[record[field_id].fieldlist-1].fieldlist=0;
-     strcpy(record[record[field_id].fieldlist-1].automatic_value, EMPTYSTRING); }
+      record[record[field_id].fieldlist-1].buttonbox=BUTTONSCREEN; // button screen
+      record[record[field_id].fieldlist-1].type=MIXEDTYPE;
+      strcpy(record[record[field_id].fieldlist-1].automatic_value, EMPTYSTRING);
+     }
     }
-     strcpy(tautomaticvalue, record[field_id].automatic_value);
-     if (strcmp(tautomaticvalue, EMPTYSTRING) && (scantextforcommand(tautomaticvalue, command)) && record[field_id].fieldlist-1==field_id) // button command
-      record[field_id].buttonbox=BUTTONCOMMAND;
-     if (record[field_id].size.x==0 && record[field_id].size.y==0 && record[field_id].fieldlist-1==field_id) // automatic scripts, repetitions in color
-      record[field_id].buttonbox=AUTOMATICSCRIPT;
+    strcpy(tautomaticvalue, record[field_id].automatic_value);
+    if (strcmp(tautomaticvalue, EMPTYSTRING) && (scantextforcommand(tautomaticvalue, command)) && record[field_id].fieldlist-1==field_id) // button command
+     record[field_id].buttonbox=BUTTONCOMMAND;
+    if (record[field_id].size.x==0 && record[field_id].size.y==0 && record[field_id].fieldlist-1==field_id) // automatic scripts, repetitions in color
+     record[field_id].buttonbox=AUTOMATICSCRIPT;
       
-     if (record[field_id].buttonbox>NOBUTTON)
-      record[field_id].type=STRING;
+    if (record[field_id].buttonbox>NOBUTTON)
+     record[field_id].type=STRING;
    
  return record[field_id].buttonbox;
 }
@@ -2884,13 +2863,13 @@ void pushspaceonfield(int field_id)
        for (i1=0;i1<buttonkeystotal;i1++)
         if (!strcmp(buttonkeys[i1], record[field_id].automatic_value))
          break;
-        if (record[record[field_id].fieldlist-1].buttonbox==BUTTONSCREEN) {
-         if (i1<=buttonkeystotal-4) {
-          if (!isdigit(buttonkeys[i1][0]) && !isdecimalseparator(buttonkeys[i1][0]) && iscalculationsign(buttonkeys[i1][0]))
-           sprintf(ttext, " %s ", buttonkeys[i1]);
-          else
-           strcpy(ttext, buttonkeys[i1]);
-          strcat(records[(currentrecord*fieldsperrecord)+record[field_id].fieldlist-1].text, ttext);
+       if (record[record[field_id].fieldlist-1].buttonbox==BUTTONSCREEN) {
+        if (i1<=buttonkeystotal-4) {
+         if (!isdigit(buttonkeys[i1][0]) && !isdecimalseparator(buttonkeys[i1][0]) && iscalculationsign(buttonkeys[i1][0]))
+          sprintf(ttext, " %s ", buttonkeys[i1]);
+         else
+          strcpy(ttext, buttonkeys[i1]);
+         strcat(records[(currentrecord*fieldsperrecord)+record[field_id].fieldlist-1].text, ttext);
          }
          else { // ac, del, exec
           switch (i1) {
@@ -2903,9 +2882,11 @@ void pushspaceonfield(int field_id)
            case buttonkeystotal-1: // EXEC
             records[(currentrecord*fieldsperrecord)+field_id].number=0;
             record[record[field_id].fieldlist-1].type=NUMERICAL; // trick to bring reversepolishcalculator
-          break; }
-       Read_Write_Field(records[(currentrecord*fieldsperrecord)+record[field_id].fieldlist-1], fieldposition(currentrecord, record[field_id].fieldlist-1), 1); }
-      } 
+           break;
+          }
+          Read_Write_Field(records[(currentrecord*fieldsperrecord)+record[field_id].fieldlist-1], fieldposition(currentrecord, record[field_id].fieldlist-1), 1);
+         }
+       }
      return; }
      if (record[field_id].buttonbox==BUTTONCOMMAND) {
       if (runscript) {

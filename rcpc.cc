@@ -31,15 +31,11 @@ using namespace std;
 // constants
 const int MAXSTRING=80; // characters in a regular string
 const int MAXTITLE=20; // characters in a a title string
-const int MAXWORDS=256; // for buttton bar menus
 const int MAXSUFFIXCHARS=3; // max string for number suffixes
-const int MAXNAME=80; // max chars in database filenames
 const int MAXOP=1000; /* max size of operand or operator */
 const char NUMBER='0'; /* signal that a number was found */
 const int MAXCOMMAND=9999; /* maximum number of operands etc to calculate */
-const int NUMLIMIT=32767; /* maximum limit in input */
 const int MAXVAL=1000; /* maximum depth of val stack */
-const int MAXFUNCTIONMAME=10; // max chars in function names
 const int MAXFUNCTIONPARAMETERS=5; // max parameters in functions, separated with comma
 enum { NOBUTTON=0, TICKBOX, BUTTONBOX, BUTTONSCREEN, BUTTONCOMMAND, AUTOMATICSCRIPT };
 extern int fieldsperrecord;
@@ -258,7 +254,7 @@ double pop(void)
 int parenthesesincluderforpolishreversecalculator(char formula[])
 {
   char tformula[MAXCOMMAND], tendformula[MAXCOMMAND], ts[50];
-  int tformula_pos=0, i, i1, n, tpos[2], operation=1;
+  int i, i1, n, tpos[2], operation=1;
   double f;
   
    // check for equal number of parentheses
@@ -311,10 +307,8 @@ int parenthesesincluderforpolishreversecalculator(char formula[])
 // equalize text for reversepolishcalculator use
 int reversepolishcalculatorequalizer(char formula[], int record_id)
 {
-  char transformedtext[MAXCOMMAND], ttransformedtext[MAXCOMMAND];
-  int type, i, n, i1, operation=1, numbers=0;
-  double f;
-  char tc, s[MAXOP];
+  char transformedtext[MAXCOMMAND], tc, s[MAXOP];
+  int type, i, n, i1, numbers=0;
   
    // replace #id with values from corresponding records
    n=0;

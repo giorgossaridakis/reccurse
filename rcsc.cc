@@ -29,24 +29,9 @@ using namespace std;
 
 // numericals
 const int MAXSTRING=80; // characters in a regular string
-const int MAXTITLE=20; // characters in a a title string
-const int MAXWORDS=256; // for buttton bar menus
-const int MAXNUMBERDIGITS=18; // digits in a number
-const int LMAXCOMMAND=9999; /* maximum operands etc to calculate for rcpc formula*/
-const int MAXSUFFIXCHARS=3; // max string for number suffixes
-const int DEFAULT_DECIMALS=2; // decimal positions
-const int MAXFIELDS=999; // fields per record
-const int MAXRECORDS=9999; // records limit
-const int MAXPAGES=25; // pages limit
-const int FIELDSIZE=MAXSTRING*2+MAXNUMBERDIGITS+15;  // +7 would do
-const int MAXNAME=80; // max chars in database filenames
-const int MAXMENUS=10; // mouse menus
-const int RELATIONSHIPSLENGTH=1024; // 1kb of external db files relationship data
 const int MAXRELATIONSHIPS=25; // will fit into above 1kb, same as MAXPAGES
-const int MAXSEARCHDEPTH=5;
 const int INSTRUCTION='%';
 enum { HORIZONTALLY=1, VERTICALLY };
-const int NUMERICALLIMIT=32765;
 enum { NOBUTTON=0, TICKBOX, BUTTONBOX, BUTTONSCREEN, BUTTONCOMMAND, AUTOMATICSCRIPT };
 enum { NUMERICAL=0, CALENDAR, STRING, MIXEDTYPE, VARIABLE, PROGRAM, CLOCK };
 enum { NORMAL=0, STANDOUT, UNDERLINE, REVERSE, BLINK, DIM, BOLD, PROTECT, INVISIBLE };
@@ -103,21 +88,25 @@ int stringformulacalculator(char formula[MAXSTRING], int record_id)
   // locate instruction, calculate, reappend to ttext
   while (findinstructions) {
    findinstructions=0;
-   for (i=0;i<5;i++)
-    if ((startpt=findsimple(ttext, const_cast <char *> (commands[i]))))
+   for (i=0;i<5;i++) {
+    if ((startpt=findsimple(ttext, const_cast <char *> (commands[i])))) {
      break;
-    if (i<5) {
-     findinstructions=1;
-     --startpt;
-     endpt=startpt;
-     while (ttext[endpt]!=')' && endpt<strlen(ttext))
-      ++endpt;
+    }
+   }
+   if (i<5) {
+    findinstructions=1;
+    --startpt;
+    endpt=startpt;
+    while (ttext[endpt]!=')' && endpt<strlen(ttext))
      ++endpt;
-     extracttextpart(ttext, tcommand, startpt, endpt);
-     // parse tcommand
-     commandparser(i, tcommand);
-     // now insert tcommand into startpt
-   inserttextpart(ttext, tcommand, startpt); } }
+    ++endpt;
+    extracttextpart(ttext, tcommand, startpt, endpt);
+    // parse tcommand
+    commandparser(i, tcommand);
+    // now insert tcommand into startpt
+   inserttextpart(ttext, tcommand, startpt);
+   }
+  }
 
   strcpy(formula, ttext);
   
@@ -192,10 +181,12 @@ int commandparser(int reference, char tcommand[MAXSTRING])
   char tparameter[10], ttext[MAXSTRING], tttext[MAXSTRING];
 
   // how many parameters to read  
-  if (reference==1 || reference==2) // 0 toupper,tolower, 1 left$,right$
+  if (reference==1 || reference==2) { // 0 toupper,tolower, 1 left$,right$
    requiredparameters=1;
-  if (!reference)
+  }
+  if ( reference == 0 ) {
    requiredparameters=2; // mid$
+  }
    
    // go back from end of tcommand
    pos=strlen(tcommand);

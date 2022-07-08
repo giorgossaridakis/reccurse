@@ -46,7 +46,6 @@ class Drawbox {
 
 // local variables
 WINDOW *win1=newwin(80, 24, 1, 1);
-const int UNDERSCORE=95;
 const char BOXCHAR='*';
 int highlightcolors[2]={ 34, 23 };
 int terminalhascolor=1;

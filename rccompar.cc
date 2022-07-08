@@ -31,24 +31,10 @@ using namespace std;
 // numericals
 const int MAXSTRING=80; // characters in a regular string
 const int MAXTITLE=20; // characters in a a title string
-const int MAXWORDS=256; // for buttton bar menus
-const int MAXNUMBERDIGITS=18; // digits in a number
-const int LMAXCOMMAND=9999; /* maximum operands etc to calculate for rcpc formula*/
 const int MAXSUFFIXCHARS=3; // max string for number suffixes
-const int DEFAULT_DECIMALS=2; // decimal positions
-const int MAXFIELDS=999; // fields per record
-const int MAXRECORDS=9999; // records limit
-const int MAXPAGES=25; // pages limit
-const int FIELDSIZE=MAXSTRING*2+MAXNUMBERDIGITS+15;  // +7 would do
-const int MAXNAME=80; // max chars in database filenames
-const int MAXMENUS=10; // mouse menus
-const int RELATIONSHIPSLENGTH=1024; // 1kb of external db files relationship data
 const int MAXRELATIONSHIPS=25; // will fit into above 1kb, same as MAXPAGES
-const int MAXSEARCHDEPTH=5;
-const int INSTRUCTION='%';
 const int SPACE=32;
 enum { HORIZONTALLY=1, VERTICALLY };
-const int NUMERICALLIMIT=32765;
 enum { NOBUTTON=0, TICKBOX, BUTTONBOX, BUTTONSCREEN, BUTTONCOMMAND, AUTOMATICSCRIPT };
 enum { NUMERICAL=0, CALENDAR, STRING, MIXEDTYPE, VARIABLE, PROGRAM, CLOCK };
 enum { NORMAL=0, STANDOUT, UNDERLINE, REVERSE, BLINK, DIM, BOLD, PROTECT, INVISIBLE };
@@ -60,6 +46,7 @@ int noparametercommandskeys=12;
 enum { PUSHSPACE=0, COPYTEXT, PASTETEXT, ENDLOOP, COMPAREWITHCLIPBOARD, COMPAREWITHCLIPBOARDGREATER, COMPAREWITHCLIPBOARDSMALLER, CLEARVARIABLES, AUTOSAVERECCURSE,  QUITPROGRAM, STOPSCRIPT, PASS };
 const char *parametercommands[]= { "file", "record", "field", "enter", "append", "variable", "variabletoclipboard", "delete", "loop", "wait", "goto", "page", "attributes", "color", "sleep", "menu", "key", "keys" };
 enum { FILEOPEN=0, GOTORECORD, GOTOFIELD, ENTERTEXT, APPENDTEXT, VARIABLESET, VARIABLETOCLIPBOARD, CLEARVARIABLE, LOOPFOR, WAITSECS, GOTOLABEL, GOTOPAGE, SETATTRIBUTES, SETCOLOR, SETSLEEPTIME, CHANGEMENU, PUSHKEY, PUSHKEYS };
+enum { NOACTIVEFIELDS = -2, FILEERROR, NORMALEXIT = 0 };
 
 int parametercommandskeys=18;
 int scriptrunning=0, scriptsleeptime=250;
@@ -155,7 +142,7 @@ extern void pastefromclipboard();
 extern void toggleautosave();
 extern int Add_Field(int type=NUMERICAL, char *name=NULL, char *textvalue=NULL);
 extern void Delete_Field(int field_id);
-extern int End_Program(int code=0);
+extern int End_Program(int code=NORMALEXIT);
 extern int tryfile(char *file);
 extern long int fieldposition(int record_id, int field_id);
 extern int Read_Write_Field(Annotated_Field &tfield, long int field_position, int mode=0);
@@ -199,15 +186,20 @@ int commandparser(char scriptcommand[MAXSTRING])
    i1=noparameters=scantextforcommand(scriptcommand, parameter, SPACE);
    
    // handle labels
-   if (islinelabel(scriptcommand))
+   if (islinelabel(scriptcommand)) {
     return COMMAND;
+   }
    
     // variables replacement
-    if (strcmp(scriptcommand, parametercommands[VARIABLESET]) && strcmp(scriptcommand, parametercommands[CLEARVARIABLE]))
-     for (i=0;i<record.size();i++) 
-      if (record[i].type==VARIABLE)
-       if (!strcmp(record[i].title, parameter) && strcmp(scriptcommand, parametercommands[VARIABLESET]))
+    if (strcmp(scriptcommand, parametercommands[VARIABLESET]) && strcmp(scriptcommand, parametercommands[CLEARVARIABLE])) {
+     for (i=0;i<record.size();i++) {
+      if (record[i].type==VARIABLE) {
+       if (!strcmp(record[i].title, parameter) && strcmp(scriptcommand, parametercommands[VARIABLESET])) {
         strcpy(parameter, record[i].automatic_value);
+       }
+      }
+     }
+    }
    
    if (!noparameters) {
     for (commandtorun=0;commandtorun<noparametercommandskeys;commandtorun++)
@@ -239,7 +231,7 @@ int commandparser(char scriptcommand[MAXSTRING])
      case COMPAREWITHCLIPBOARD:
       if (!scriptrunning)
        return NONEXECUTABLE;
-       d=atof(clipboard);
+      d=atof(clipboard);
       if (record[currentfield].type==NUMERICAL && records[thisfield].number!=d) {
        ++runline; // jump next line
       break; }
@@ -252,7 +244,7 @@ int commandparser(char scriptcommand[MAXSTRING])
      case COMPAREWITHCLIPBOARDGREATER:
       if (!scriptrunning)
        return NONEXECUTABLE;
-       d=atof(clipboard);
+      d=atof(clipboard);
       if ((record[currentfield].type!=NUMERICAL && record[currentfield].type!=MIXEDTYPE) || !d) {
        ++runline;
       break; }
@@ -262,7 +254,7 @@ int commandparser(char scriptcommand[MAXSTRING])
      case COMPAREWITHCLIPBOARDSMALLER:
       if (!scriptrunning)
        return NONEXECUTABLE;
-       d=atof(clipboard);
+      d=atof(clipboard);
       if ((record[currentfield].type!=NUMERICAL && record[currentfield].type!=MIXEDTYPE) || !d) {
        ++runline;
       break; }
@@ -278,7 +270,7 @@ int commandparser(char scriptcommand[MAXSTRING])
         Delete_Field(i1);
      break;
      case QUITPROGRAM:
-      End_Program(0);
+      End_Program(NORMALEXIT);
      break;
      case STOPSCRIPT:
       // covered above
@@ -403,12 +395,15 @@ int commandparser(char scriptcommand[MAXSTRING])
       Pages_Selector(i1);
      break;
      case SETATTRIBUTES:
-      if (strlen(parameter)!=9)
-       returnvalue=FAIL; {
-      break; }
-      for (i1=0;i1<9;i1++)
-       if (parameter[i1]!='0' && parameter[i1]!='1')
+      if (strlen(parameter)!=9) {
+       returnvalue=FAIL;
+       break;
+      }
+      for (i1=0;i1<9;i1++) {
+       if (parameter[i1]!='0' && parameter[i1]!='1') {
         break;
+       }
+      }
       if (i1<9)
        returnvalue=FAIL;
       else

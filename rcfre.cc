@@ -31,18 +31,9 @@ using namespace std;
 // constants
 const int MAXSTRING=80; // characters in a regular string
 const int MAXTITLE=20; // characters in a a title string
-const int MAXWORDS=256; // for buttton bar menus
 const int MAXSUFFIXCHARS=3; // max string for number suffixes
 const int MAXNAME=80; // max chars in database filenames
-const int MAXOP=100; /* max size of operand or operator */
-const char NUMBER='0'; /* signal that a number was found */
-const int MAXCOMMAND=9999; /* maximum number of operands etc to calculate */
-const int NUMLIMIT=32767; /* maximum limit in input */
-const int MAXVAL=100; /* maximum depth of val stack */
-const int MAXFUNCTIONMAME=10; // max chars in function names
-const int MAXFUNCTIONPARAMETERS=5; // max parameters in functions, separated with comma
 const int MAXRELATIONSHIPS=25;
-const int UNDERSCORE=95;
 const char BOXCHAR='*';
 extern const char *onoff[];
 extern int fieldsperrecord;
@@ -52,30 +43,15 @@ extern int recordsnumber;
 extern int alteredparameters;
 
 // keyboard
-const int DOWN=258;
-const int UP=259;
 const int LEFT=260;
 const int RIGHT=261;
-const int SHIFT_LEFT=393;
-const int SHIFT_RIGHT=402;
 const int ESC=27;
 const int SPACE=32;
-const int ENTER=10;
-const int BACKSPACE=263; 
 const int DELETE=330;
 const int INSERT=331;
 const int HOME=262;
 const int END=360;
-const int COPY=11;
-const int PASTE=22;
-const int TAB=9;
-const int SHIFT_TAB=353;
-const int END_OF_RECORDS=336;
-const int START_OF_RECORDS=337;
-const int PAGES_SELECTOR_KEY=23;
-const int SCRIPT_PLAYER=19;
 const int MAXFIELDS=999; // fields per record
-const int MAXRECORDS=9999; // records limit
 
 enum { NOBUTTON=0, TICKBOX, BUTTONBOX, BUTTONSCREEN, BUTTONCOMMAND, AUTOMATICSCRIPT };
 enum { NUMERICAL=0, CALENDAR, STRING, MIXEDTYPE, VARIABLE, PROGRAM, CLOCK };
@@ -189,11 +165,11 @@ extern void cropstring(char ttext[], int noofcharacters, int flag=0);
 // field editor and setup routine
 void Field_Editor()
 {
-  int i, selection, fieldshown=0, t;
+  int i, selection, fieldshown=0, t=0;
   char ttext[MAXSTRING];
   editoroption=1;
   
-  while (t!=ESC) {
+  while ( t != ESC ) {
    Draw_Box(BOXCHAR, 6, 17, 33, 5, 16, 3);
    Show_Menu_Bar(1);
    clearinputline();
@@ -451,7 +427,7 @@ void Field_Editor()
 // references editor
 int References_Editor()
 {
-  int i, t, relationshipshown=0;
+  int i, t=0, relationshipshown=0;
   char ttext[MAXSTRING];
   vector<Relationship> trelationships=relationships; // create a copy, copy back afterwards if wanted
   Relationship trelationship(const_cast <char *> ("dummydatabase"), 0, 1, 2, 3);
@@ -460,7 +436,7 @@ int References_Editor()
   if (!trelationships.size())
    trelationships.push_back(trelationship);
   
-  while (t!=ESC && trelationships.size()) {
+  while ( t != ESC && trelationships.size() ) {
    Draw_Box(BOXCHAR, 6, 17, 33, 5, 16, 3);
    Show_Menu_Bar(1);
    for (i=18;i<40;i++) {

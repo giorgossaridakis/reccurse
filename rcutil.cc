@@ -115,15 +115,6 @@ int tryfile(char *file)
 {
   struct stat   buffer;   
   return (stat (file, &buffer) == 0);
-    
-//   FILE *f;
-//    
-//   f=fopen(file, "r");
-//   if (!f)
-//    return 0;
-//   fclose (f);
-//   
-//  return 1;
 }
 
 /* copy source to destination file */
@@ -131,7 +122,6 @@ int Copy_File(char *source, char *dest)
 {
   FILE *f;
   FILE *w;
-  char c;
   char buf[BUFSIZ];
   size_t size;
   
