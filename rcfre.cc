@@ -27,6 +27,7 @@
 #include <algorithm>
 
 using namespace std;
+extern WINDOW* win1;
 
 // constants
 const int MAXSTRING=80; // characters in a regular string
@@ -52,6 +53,7 @@ const int INSERT=331;
 const int HOME=262;
 const int END=360;
 const int MAXFIELDS=999; // fields per record
+extern int BLACK, RED, GREEN, YELLOW, BLUE, MAGENTA, CYAN, WHITE;
 
 enum { NOBUTTON=0, TICKBOX, BUTTONBOX, BUTTONSCREEN, BUTTONCOMMAND, AUTOMATICSCRIPT };
 enum { NUMERICAL=0, CALENDAR, STRING, MIXEDTYPE, VARIABLE, PROGRAM, CLOCK };
@@ -134,8 +136,8 @@ extern vector<Relationship> relationships;
 int References_Editor();
 void Field_Editor();
 void clearinputline();
-extern void Change_Color(int choice=58);
-extern void Draw_Box(int color, int x_pos, int x_size, int y_pos, int y_size, int paintcolor=0);
+extern void Change_Color(int choice=WHITE);
+extern void Draw_Box(int color, int x_pos, int x_size, int y_pos, int y_size, int paintcolor=BLACK);
 extern void Draw_Box(char t, int color, int x_pos, int x_size, int y_pos, int y_size, int paintcolor=0);
 extern void Draw_Box(Drawbox &tdrawbox);
 extern void gotoxy(int x, int y);
@@ -147,8 +149,8 @@ extern void Show_Menu_Bar(int mode=0);
 extern void cleanstdin();
 extern void Show_Message(int x_pos, int y_pos, int color, char *message, int sleeptime=1500);
 void Show_Message(int x_pos, int y_pos, int color, const char *message, int sleeptime=1500);
-extern int Scan_Input(int flag=0, int lim_a=0, int lim_b=1, int length=0);
-extern char Scan_Input(char istring[MAXSTRING], int x_pos, int y_pos, int color=58);
+extern int Scan_Input(int flag=0, int lim_a=0, int lim_b=1, int length=79);
+extern char Scan_Input(char istring[MAXSTRING], int x_pos, int y_pos, int color=WHITE, int length=79);
 extern void Scan_Date(int x_pos, int y_pos, char tdate[], int flag=0);
 extern int Add_Field(int type=NUMERICAL, char *name=NULL, char *textvalue=NULL);
 extern void Delete_Field(int field_id);
@@ -165,15 +167,15 @@ extern void cropstring(char ttext[], int noofcharacters, int flag=0);
 // field editor and setup routine
 void Field_Editor()
 {
-  int i, selection, fieldshown=0, t=0;
+  int i, selection, fieldshown=0, t=0, x, y;
   char ttext[MAXSTRING];
   editoroption=1;
   
   while ( t != ESC ) {
-   Draw_Box(BOXCHAR, 6, 17, 33, 5, 16, 3);
+   Draw_Box(BOXCHAR, 6, 17, 33, 5, 16, 25);
    Show_Menu_Bar(1);
    clearinputline();
-   Change_Color(3);
+   Change_Color(YELLOW);
    gotoxy(25, 6);
    printw("reccurse database");
    for (i=8;i<18;i++) {
@@ -223,12 +225,12 @@ void Field_Editor()
    printw("19.active:%s", onoff[record[fieldshown].active]);
    gotoxy(35,17);
    printw("20.autovalue:*");
-   Change_Color(5);
+   Change_Color(MAGENTA);
    gotoxy(18, 18);
    printw("<arrows><enter><space><esc><* &>");
    gotoxy(22, 19);
    printw("<j>ump <insert> <delete>");
-   Change_Color(3);
+   Change_Color(YELLOW);
    gotoxy(18,20);
    t=sgetch(18,20);
    cleanstdin();
@@ -259,7 +261,7 @@ void Field_Editor()
       Add_Field();
       strcpy(ttext, "added field ");
       strcat(ttext, itoa(fieldsperrecord));
-      Show_Message(18, 20, 1, ttext, 1500);
+      Show_Message(18, 20, RED, ttext, 1500);
      break;
      case DELETE:
       if (fieldsperrecord<2)
@@ -268,15 +270,15 @@ void Field_Editor()
       t=sgetch();
       if (tolower(t)=='y') {
        Delete_Field(fieldshown);
-       for (i=0;i<relationships.size();i++)
+       for (i=0;i<(int) relationships.size();i++)
         if (relationships[i].localFields[0]==fieldshown || relationships[i].localFields[1]==fieldshown)
          break;
-       if (i<relationships.size())
+       if (i<(int) relationships.size())
         for (i=fieldshown;i<fieldsperrecord;i++)
          if (record[i].fieldlist>fieldshown)
           --record[i].fieldlist;
        clearinputline();
-       Show_Message(18, 20, 1, "field deleted", 1500);
+       Show_Message(18, 20, RED, "field deleted", 1500);
       --fieldshown; }
      break;
      case '&':
@@ -289,10 +291,10 @@ void Field_Editor()
       record[record.size()-1].id=record.size()-1;
       strcpy(ttext, "duplicate to field ");
       strcat(ttext, itoa(fieldsperrecord));
-      Show_Message(18, 20, 1, ttext, 1500);
+      Show_Message(18, 20, RED, ttext, 1500);
       clearinputline();
       gotoxy(18,20);
-      Change_Color(2);
+      Change_Color(GREEN);
       printw("copy records (y/n):");
       t=sgetch();
       if (tolower(t)!='y')
@@ -309,6 +311,8 @@ void Field_Editor()
      case '\n':
       printw("selection:");
       selection=Scan_Input(1, 1, 20, 2);
+      getyx(win1, y, x);
+      gotoxy(x+2, y+1);
       printw("->");
       switch (selection) {
        case 1:
@@ -329,8 +333,8 @@ void Field_Editor()
         strcpy(record[fieldshown].title_attributes, ttext);
        break;
        case 4:
-        i=Scan_Input(1, 1, 58, 2);
-        if (i && i<59)
+        i=Scan_Input(1, 1, 64, 2);
+        if (i && i<64)
          record[fieldshown].title_color=i;
        break;
        case 5:
@@ -353,8 +357,8 @@ void Field_Editor()
         strcpy(record[fieldshown].attributes, ttext);
        break;
        case 10:
-        i=Scan_Input(1, 0, 59, 2);
-        if (i>-1 && i<60) // 0 or 59 is handled from fieldrepetitions
+        i=Scan_Input(1, 0, 65, 2);
+        if (i>-1 && i<66) // 0 or 65 is handled from fieldrepetitions
          record[fieldshown].color=i;
        break;
        case 11:
@@ -363,8 +367,8 @@ void Field_Editor()
          record[fieldshown].box=i;
        break;
        case 12:
-        i=Scan_Input(1, 1, 58, 2);
-        if (i && i<59)
+        i=Scan_Input(1, 1, 64, 2);
+        if (i && i<65)
          record[fieldshown].box_color=i;
        break;
        case 13:
@@ -412,7 +416,7 @@ void Field_Editor()
   break; } }
   alteredparameters=1;
   clearinputline();
-  Change_Color(1);
+  Change_Color(RED);
   gotoxy(18,20);
   cleanstdin();
   printw("save changes (y/n):");
@@ -433,51 +437,51 @@ int References_Editor()
   Relationship trelationship(const_cast <char *> ("dummydatabase"), 0, 1, 2, 3);
   vector<Relationship>::iterator p;
   
-  if (!trelationships.size())
+  if ( trelationships.size() == 0 )
    trelationships.push_back(trelationship);
   
   while ( t != ESC && trelationships.size() ) {
-   Draw_Box(BOXCHAR, 6, 17, 33, 5, 16, 3);
+   Draw_Box(BOXCHAR, 6, 17, 33, 5, 16, 25);
    Show_Menu_Bar(1);
    for (i=18;i<40;i++) {
     gotoxy(i, 20);
    addch(SPACE); }
-   Change_Color(2);
+   Change_Color(GREEN);
    gotoxy(20, 6);
    printw("reccurse relationship tables");
-   Change_Color(5);
+   Change_Color(MAGENTA);
    gotoxy(18,8);
    printw("external database name");
-   Change_Color(3);
+   Change_Color(YELLOW);
    gotoxy(18,9);
    printw("1.filename:%.22s", trelationships[relationshipshown].extDbname);
-   Change_Color(5);
+   Change_Color(MAGENTA);
    gotoxy(18,11);
    printw("equalized fields");
-   Change_Color(3);
+   Change_Color(YELLOW);
    gotoxy(18,12);
    printw("2.external:%d", trelationships[relationshipshown].extFields[0]);
    gotoxy(35,12);
    printw("3.local:%d", trelationships[relationshipshown].localFields[0]);
    gotoxy(18,14);
-   Change_Color(5);
+   Change_Color(MAGENTA);
    printw("references fields");
-   Change_Color(3);
+   Change_Color(YELLOW);
    gotoxy(18,15);
    printw("4.external:%d", trelationships[relationshipshown].extFields[1]);
    gotoxy(35,15); 
    printw("5.local:%d", trelationships[relationshipshown].localFields[1]);
-   Change_Color(5);
+   Change_Color(MAGENTA);
    gotoxy(18,17);
    printw("relatioship id:");
-   Change_Color(3);
+   Change_Color(YELLOW);
    printw("%d", relationshipshown+1);
-   Change_Color(2);
+   Change_Color(GREEN);
    gotoxy(22,18);
    printw("<arrow keys|HOME|END>");
    gotoxy(25,19);
    printw("<INS|DEL|ESC>");
-   Change_Color(3);
+   Change_Color(YELLOW);
    gotoxy(18,20);
    t=tolower(sgetch(18,20));
    cleanstdin(); 
@@ -487,45 +491,45 @@ int References_Editor()
       --relationshipshown;
     break;
     case RIGHT:
-     if (relationshipshown<trelationships.size()-1)
+     if (relationshipshown<(int) trelationships.size()-1)
       ++relationshipshown;
     break;
     case HOME:
      relationshipshown=0;
     break;
     case END:
-     relationshipshown=trelationships.size()-1;
+     relationshipshown=(int) trelationships.size()-1;
     break;
     case INSERT:
-     if (trelationships.size()<MAXRELATIONSHIPS) {
+     if ( (int) trelationships.size()<MAXRELATIONSHIPS) {
       trelationships.push_back(trelationship);
-     Show_Message(22,20, 1, "relationship inserted", 1500); }
+     Show_Message(22, 20, RED, "relationship inserted", 1500); }
      else
-      Show_Message(20,20, 1, "relationships storage full", 1500);
+      Show_Message(20,20, RED, "relationships storage full", 1500);
     break;
     case DELETE:
      p=trelationships.begin();
      p+=relationshipshown;
      trelationships.erase(p);
      relationshipshown+=(!relationshipshown) ? 1 : -1;
-     Show_Message(22,20, 1, "relationship deleted", 1500);
+     Show_Message(22, 20, RED, "relationship deleted", 1500);
     break;
     case '1':
      Show_Menu_Bar(1);
      strcpy(ttext, trelationships[relationshipshown].extDbname);
-     t=Scan_Input(ttext, 1, 24, 6);
+     t=Scan_Input(ttext, 1, 24, 49);
      if (t==ESC)
       break;
      Reccurse_File_Extension(ttext, 0);
      cropstring(ttext, MAXNAME-3);
      Reccurse_File_Extension(ttext, 2);
      if (!tryfile(ttext)) {
-      Show_Message(22,20, 1, "nonexistant database", 1500);
+      Show_Message(22, 20, RED, "nonexistant database", 1500);
      break; }
      strcpy(trelationships[relationshipshown].extDbname, ttext);
     break;
     case '2':
-     Change_Color(6);
+     Change_Color(CYAN);
      gotoxy(18, 20);
      printw("field->");
      i=Scan_Input(1, 1, MAXFIELDS, 3);
@@ -533,7 +537,7 @@ int References_Editor()
       trelationships[relationshipshown].extFields[0]=i;
     break;
     case '3':
-     Change_Color(6);
+     Change_Color(CYAN);
      gotoxy(18, 20);
      printw("field->");
      i=Scan_Input(1, 1, MAXFIELDS, 3);
@@ -541,7 +545,7 @@ int References_Editor()
       trelationships[relationshipshown].localFields[0]=i;
     break;
     case '4':
-     Change_Color(6);
+     Change_Color(CYAN);
      gotoxy(18, 20);
      printw("field->");
      i=Scan_Input(1, 1, MAXFIELDS, 3);
@@ -549,7 +553,7 @@ int References_Editor()
       trelationships[relationshipshown].extFields[1]=i;
     break;
     case '5':
-     Change_Color(6);
+     Change_Color(CYAN);
      gotoxy(18, 20);
      printw("field->");
      i=Scan_Input(1, 1, MAXFIELDS, 3);
@@ -559,14 +563,14 @@ int References_Editor()
   alteredparameters=1;
   clearinputline();
   gotoxy(18,20);
-  Change_Color(1);
+  Change_Color(RED);
   cleanstdin();
   printw("save changes (y/n):");
   t=sgetch();
   if (tolower(t)=='y') {
    alteredparameters=0;
    relationships.clear();
-   for (i=0;i<trelationships.size();i++)
+   for (i=0;i<(int) trelationships.size();i++)
     if (strcmp(trelationships[i].extDbname, "dummydatabase"))
      relationships.push_back(trelationships[i]);
    Read_Write_db_File(3);
@@ -580,7 +584,7 @@ void clearinputline()
 {
   int i;
   
-   Change_Color(58);
+   Change_Color(WHITE);
    for (i=18;i<40;i++) {
     gotoxy(i, 20);
    addch(SPACE); }

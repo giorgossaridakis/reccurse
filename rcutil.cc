@@ -103,7 +103,7 @@ char *dtoa(long double val)
   int i;
   std::string str = std::to_string(val);
   
-  for (i=0;i<str.size();i++)
+  for (i=0;i<(int) str.size();i++)
    result[i]=str[i];
   result[i]='\0';
   
@@ -145,11 +145,11 @@ void cropstring(char ttext[], int noofcharacters, int flag) // 0 end, 1 beginnin
   char ttext2[MAXSTRING];
    
   if (flag) {
-   for (i=noofcharacters;i<strlen(ttext);i++)
+   for (i=noofcharacters;i<(int) strlen(ttext);i++)
     ttext2[i-noofcharacters]=ttext[i];
    ttext2[i-noofcharacters]='\0'; 
   strcpy(ttext, ttext2); }
-  else if (noofcharacters<=strlen(ttext))
+  else if (noofcharacters<=(int) strlen(ttext))
    ttext[noofcharacters]='\0';
 }
 
@@ -196,17 +196,17 @@ int find(char text[], char token[])
   int i, n, arraypositions=0, hits=0, tokenstried=0;
   char ttoken[MAXSTRING], tokens[MAXTOKENS][MAXSTRING];
   
-   for (i=0;i<strlen(token);i++) {
+   for (i=0;i<(int) strlen(token);i++) {
     n=0;
-    while (token[i]!='*' && i<strlen(token))
+    while (token[i]!='*' && i<(int) strlen(token))
     ttoken[n++]=tolower(token[i++]);
     ttoken[n]='\0';
    strcpy(tokens[arraypositions++], ttoken); }
    i=0;
-   while (tokenstried<arraypositions && i<strlen(text)) { // token to look for
-    for (;i<strlen(text);i++) {
+   while (tokenstried<arraypositions && i<(int) strlen(text)) { // token to look for
+    for (;i<(int) strlen(text);i++) {
      if (tolower(text[i])==tokens[tokenstried][0]) {
-      for (n=0;n<strlen(tokens[tokenstried]);n++)
+      for (n=0;n<(int) strlen(tokens[tokenstried]);n++)
        ttoken[n]=tolower(text[i+n]);
       ttoken[n]='\0';
       if (!strcmp(ttoken, tokens[tokenstried])) {
@@ -223,10 +223,10 @@ int findsimple(char text[], char token[])
   int i, n, hit=0;
   char ttoken[MAXSTRING];
   
-   for (i=0;i<strlen(text);i++) {
+   for (i=0;i<(int) strlen(text);i++) {
     if (text[i]==token[0]) {
      hit=i+1;
-     for (n=0;n<strlen(token);n++)
+     for (n=0;n<(int) strlen(token);n++)
       ttoken[n]=text[i+n];
      ttoken[n]='\0';
      if (strcmp(ttoken, token))
@@ -327,10 +327,10 @@ int limitspaces(char *tstring)
   char ttstring[MAXSTRING];
   
     i=n=spaces=0;
-    while (isspace(tstring[i]) && i<strlen(tstring)) {
+    while (isspace(tstring[i]) && i<(int) strlen(tstring)) {
      ++i;
     ++spaces; } 
-    for (;i<strlen(tstring);i++)
+    for (;i<(int) strlen(tstring);i++)
      ttstring[n++]=tstring[i];
     ttstring[n]='\0';
     i=strlen(ttstring)-1;
@@ -353,7 +353,7 @@ int readstringentry(char *line, char *linepart)
   static char tline[MAXSTRING];
 // 
   // reset static
-  if (i==strlen(line)) {
+  if (i==(int) strlen(line)) {
    i=0;
    return i;
   }

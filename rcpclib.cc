@@ -51,26 +51,26 @@ void initiatemathematicalfunctions()
 int parseformulaforfunctions(char formula[])
 {
   int i, n, startpt, endpt, findinstructions=1, parseresult;
-  char ttext[strlen(formula)+1], tcommand[MAXCOMMAND];
+  char ttext[(int) strlen(formula)+1], tcommand[MAXCOMMAND];
   strcpy(ttext, formula);
   
    while (findinstructions) {
     findinstructions=0;
-    for (i=0;i<functions.size();i++) {
+    for (i=0;i<(int) functions.size();i++) {
      if ((startpt=findsimple(ttext, functions[i].functionName))) {
       break;
      }
     }
-    if (i<functions.size()) {
+    if (i<(int) functions.size()) {
      findinstructions=1;
      --startpt;
      n=startpt;
      // empty function callname so it will not be parsed again
-     while (ttext[n]!='(' && n<strlen(ttext))
+     while (ttext[n]!='(' && n<(int) strlen(ttext))
       ttext[n++]=' ';
      endpt=n+1;
      openparentheses=1;
-     while (openparentheses && endpt<strlen(ttext)) {
+     while (openparentheses && endpt<(int) strlen(ttext)) {
       if (ttext[endpt]=='(')
        ++openparentheses;
       if (ttext[endpt]==')')
@@ -107,10 +107,10 @@ int mathfunctionsparser(int function_id, char tcommand[MAXSTRING])
    while (tcommand[mpos]!='(')
     ++mpos;
    ++mpos;
-   tcommand[strlen(tcommand)-1]=',';
+   tcommand[(int) strlen(tcommand)-1]=',';
    for (i=0;i<functions[function_id].functionParameters;i++) {
     n=0;
-    while (mpos<strlen(tcommand)) {
+    while (mpos<(int) strlen(tcommand)) {
      if (tcommand[mpos]==',') {
       ++mpos;
      break; }
@@ -121,28 +121,28 @@ int mathfunctionsparser(int function_id, char tcommand[MAXSTRING])
      tparameter[tp][n++]=tcommand[mpos];
     ++mpos; }
     tparameter[tp][n]='\0';
-    if (!strlen(tparameter[tp])) { // nonexistant parameter
-     tcommand[strlen(tcommand)-1]=')';
+    if (!(int) strlen(tparameter[tp])) { // nonexistant parameter
+     tcommand[(int) strlen(tcommand)-1]=')';
     return tp*-1; } // negative return to separate from openparentheses
     parenthesesincluderforpolishreversecalculator(tparameter[tp]);
     reversepolishcalculatorequalizer(tparameter[tp]);
     d=reversepolishcalculator(tparameter[tp]);
     strcpy(tparameter[tp], dtoa(d));
     ++tp; }
-    tcommand[strlen(tcommand)-1]=')';
-    if (mpos<strlen(tcommand)-1) // still more tcommand when functions have been read
+    tcommand[(int) strlen(tcommand)-1]=')';
+    if (mpos<(int) strlen(tcommand)-1) // still more tcommand when functions have been read
      return tp*-1;
     // reconstruct tcommand
     strcpy(tcommand, functions[function_id].functionPrototype);
     while (operation) {
      operation=0;
      for (i=0;i<functions[function_id].functionParameters;i++) {
-      for (n=0;n<strlen(tcommand);n++) {
+      for (n=0;n<(int) strlen(tcommand);n++) {
        if (tcommand[n]==i+97 && tcommand[n-1]=='#') { // find a,b,c,d,e ..MAXFUNCTIONPARAMETERS
         break;
        }
       }
-      if (n<strlen(tcommand)) {
+      if (n<(int) strlen(tcommand)) {
        operation=1;
        tcommand[n-1]=' ';
        tcommand[n]=' ';
@@ -159,12 +159,12 @@ int parseformulaforerrors(char formula[])
 {
   int i,n;
 
-   for (i=0;i<strlen(formula);i++) {
+   for (i=0;i<(int) strlen(formula);i++) {
     if (isalpha(formula[i]) && (formula[i+1]=='(' || formula[i+1]=='('))
      return -1; // nondefined function
     if (isdigit(formula[i])/* && !digitflag*/) {
      n=0;
-     while ((isdigit(formula[i]) || isdecimalseparator(formula[i])) && i<strlen(formula)) {
+     while ((isdigit(formula[i]) || isdecimalseparator(formula[i])) && i<(int) strlen(formula)) {
       ++n;
      ++i; }
      if (n>MAXOP-1)

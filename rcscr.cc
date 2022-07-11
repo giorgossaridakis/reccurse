@@ -26,8 +26,18 @@
 #include <algorithm>
 
 // global constants
-enum { RED = 1, GREEN, YELLOW, BLUE, MAGENTA, CYAN, WHITE, BLACK = 50, WHITEONBLACK = 58 };
 enum { NORMAL=0, STANDOUT, UNDERLINE, REVERSE, BLINK, DIM, BOLD, PROTECT, INVISIBLE };
+enum { BLACKONBLACK=1, BLACKONRED, BLACKONGREEN, BLACKONYELLOW, BLACKONBLUE, BLACKONMAGENTA,
+       BLACKONCYAN, BLACKONWHITE,
+       REDONBLACK, REDONRED, REDONGREEN, REDONYELLOW, REDONBLUE, REDONMAGENTA, REDONCYAN, REDONWHITE,
+       GREENONBLACK, GREENONRED, GREENONGREEN, GREENONYELLOW, GREENONBLUE, GREENONMAGENTA, GREENONCYAN, GREENONWHITE,
+       YELLOWONBLACK, YELLOWONRED, YELLOWONGREEN, YELLOWONYELLOW, YELLOWONBLUE, YELLOWONMAGENTA, YELLOWONCYAN, YELLOWONWHITE,
+       BLUEONBLACK, BLUEONRED, BLUEONGREEN, BLUEONYELLOW, BLUEONBLUE, BLUEONMAGENTA, BLUEONCYAN, BLUEONWHITE,
+       MAGENTAONBLACK, MAGENTAONRED, MAGENTAONGREEN, MAGENTAONYELLOW, MAGENTAONBLUE, MAGENTAONMAGENTA, MAGENTAONCYAN, MAGENTAONWHITE,
+       CYANONBLACK, CYANONRED, CYANONGREEN, CYANONYELLOW, CYANONBLUE, CYANONMAGENTA, CYANONCYAN, CYANONWHITE,
+       WHITEONBLACK, WHITEONRED, WHITEONGREEN, WHITEONYELLOW, WHITEONBLUE, WHITEONMAGENTA, WHITEONCYAN, WHITEONWHITE
+      };
+int BLACK=BLACKONBLACK, RED=REDONBLACK, GREEN=GREENONBLACK, YELLOW=YELLOWONBLACK, BLUE=BLUEONBLACK, MAGENTA=MAGENTAONBLACK, CYAN=CYANONBLACK, WHITE=WHITEONBLACK;
 
 struct Points {
  int x;
@@ -47,7 +57,7 @@ class Drawbox {
 // local variables
 WINDOW *win1=newwin(80, 24, 1, 1);
 const char BOXCHAR='*';
-int highlightcolors[2]={ 34, 23 };
+int highlightcolors[2]={ MAGENTAONYELLOW, YELLOWONMAGENTA };
 int terminalhascolor=1;
 
 // external
@@ -58,8 +68,8 @@ const int SPACE=32;
 // function declarations
 int Init_Screen();
 void End_Screen();
-void Change_Color(int choice=58);
-void Draw_Box(int color, int x_pos, int x_size, int y_pos, int y_size, int paintcolor=0);
+void Change_Color(int choice=WHITE);
+void Draw_Box(int color, int x_pos, int x_size, int y_pos, int y_size, int paintcolor=BLACK);
 void Draw_Box(char t, int color, int x_pos, int x_size, int y_pos, int y_size, int paintcolor=0);
 void Draw_Box(Drawbox &tdrawbox);
 void gotoxy(int x, int y);
@@ -78,94 +88,80 @@ int Init_Screen()
   curs_set(1);
   start_color();
   
-  /* colors  
-        COLOR_BLACK   0
-        COLOR_RED     1
-        COLOR_GREEN   2
-        COLOR_YELLOW  3
-        COLOR_BLUE    4
-        COLOR_MAGENTA 5
-        COLOR_CYAN    6
-        COLOR_WHITE   7 
-    
-    attributes
-    A_NORMAL        Normal display (no highlight)
-    A_STANDOUT      Best highlighting mode of the terminal.
-    A_UNDERLINE     Underlining
-    A_REVERSE       Reverse video
-    A_BLINK         Blinking
-    A_DIM           Half bright
-    A_BOLD          Extra bright or bold
-    A_PROTECT       Protected mode
-    A_INVIS         Invisible or blank mode
-    A_ALTCHARSET    Alternate character set
-    A_CHARTEXT      Bit-mask to extract a character
-    COLOR_PAIR(n)   Color-pair number n */
- 
-  // basic pairs
-  init_pair(1, COLOR_RED, COLOR_BLACK);
-  init_pair(2, COLOR_GREEN, COLOR_BLACK);
-  init_pair(3, COLOR_YELLOW, COLOR_BLACK);
-  init_pair(4, COLOR_BLUE, COLOR_BLACK);
-  init_pair(5, COLOR_MAGENTA, COLOR_BLACK);
-  init_pair(6, COLOR_CYAN, COLOR_BLACK);
-  // mixed colors 
-  init_pair(7, COLOR_RED, COLOR_GREEN);
-  init_pair(8, COLOR_RED, COLOR_YELLOW);
-  init_pair(9, COLOR_RED, COLOR_BLUE);
-  init_pair(10, COLOR_RED, COLOR_MAGENTA);
-  init_pair(11, COLOR_RED, COLOR_CYAN);
-  init_pair(12, COLOR_RED, COLOR_WHITE);
-  init_pair(13, COLOR_GREEN, COLOR_RED);  
-  init_pair(14, COLOR_GREEN, COLOR_YELLOW);  
-  init_pair(15, COLOR_GREEN, COLOR_BLUE);
-  init_pair(16, COLOR_GREEN, COLOR_MAGENTA);
-  init_pair(17, COLOR_GREEN, COLOR_CYAN);
-  init_pair(18, COLOR_GREEN, COLOR_WHITE);
-  init_pair(19, COLOR_RED, COLOR_GREEN); // twice declared :)
-  init_pair(20, COLOR_YELLOW, COLOR_RED);  
-  init_pair(21, COLOR_YELLOW, COLOR_GREEN);   
-  init_pair(22, COLOR_YELLOW, COLOR_BLUE); 
-  init_pair(23, COLOR_YELLOW, COLOR_MAGENTA); 
-  init_pair(24, COLOR_YELLOW, COLOR_CYAN);  
-  init_pair(25, COLOR_YELLOW, COLOR_WHITE); 
-  init_pair(26, COLOR_BLUE, COLOR_RED); 
-  init_pair(27, COLOR_BLUE, COLOR_GREEN); 
-  init_pair(28, COLOR_BLUE, COLOR_YELLOW); 
-  init_pair(29, COLOR_BLUE, COLOR_MAGENTA); 
-  init_pair(30, COLOR_BLUE, COLOR_CYAN);
-  init_pair(31, COLOR_BLUE, COLOR_WHITE); 
-  init_pair(32, COLOR_MAGENTA, COLOR_RED); 
-  init_pair(33, COLOR_MAGENTA, COLOR_GREEN); 
-  init_pair(34, COLOR_MAGENTA, COLOR_YELLOW); 
-  init_pair(35, COLOR_MAGENTA, COLOR_BLUE); 
-  init_pair(36, COLOR_MAGENTA, COLOR_CYAN); 
-  init_pair(37, COLOR_MAGENTA, COLOR_WHITE); 
-  init_pair(38, COLOR_CYAN, COLOR_RED);   
-  init_pair(39, COLOR_CYAN, COLOR_GREEN); 
-  init_pair(40, COLOR_CYAN, COLOR_YELLOW); 
-  init_pair(41, COLOR_CYAN, COLOR_BLUE); 
-  init_pair(42, COLOR_CYAN, COLOR_MAGENTA); 
-  init_pair(43, COLOR_CYAN, COLOR_WHITE); 
-  init_pair(44, COLOR_WHITE, COLOR_RED);
-  init_pair(45, COLOR_WHITE, COLOR_GREEN);
-  init_pair(46, COLOR_WHITE, COLOR_YELLOW);  
-  init_pair(47, COLOR_WHITE, COLOR_BLUE);
-  init_pair(48, COLOR_WHITE, COLOR_MAGENTA);
-  init_pair(49, COLOR_WHITE, COLOR_CYAN);
-  // same colors background and foreground
-  init_pair(50, COLOR_BLACK, COLOR_BLACK);
-  init_pair(51, COLOR_RED, COLOR_RED);
-  init_pair(52, COLOR_GREEN, COLOR_GREEN);  
-  init_pair(53, COLOR_YELLOW, COLOR_YELLOW);  
-  init_pair(54, COLOR_BLUE, COLOR_BLUE);
-  init_pair(55, COLOR_MAGENTA, COLOR_MAGENTA);
-  init_pair(56, COLOR_CYAN, COLOR_CYAN);
-  init_pair(57, COLOR_WHITE, COLOR_WHITE);
-  // white on COLOR_BLACK  
-  init_pair(58, COLOR_WHITE, COLOR_BLACK);
+  // black on others
+  init_pair(BLACKONBLACK, COLOR_BLACK, COLOR_BLACK);
+  init_pair(BLACKONRED, COLOR_BLACK, COLOR_RED);
+  init_pair(BLACKONGREEN, COLOR_BLACK, COLOR_GREEN);
+  init_pair(BLACKONYELLOW, COLOR_BLACK, COLOR_YELLOW);
+  init_pair(BLACKONBLUE, COLOR_BLACK, COLOR_BLUE);
+  init_pair(BLACKONMAGENTA, COLOR_BLACK, COLOR_MAGENTA);
+  init_pair(BLACKONCYAN, COLOR_BLACK, COLOR_CYAN);
+  init_pair(BLACKONWHITE, COLOR_BLACK, COLOR_WHITE);
+  // red on others
+  init_pair(REDONBLACK, COLOR_RED, COLOR_BLACK);
+  init_pair(REDONRED, COLOR_RED, COLOR_RED);
+  init_pair(REDONGREEN, COLOR_RED, COLOR_GREEN);
+  init_pair(REDONYELLOW, COLOR_RED, COLOR_YELLOW);
+  init_pair(REDONBLUE, COLOR_RED, COLOR_BLUE);
+  init_pair(REDONMAGENTA, COLOR_RED, COLOR_MAGENTA);
+  init_pair(REDONCYAN, COLOR_RED, COLOR_CYAN);
+  init_pair(REDONWHITE, COLOR_RED, COLOR_WHITE);
+  // green on others
+  init_pair(GREENONBLACK, COLOR_GREEN, COLOR_BLACK);
+  init_pair(GREENONRED, COLOR_GREEN, COLOR_RED);
+  init_pair(GREENONGREEN, COLOR_GREEN, COLOR_GREEN);
+  init_pair(GREENONYELLOW, COLOR_GREEN, COLOR_YELLOW);
+  init_pair(GREENONBLUE, COLOR_GREEN, COLOR_BLUE);
+  init_pair(GREENONMAGENTA, COLOR_GREEN, COLOR_MAGENTA);
+  init_pair(GREENONCYAN, COLOR_GREEN, COLOR_CYAN);
+  init_pair(GREENONWHITE, COLOR_GREEN, COLOR_WHITE);
+  // yellow on others
+  init_pair(YELLOWONBLACK, COLOR_YELLOW, COLOR_BLACK);
+  init_pair(YELLOWONRED, COLOR_YELLOW, COLOR_RED);
+  init_pair(YELLOWONGREEN, COLOR_YELLOW, COLOR_GREEN);
+  init_pair(YELLOWONYELLOW, COLOR_YELLOW, COLOR_YELLOW);
+  init_pair(YELLOWONBLUE, COLOR_YELLOW, COLOR_BLUE);
+  init_pair(YELLOWONMAGENTA, COLOR_YELLOW, COLOR_MAGENTA);
+  init_pair(YELLOWONCYAN, COLOR_YELLOW, COLOR_CYAN);
+  init_pair(YELLOWONWHITE, COLOR_YELLOW, COLOR_WHITE);
+  // blue on others
+  init_pair(BLUEONBLACK, COLOR_BLUE, COLOR_BLACK);
+  init_pair(BLUEONRED, COLOR_BLUE, COLOR_RED);
+  init_pair(BLUEONGREEN, COLOR_BLUE, COLOR_GREEN);
+  init_pair(BLUEONYELLOW, COLOR_BLUE, COLOR_YELLOW);
+  init_pair(BLUEONBLUE, COLOR_BLUE, COLOR_BLUE);
+  init_pair(BLUEONMAGENTA, COLOR_BLUE, COLOR_MAGENTA);
+  init_pair(BLUEONCYAN, COLOR_BLUE, COLOR_CYAN);
+  init_pair(BLUEONWHITE, COLOR_BLUE, COLOR_WHITE);
+  // magenta on others
+  init_pair(MAGENTAONBLACK, COLOR_MAGENTA, COLOR_BLACK);
+  init_pair(MAGENTAONRED, COLOR_MAGENTA, COLOR_RED);
+  init_pair(MAGENTAONGREEN, COLOR_MAGENTA, COLOR_GREEN);
+  init_pair(MAGENTAONYELLOW, COLOR_MAGENTA, COLOR_YELLOW);
+  init_pair(MAGENTAONBLUE, COLOR_MAGENTA, COLOR_BLUE);
+  init_pair(MAGENTAONMAGENTA, COLOR_MAGENTA, COLOR_MAGENTA);
+  init_pair(MAGENTAONCYAN, COLOR_MAGENTA, COLOR_CYAN);
+  init_pair(MAGENTAONWHITE, COLOR_MAGENTA, COLOR_WHITE);
+  // cyan on others
+  init_pair(CYANONBLACK, COLOR_CYAN, COLOR_BLACK);
+  init_pair(CYANONRED, COLOR_CYAN, COLOR_RED);
+  init_pair(CYANONGREEN, COLOR_CYAN, COLOR_GREEN);
+  init_pair(CYANONYELLOW, COLOR_CYAN, COLOR_YELLOW);
+  init_pair(CYANONBLUE, COLOR_CYAN, COLOR_BLUE);
+  init_pair(CYANONMAGENTA, COLOR_CYAN, COLOR_MAGENTA);
+  init_pair(CYANONCYAN, COLOR_CYAN, COLOR_CYAN);
+  init_pair(CYANONWHITE, COLOR_CYAN, COLOR_WHITE);
+  // white on others
+  init_pair(WHITEONBLACK, COLOR_WHITE, COLOR_BLACK);
+  init_pair(WHITEONRED, COLOR_WHITE, COLOR_RED);
+  init_pair(WHITEONGREEN, COLOR_WHITE, COLOR_GREEN);
+  init_pair(WHITEONYELLOW, COLOR_WHITE, COLOR_YELLOW);
+  init_pair(WHITEONBLUE, COLOR_WHITE, COLOR_BLUE);
+  init_pair(WHITEONMAGENTA, COLOR_WHITE, COLOR_MAGENTA);
+  init_pair(WHITEONCYAN, COLOR_WHITE, COLOR_CYAN);
+  init_pair(WHITEONWHITE, COLOR_WHITE, COLOR_WHITE);
 
-  attron(COLOR_PAIR(58));  
+  attron(COLOR_PAIR(7));  
  return 0;
 }
 
@@ -230,7 +226,7 @@ void Draw_Box(int color, int x_pos, int x_size, int y_pos, int y_size, int paint
      for (n=y_pos+1;n<y_pos+y_size;n++) {
       gotoxy(i, n);
     addch(SPACE); } }
-    Change_Color(58); }
+    Change_Color(WHITE); }
 
   refresh();
 }
@@ -259,7 +255,7 @@ void Draw_Box(char t, int color, int x_pos, int x_size, int y_pos, int y_size, i
     for (n=y_pos+1;n<y_pos+y_size;n++) {
      gotoxy(i, n);
    addch(SPACE); } }
-  Change_Color(58); }
+  Change_Color(WHITE); }
   refresh();
 }
 
@@ -303,7 +299,7 @@ void Draw_Box(Drawbox &tdrawbox)
     for (n=y_pos+1;n<y_pos+y_size;n++) {
      gotoxy(i, n);
    addch(SPACE); } }
-  Change_Color(58); }
+  Change_Color(WHITE); }
  refresh();
 }
 

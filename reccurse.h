@@ -56,12 +56,22 @@ int BLOCK=-1, UNBLOCK=1000, PRINTUNBLOCK=25, QUITUNBLOCK=2500, SCANUNBLOCK=10000
 int separatort=46, separatord=44, suffixposition=1;
 enum { NOBUTTON=0, TICKBOX, BUTTONBOX, BUTTONSCREEN, BUTTONCOMMAND, AUTOMATICSCRIPT };
 enum { NUMERICAL=0, CALENDAR, STRING, MIXEDTYPE, VARIABLE, PROGRAM, CLOCK };
-enum { RED = 1, GREEN, YELLOW, BLUE, MAGENTA, CYAN, WHITE, BLACK = 50, WHITEONBLACK = 58 };
 enum { NORMAL=0, STANDOUT, UNDERLINE, REVERSE, BLINK, DIM, BOLD, PROTECT, INVISIBLE };
+extern int BLACK, RED, GREEN, YELLOW, BLUE, MAGENTA, CYAN, WHITE;
+enum { BLACKONBLACK=1, BLACKONRED, BLACKONGREEN, BLACKONYELLOW, BLACKONBLUE, BLACKONMAGENTA,
+       BLACKONCYAN, BLACKONWHITE,
+       REDONBLACK, REDONRED, REDONGREEN, REDONYELLOW, REDONBLUE, REDONMAGENTA, REDONCYAN, REDONWHITE,
+       GREENONBLACK, GREENONRED, GREENONGREEN, GREENONYELLOW, GREENONBLUE, GREENONMAGENTA, GREENONCYAN, GREENONWHITE,
+       YELLOWONBLACK, YELLOWONRED, YELLOWONGREEN, YELLOWONYELLOW, YELLOWONBLUE, YELLOWONMAGENTA, YELLOWONCYAN, YELLOWONWHITE,
+       BLUEONBLACK, BLUEONRED, BLUEONGREEN, BLUEONYELLOW, BLUEONBLUE, BLUEONMAGENTA, BLUEONCYAN, BLUEONWHITE,
+       MAGENTAONBLACK, MAGENTAONRED, MAGENTAONGREEN, MAGENTAONYELLOW, MAGENTAONBLUE, MAGENTAONMAGENTA, MAGENTAONCYAN, MAGENTAONWHITE,
+       CYANONBLACK, CYANONRED, CYANONGREEN, CYANONYELLOW, CYANONBLUE, CYANONMAGENTA, CYANONCYAN, CYANONWHITE,
+       WHITEONBLACK, WHITEONRED, WHITEONGREEN, WHITEONYELLOW, WHITEONBLUE, WHITEONMAGENTA, WHITEONCYAN, WHITEONWHITE
+      };
 enum { TOLEFT=1, CENTER, TORIGHT };
 enum { NOSCRIPT = 0, ONENTRY, ONEXIT, ONENTRYANDEXIT };
-enum { NOACTIVEFIELDS = -2, FILEERROR, NORMALEXIT = 0 };
-const char *exittexts[]= { "NO ACTIVE FIELDS", "FILE I/O ERROR", "NORMAL" };
+enum { SEGMENTATIONFAULT = -4, FLOATINGPOINTEXCEPTION = -3, NOACTIVEFIELDS = -2, FILEERROR, NORMALEXIT = 0 };
+const char *exittexts[]= { "SEGMENTATION FAULT", "FLOATING POINT EXCEPTION", "NO ACTIVE FIELDS", "FILE I/O ERROR", "NORMAL" };
 const char *menukeys[]={ "eot`", "alsh`", "dckpjv+-*/.!@`", "ifru`", "yn`", "0123456789/*-+^,.()=`", "udixl`", "ir`" }; // m works in all menus
 const char *buttonkeys[]={ "0", "1", "2", "3", "4", "5", "6", "7", "8", "9", "/", "*", 
 "-", "+", "^", ",", ".", "(", ")", "=", "sin", "cos", "tan", "cotan", "sqr", "abs", "log", "AC", "DEL", "EXEC" };
@@ -88,6 +98,7 @@ const int INSERT=331;
 const int HOME=262;
 const int END=360;
 const int COPY=11;
+const int TOGGLEMOUSE=12;
 const int PASTE=22;
 const int TAB=9;
 const int SHIFT_TAB=353;
@@ -121,10 +132,11 @@ vector<int> mousemenucommands;
 MEVENT mouse;
 char pages[MAXPAGES][MAXSTRING];
 char rcfile[MAXSTRING], dbfile[MAXSTRING];
+enum { OFF = 0, ON };
 const char *onoff[]= { "off", "on" };
 char clipboard[MAXSTRING];
 char calendarformat[MAXSTRING];
-int menucolors[8]={ 5, 6, 4, 3, 1, 2, 4, 4 };
+int menucolors[8]={ MAGENTA, CYAN, BLUE, YELLOW, RED, GREEN, BLUE, BLUE };
 int menulines[8]={ 24, 24, 24, 24, 24, 24, 24, 24 };
 char infotext[MAXSTRING], *scriptcommand;
 int screen[81][25];
@@ -133,6 +145,7 @@ int fieldrepetitions[MAXFIELDS], lastfieldrepeated;
 int changedrecord=1, editoroption=0;
 char input_string[MAXSTRING];
 int altpressed;
+int MOUSE=ON;
 extern int scriptsleeptime;
 extern int terminalhascolor;
 
@@ -296,13 +309,15 @@ int addorplayprogram(int programid);
 void outputscreenarraytofile();
 
 // rclib.cc
+void INThandler(int sig);
+int filecontainsbinary(ifstream* file);
 char charcoder(char d, int mode=0);
 int filecodedecode(char *source, char *destination, int mode=0);
 void Show_File_Error(char *filename);
 void stringcodedecode(char *source, char *destination, int mode=0);
 void checkpoint(int id, int color=58);
-int Scan_Input(int flag=0, int lim_a=0, int lim_b=1, int length=0);
-char Scan_Input(char istring[MAXSTRING], int x_pos, int y_pos, int color=58);
+int Scan_Input(int flag=0, int lim_a=0, int lim_b=1, int length=79);
+char Scan_Input(char istring[MAXSTRING], int x_pos, int y_pos, int color=WHITE, int length=79);
 void Scan_Date(int x_pos, int y_pos, char tdate[], int flag=0);
 char *addmissingzeros(char tstring[], int zeros);
 void terminatestringatcharactersend(char *ttext);
@@ -419,9 +434,9 @@ extern int isvariable(char *parameter);
 // rcscr.cc
 extern int Init_Screen();
 extern void End_Screen();
-extern void Change_Color(int choice=58);
-extern void Draw_Box(int color, int x_pos, int x_size, int y_pos, int y_size, int paintcolor=0);
-extern void Draw_Box(char t, int color, int x_pos, int x_size, int y_pos, int y_size, int paintcolor=0);
+extern void Change_Color(int choice=WHITE);
+extern void Draw_Box(int color, int x_pos, int x_size, int y_pos, int y_size, int paintcolor=BLACK);
+extern void Draw_Box(char t, int color, int x_pos, int x_size, int y_pos, int y_size, int paintcolor=BLACK);
 extern void Draw_Box(Drawbox &tdrawbox);
 extern void gotoxy(int x, int y);
 extern void Change_Attributes(int attribute);

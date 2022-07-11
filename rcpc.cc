@@ -215,7 +215,7 @@ int getop(char s[], char formula[])
 {
 int i, c;
 
-  if (pos>strlen(formula))
+  if (pos>(int) strlen(formula))
    return EOF;
   while ((s[0] = c = formula[pos++]) == ' ' || c == '\t');
   s[1] = '\0';
@@ -259,7 +259,7 @@ int parenthesesincluderforpolishreversecalculator(char formula[])
   
    // check for equal number of parentheses
    openparentheses=0;
-   for (i=0;i<strlen(formula);i++) {
+   for (i=0;i<(int) strlen(formula);i++) {
     if (formula[i]=='(')
      ++openparentheses;
     if (formula[i]==')')
@@ -269,7 +269,7 @@ int parenthesesincluderforpolishreversecalculator(char formula[])
    strcpy(tformula, formula);
    while (operation) {
     operation=0;
-    for (i=0;i<strlen(tformula);i++) {
+    for (i=0;i<(int) strlen(tformula);i++) {
      if (tformula[i]==')') {
       tpos[1]=i; tpos[0]=i;
       while (tformula[tpos[0]]!='(')
@@ -287,15 +287,15 @@ int parenthesesincluderforpolishreversecalculator(char formula[])
        tformula[n]=' ';
       // copy rest of of tformula to tendformula
       i1=0;
-      for (n=tpos[1];n<strlen(tformula);n++)
+      for (n=tpos[1];n<(int) strlen(tformula);n++)
        tendformula[i1++]=tformula[n];
       tendformula[i1]='\0';
       // append f to end of tformula
       strcpy(ts, dtoa(f));
-      for (n=0;n<strlen(ts);n++)
+      for (n=0;n<(int) strlen(ts);n++)
        tformula[tpos[0]+n+1]=ts[n];
       // append tendformula to formula
-      for (i1=0;i1<strlen(tendformula);i1++)
+      for (i1=0;i1<(int) strlen(tendformula);i1++)
        tformula[tpos[0]+n+i1]=tendformula[i1];
       tformula[tpos[0]+n+i1]='\0';
     break; } } }
@@ -312,12 +312,12 @@ int reversepolishcalculatorequalizer(char formula[], int record_id)
   
    // replace #id with values from corresponding records
    n=0;
-   for (i=0;i<strlen(formula);i++) {
+   for (i=0;i<(int) strlen(formula);i++) {
     if (formula[i]!='#')
      transformedtext[n++]=formula[i];
     else {
      i1=0;
-     while (isdigit(formula[++i]) && i<strlen(formula))
+     while (isdigit(formula[++i]) && i<(int) strlen(formula))
       s[i1++]=formula[i];
      s[i1]='\0';
      --i;
@@ -325,14 +325,14 @@ int reversepolishcalculatorequalizer(char formula[], int record_id)
       strcpy(s, records[(record_id*fieldsperrecord)+atoi(s)-1].text);
      else 
       strcpy(s, "0");
-     for (i1=0;i1<strlen(s);i1++)
+     for (i1=0;i1<(int) strlen(s);i1++)
    transformedtext[n++]=s[i1]; } }
    transformedtext[n]='\0';
    strcpy(formula, transformedtext);
    
    // lets see if formula has any digits
    n=0;
-   for (i=0;i<strlen(formula);i++)
+   for (i=0;i<(int) strlen(formula);i++)
     if (isdigit(formula[i]))
      ++n;
    if (!n) // no numbers, return 0 (this was done done for mixed type formula fields)
@@ -340,7 +340,7 @@ int reversepolishcalculatorequalizer(char formula[], int record_id)
   
    // repair space positions where necessary 
    n=0;
-   for (i=0;i<strlen(formula);i++) {
+   for (i=0;i<(int) strlen(formula);i++) {
     while (isspace(formula[i]) && isspace(formula[i+1]))
      ++i;
     transformedtext[n]=formula[i];

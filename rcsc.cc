@@ -97,7 +97,7 @@ int stringformulacalculator(char formula[MAXSTRING], int record_id)
     findinstructions=1;
     --startpt;
     endpt=startpt;
-    while (ttext[endpt]!=')' && endpt<strlen(ttext))
+    while (ttext[endpt]!=')' && endpt<(int) strlen(ttext))
      ++endpt;
     ++endpt;
     extracttextpart(ttext, tcommand, startpt, endpt);
@@ -120,12 +120,12 @@ void replacepartoftextwithcorrespondingvalue(char ttext[MAXSTRING], int record_i
   char transformedtext[MAXSTRING], s[MAXSTRING];
 
   n=0;
-  for (i=0;i<strlen(ttext);i++) {
+  for (i=0;i<(int) strlen(ttext);i++) {
    if (ttext[i]!='#')
     transformedtext[n++]=ttext[i];
    else {
     i1=0;
-    while (isdigit(ttext[++i]) && i<strlen(ttext))
+    while (isdigit(ttext[++i]) && i<(int) strlen(ttext))
      s[i1++]=ttext[i];
     s[i1]='\0';
     --i;
@@ -133,7 +133,7 @@ void replacepartoftextwithcorrespondingvalue(char ttext[MAXSTRING], int record_i
      strcpy(s, records[(record_id*fieldsperrecord)+atoi(s)-1].text);
      else 
     strcpy(s, " ");
-    for (i1=0;i1<strlen(s);i1++)
+    for (i1=0;i1<(int) strlen(s);i1++)
   transformedtext[n++]=s[i1]; } }
   transformedtext[n]='\0';
   strcpy(ttext, transformedtext);
@@ -149,13 +149,13 @@ int extracttextpart(char source[MAXSTRING], char dest[MAXSTRING], int startpt, i
     dest[n++]=source[i];
    dest[n]='\0';
    n=0;
-   for (i=0;i<strlen(source);i++)
+   for (i=0;i<(int) strlen(source);i++)
     if (i<startpt || i>=endpt)
      ttext[n++]=source[i];
    ttext[n]='\0';
    strcpy(source, ttext);
    
- return strlen(source);
+ return (int) strlen(source);
 }
 
 // insert text in text
@@ -166,9 +166,9 @@ void inserttextpart(char text[MAXSTRING], char part[MAXSTRING], int point)
   
    for (i=0;i<point;i++)
     ttext[n++]=text[i];
-   for (i=0;i<strlen(part) && n<MAXSTRING;i++)
+   for (i=0;i<(int) strlen(part) && n<MAXSTRING;i++)
     ttext[n++]=part[i];
-   for (i=point;i<strlen(text) && n<MAXSTRING;i++)
+   for (i=point;i<(int) strlen(text) && n<MAXSTRING;i++)
     ttext[n++]=text[i];
    ttext[n]='\0';
    strcpy(text, ttext);; 
@@ -189,7 +189,7 @@ int commandparser(int reference, char tcommand[MAXSTRING])
   }
    
    // go back from end of tcommand
-   pos=strlen(tcommand);
+   pos=(int) strlen(tcommand);
    n=requiredparameters;
    while (n && pos)
     if (tcommand[pos--]==',')
@@ -198,7 +198,7 @@ int commandparser(int reference, char tcommand[MAXSTRING])
     return 0;
    pos+=2; // now pos is at first numerical parameter or space
    if (!requiredparameters)
-    pos=strlen(tcommand);
+    pos=(int) strlen(tcommand);
    endpos=pos-1; // use later
    // read parameters
    for (i=0;i<requiredparameters;n=0, i++) {
@@ -229,17 +229,17 @@ int commandparser(int reference, char tcommand[MAXSTRING])
      tttext[n]='\0';
     break;
     case 2: // right$
-     for (i=strlen(ttext)-parameters[0];i<strlen(ttext);i++)
+     for (i=(int) strlen(ttext)-parameters[0];i<(int) strlen(ttext);i++)
       tttext[n++]=ttext[i];
      tttext[n]='\0';
     break;
     case 3: // toupper
-     for (i=0;i<strlen(ttext);i++)
+     for (i=0;i<(int) strlen(ttext);i++)
       tttext[n++]=toupper(ttext[i]);
      tttext[n]='\0';
     break;
     case 4: // tolower
-     for (i=0;i<strlen(ttext);i++)
+     for (i=0;i<(int) strlen(ttext);i++)
       tttext[n++]=tolower(ttext[i]);
      tttext[n]='\0';
    break; }
@@ -263,7 +263,7 @@ char* formatreplacer(char source[MAXSTRING], int field_id)
    while (operation) {
     operation=0;
        
-    for (;i<strlen(newsource);i++) {
+    for (;i<(int) strlen(newsource);i++) {
      if (newsource[i]==INSTRUCTION) {
       extracttextpart(newsource, instruction, i, i+3);
       inserttextpart(newsource, performinstruction(instruction, field_id), i);
@@ -294,7 +294,7 @@ char *performinstruction(char instruction[MAXSTRING], int field_id)
   char number[3];
   if (isdigit(instruction[1]) || isdigit(instruction[2])) { // characters from field string to bring
    number[0]=instruction[1];
-   number[1]=strlen(instruction)==3 ? instruction[2] : ' ';
+   number[1]=(int) strlen(instruction)==3 ? instruction[2] : ' ';
   instruction[1]='t'; }
   
    switch(instruction[1]) {

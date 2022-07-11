@@ -46,7 +46,7 @@ int noparametercommandskeys=12;
 enum { PUSHSPACE=0, COPYTEXT, PASTETEXT, ENDLOOP, COMPAREWITHCLIPBOARD, COMPAREWITHCLIPBOARDGREATER, COMPAREWITHCLIPBOARDSMALLER, CLEARVARIABLES, AUTOSAVERECCURSE,  QUITPROGRAM, STOPSCRIPT, PASS };
 const char *parametercommands[]= { "file", "record", "field", "enter", "append", "variable", "variabletoclipboard", "delete", "loop", "wait", "goto", "page", "attributes", "color", "sleep", "menu", "key", "keys" };
 enum { FILEOPEN=0, GOTORECORD, GOTOFIELD, ENTERTEXT, APPENDTEXT, VARIABLESET, VARIABLETOCLIPBOARD, CLEARVARIABLE, LOOPFOR, WAITSECS, GOTOLABEL, GOTOPAGE, SETATTRIBUTES, SETCOLOR, SETSLEEPTIME, CHANGEMENU, PUSHKEY, PUSHKEYS };
-enum { NOACTIVEFIELDS = -2, FILEERROR, NORMALEXIT = 0 };
+enum { SEGMENTATIONFAULT = -4, FLOATINGPOINTEXCEPTION = -3, NOACTIVEFIELDS, FILEERROR, NORMALEXIT = 0 };
 
 int parametercommandskeys=18;
 int scriptrunning=0, scriptsleeptime=250;
@@ -175,7 +175,7 @@ int commandparser(char scriptcommand[MAXSTRING])
    }
    
    // stop script procedures
-   if ((runline>=scriptlines.size() && scriptrunning) || !strcmp(scriptcommand, noparametercommands[STOPSCRIPT])) {
+   if ((runline>=(int) scriptlines.size() && scriptrunning) || !strcmp(scriptcommand, noparametercommands[STOPSCRIPT])) {
     stopscript();
    return NOCOMMAND; }
    if (scriptrunning)
@@ -192,7 +192,7 @@ int commandparser(char scriptcommand[MAXSTRING])
    
     // variables replacement
     if (strcmp(scriptcommand, parametercommands[VARIABLESET]) && strcmp(scriptcommand, parametercommands[CLEARVARIABLE])) {
-     for (i=0;i<record.size();i++) {
+     for (i=0;i<(int) record.size();i++) {
       if (record[i].type==VARIABLE) {
        if (!strcmp(record[i].title, parameter) && strcmp(scriptcommand, parametercommands[VARIABLESET])) {
         strcpy(parameter, record[i].automatic_value);
@@ -265,7 +265,7 @@ int commandparser(char scriptcommand[MAXSTRING])
       toggleautosave();
      break;
      case CLEARVARIABLES:
-      for (i1=0;i1<record.size();i1++)
+      for (i1=0;i1<(int) record.size();i1++)
        if (record[i1].type==VARIABLE)
         Delete_Field(i1);
      break;
@@ -342,10 +342,10 @@ int commandparser(char scriptcommand[MAXSTRING])
       strcpy(clipboard, record[i1].automatic_value);
      break;
      case VARIABLETOCLIPBOARD:
-      for (i1=0;i1<record.size();i1++)
+      for (i1=0;i1<(int) record.size();i1++)
        if (!strcmp(record[i1].title, parameter))
         break;
-      if (i1==record.size())
+      if (i1==(int) record.size())
        returnvalue=FAIL;
       else
       strcpy(clipboard, record[i1].automatic_value);
@@ -362,9 +362,9 @@ int commandparser(char scriptcommand[MAXSTRING])
       i1=atoi(parameter);
       if (i1<1) { // loop has reached 0
        strcpy(scriptlines[runline-1].textLine, noparametercommands[PASS]);
-       while ((strcmp(scriptlines[runline].textLine, noparametercommands[ENDLOOP])) && runline<scriptlines.size())
+       while ((strcmp(scriptlines[runline].textLine, noparametercommands[ENDLOOP])) && runline<(int) scriptlines.size())
         ++runline;
-       if (runline<scriptlines.size())
+       if (runline<(int) scriptlines.size())
         strcpy(scriptlines[runline].textLine, noparametercommands[PASS]);
       break;
       }
@@ -463,15 +463,15 @@ int labelposition(char *label)
   strcat(tlabel, ":");
   
    // find label
-   for (i=0;i<scriptlines.size();i++)
+   for (i=0;i<(int) scriptlines.size();i++)
     if (!strcmp(tlabel, scriptlines[i].textLine))
      break;
    // duplicate ?
-   for (i1=i+1;i1<scriptlines.size();i1++)
+   for (i1=i+1;i1<(int) scriptlines.size();i1++)
     if (!strcmp(tlabel, scriptlines[i1].textLine))
     break;
     
-   if (i==scriptlines.size() || i1<scriptlines.size())
+   if (i==(int) scriptlines.size() || i1<(int) scriptlines.size())
     return 0;
   
  return i;
@@ -514,10 +514,10 @@ int isvariable(char *parameter)
 {
   int i;
   
-   for (i=0;i<record.size();i++)
+   for (i=0;i<(int) record.size();i++)
     if (record[i].type==VARIABLE)
      if (!strcmp(record[i].title, parameter))
       break;
     
- return (i==record.size()) ? 0 : i+1;
+ return (i==(int) record.size()) ? 0 : i+1;
 }

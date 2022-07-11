@@ -63,9 +63,9 @@ int filecodedecode(char *source, char *destination, int mode) // 0 code, 1 decod
 // show error for file access
 void Show_File_Error(char *filename)
 {
-  Change_Color(1);
+  Change_Color(RED);
   gotoxy(1,24);
-  if (!strlen(filename))
+  if (!(int) strlen(filename))
    strcpy(filename, "<none>");
   printw("error: could not access file %s", filename);
   refresh();
@@ -100,7 +100,7 @@ int Scan_Input(int flag, int lim_a, int lim_b, int length) // 0 string, 1 intege
   
    while (res<lim_a || res>lim_b) {
     memset(input_string, 0, sizeof(input_string));
-    Scan_Input(input_string, x+1, y+1);
+    Scan_Input(input_string, x+1, y+1, 0, length);
     res=atoi(input_string);
     if (!flag || !res) // res==0 is a non-numerical input_string, if in limits ok to return
      return 0;
@@ -110,9 +110,9 @@ int Scan_Input(int flag, int lim_a, int lim_b, int length) // 0 string, 1 intege
 }
 
 // scan input overloaded
-char Scan_Input(char istring[MAXSTRING], int x_pos, int y_pos, int color)
+char Scan_Input(char istring[MAXSTRING], int x_pos, int y_pos, int color, int length)
 {
-  int i, t=0, column=strlen(istring)-1, fieldreferenceflag=0, fieldreferencelist, dummyfieldreferencelist, fieldreferencerecord=currentrecord;
+  int i, t=0, column, fieldreferenceflag=0, fieldreferencelist, dummyfieldreferencelist, fieldreferencerecord=currentrecord;
   char tstring[MAXSTRING], iistring[MAXSTRING];
   
   if (record.size() && records.size() && record[currentfield].fieldlist && !editoroption) {
@@ -124,12 +124,17 @@ char Scan_Input(char istring[MAXSTRING], int x_pos, int y_pos, int color)
  fieldreferencelist=record[records[(fieldreferencerecord*fieldsperrecord)+currentfield].id].fieldlist-1; }
   
    strcpy(tstring, istring);
-   for (i=column+1;i<79;i++)
+   for (i=(int) strlen(istring);i<length+(int) strlen(istring);i++)
     tstring[i]=SPACE;
    tstring[i]='\0';
-   if (color<1 || color>58)
-    color=58;
-   Change_Color(color);
+   if ( length )
+    length+=x_pos-1;
+   if ( length > 79 )
+    length=79;
+   if ( color > 64 )
+    color=WHITE;
+   if ( color > 0 )
+    Change_Color(color);
    column=x_pos;
    while (t!=ESC && t!='\n') {
     gotoxy(x_pos, y_pos);
@@ -140,7 +145,8 @@ char Scan_Input(char istring[MAXSTRING], int x_pos, int y_pos, int color)
      else
     strcpy(tstring, externalrecords[externalreferencedatabase][(fieldreferencerecord*dummyfieldsperrecord)+dummyfieldreferencelist].text); }
     printw("%s", tstring);
-    clrtoeol();
+    if ( length == 79 )
+     clrtoeol();
     gotoxy(column, y_pos);
     if (tstring[column-x_pos-1]==SPACE)
      addch(UNDERSCORE);
@@ -150,11 +156,11 @@ char Scan_Input(char istring[MAXSTRING], int x_pos, int y_pos, int color)
     t=bgetch(SCANUNBLOCK); // give time for input char, otherwise leave 
     if (t==-1)
      t='\n';
-    if (t==PASTE && strlen(clipboard))
+    if (t==PASTE && (int) strlen(clipboard))
      strcpy(tstring, clipboard);
-    if (isprintablecharacter(t) && column<80) {
+    if (isprintablecharacter(t) && column<length+1) {
      tstring[column-x_pos]=t;
-     if (column<79)
+     if (column<length)
     ++column; }
      switch (t) {
       case LEFT:
@@ -162,7 +168,7 @@ char Scan_Input(char istring[MAXSTRING], int x_pos, int y_pos, int color)
        --column; }
       break;
       case RIGHT:
-       if (column<79) {
+       if (column<length) {
        ++column; }
       break;
       case UP:
@@ -185,17 +191,19 @@ char Scan_Input(char istring[MAXSTRING], int x_pos, int y_pos, int color)
         fieldreferenceflag=2;
        else {
         t=0;
-        for (i=0;i<strlen(tstring)-1;i++) {
-         if (i==column-1)
+        for (i=0;i<(int) strlen(tstring)-1;i++) {
+         if ( i == column - 1 && t < length - 2 )
           iistring[t++]=SPACE;
-         iistring[t++]=tstring[i]; }
-         iistring[MAXSTRING-1]='\0';
+         if ( t < length - 2 )
+          iistring[t++]=tstring[i]; 
+        }
+        iistring[MAXSTRING-1]='\0';
         strcpy(tstring, iistring); }
       break;
       case BACKSPACE:
        if (column>x_pos) {
         tstring[column-x_pos-1]=SPACE;
-        for (i=column-2;i<79;i++)
+        for (i=column-2;i<length;i++)
          tstring[i]=tstring[i+1];
         tstring[i]='\0';
        --column; }
@@ -204,14 +212,14 @@ char Scan_Input(char istring[MAXSTRING], int x_pos, int y_pos, int color)
        column=1;
       break;
       case END:
-       column=strlen(tstring)-1;
+       column=(int) strlen(tstring)-1;
        while (isspace(tstring[column]) && column>0)
         --column;
        ++column;
       break;
       case DELETE:
-       if (column<79) {
-        for (i=column-1;i<79;i++)
+       if ( column < length ) {
+        for (i=column-1;i<length;i++)
           tstring[i]=tstring[i+1];
         tstring[i++]=SPACE;
        tstring[i]='\0'; }
@@ -240,7 +248,7 @@ void Scan_Date(int x_pos, int y_pos, char tdate[], int flag) // 0 entire date, 1
     d=1;
    while (c!=ESC && c!='\n') {
     Show_Menu_Bar(1);
-    Change_Color(3);
+    Change_Color(YELLOW);
     strcpy(date, addmissingzeros(itoa(d), 2));
     strcat(date, " ");
     strcat(date, addmissingzeros(itoa(m), 2));
@@ -250,7 +258,7 @@ void Scan_Date(int x_pos, int y_pos, char tdate[], int flag) // 0 entire date, 1
     strcat(date, daysofweek[CalcDayNumFromDate(y, m, d)]);
     gotoxy(x_pos, y_pos);
     printw("date->%s", date);
-    Change_Color(24);
+    Change_Color(YELLOWONCYAN);
     switch (highlight) {
      case 0:
       gotoxy(x_pos+12, y_pos);
@@ -336,12 +344,12 @@ void Scan_Date(int x_pos, int y_pos, char tdate[], int flag) // 0 entire date, 1
 char *addmissingzeros(char tstring[], int length)
 {    
   int i;
-  char ttstring[strlen(tstring)+(length-strlen(tstring))];
-  if (strlen(tstring)==length)
+  char ttstring[(int) strlen(tstring)+(length-(int) strlen(tstring))];
+  if ((int) strlen(tstring)==length)
    return &tstring[0];
   strcpy(ttstring, tstring);
   
-   for (i=0;i<length-strlen(tstring);i++)
+   for (i=0;i<length-(int) strlen(tstring);i++)
     ttstring[i]='0';
    ttstring[i]='\0';
    strcat(ttstring, tstring);
@@ -353,10 +361,10 @@ char *addmissingzeros(char tstring[], int length)
 // terminate string when characters end to cut off extra spaces
 void terminatestringatcharactersend(char *ttext)
 {
-  ttext+=strlen(ttext)-1;
+  ttext+=(int) strlen(ttext)-1;
     
    while (isspace(*ttext) && *ttext--);
-   if (!strlen(ttext))
+   if (!(int) strlen(ttext))
     *++ttext=' ';
   *++ttext='\0';
 }
@@ -367,7 +375,7 @@ void addleadingzeros(char ttext[], Annotated_Field *tfield, int flag) // 0 space
   int i, n;
   char ttext2[MAXSTRING];
     
-  n=record[tfield->id].size.x-strlen(ttext);
+  n=record[tfield->id].size.x-(int) strlen(ttext);
   for (i=0;i<n;i++)
    ttext2[i]=(!flag) ? ' ' : '0';
   ttext2[i]='\0';
@@ -381,7 +389,7 @@ void addleadingspaces(char ttext[], int overallsize)
   int i;
   char ttext2[MAXSTRING];
     
-  for (i=0;i<overallsize-strlen(ttext);i++)
+  for (i=0;i<overallsize-(int) strlen(ttext);i++)
    ttext2[i]=' ';
   ttext2[i]='\0';
   strcat(ttext2, ttext);
@@ -391,7 +399,7 @@ void addleadingspaces(char ttext[], int overallsize)
 // count text length without spaces
 int fieldlength(char *fieldtext)
 {
-  int size=(strlen(fieldtext)==1 && isspace(fieldtext[0])) ? 0 : strlen(fieldtext);
+  int size=((int) strlen(fieldtext)==1 && isspace(fieldtext[0])) ? 0 : (int) strlen(fieldtext);
  
  return size;
 }
@@ -403,7 +411,7 @@ void stringquotesencloser(char *tstring, int flag) // 1 do not add comma at the 
   char ttstring[MAXSTRING];
   ttstring[0]=QUOTE;
  
-   for (i=0;i<strlen(tstring);i++)
+   for (i=0;i<(int) strlen(tstring);i++)
     ttstring[i+1]=tstring[i];
    ++i;
    ttstring[i++]=QUOTE;
@@ -419,7 +427,7 @@ void stringquotesopener(char *tstring)
   int i, n=0;
   char ttstring[MAXSTRING];
  
-   for (i=1;i<strlen(tstring)-1;i++)
+   for (i=1;i<(int) strlen(tstring)-1;i++)
     ttstring[n++]=tstring[i];
    ttstring[n]='\0';
    strcpy(tstring, ttstring);
@@ -428,7 +436,7 @@ void stringquotesopener(char *tstring)
 // is string in quotes ?
 int isinquotes(char tstring[])
 {
-  if (tstring[0]==QUOTE && tstring[strlen(tstring)-1]==QUOTE)
+  if (tstring[0]==QUOTE && tstring[(int) strlen(tstring)-1]==QUOTE)
    return 1;
          
  return 0;
@@ -502,7 +510,7 @@ void Show_Message(int x_pos, int y_pos, int color, char *message, int sleeptime)
   int i, n=0;
   
   Change_Color(color);
-  for (i=x_pos;i<x_pos+strlen(message);i++) {
+  for (i=x_pos;i<x_pos+(int) strlen(message);i++) {
    gotoxy(i, y_pos);
   addch(message[n++]); }
   refresh();
@@ -518,7 +526,7 @@ void Show_Message(int x_pos, int y_pos, int color, const char *message, int slee
   int i, n=0;
   
   Change_Color(color);
-  for (i=x_pos;i<x_pos+strlen(message);i++) {
+  for (i=x_pos;i<x_pos+(int) strlen(message);i++) {
    gotoxy(i, y_pos);
   addch(message[n++]); }
   refresh();
@@ -533,13 +541,13 @@ void replaceunderscoresandbrackets(char dataname[], int flag) // 0 place undersc
 {
   int i1;
   if (!flag) {
-   for (i1=0;i1<strlen(dataname);i1++) {
+   for (i1=0;i1<(int) strlen(dataname);i1++) {
     if (dataname[i1]==SPACE)
      dataname[i1]='_';
     if (dataname[i1]=='#')
   dataname[i1]='`'; } }
   if (flag) {
-   for (i1=0;i1<strlen(dataname);i1++) {
+   for (i1=0;i1<(int) strlen(dataname);i1++) {
     if (dataname[i1]=='_')
      dataname[i1]=SPACE;
     if (dataname[i1]=='`')
@@ -573,7 +581,7 @@ int sortrecords(int field_id, int recordssequence[], int mode) // 0 ascending 1 
 
    while (loopflag) { // one more turn of string swapping
     for (loopflag=0, i=recordsnumber-1;i>0;sortflag=0, i--) {
-     tlength=(strlen(records[(recordssequence[i]*fieldsperrecord)+field_id].text)<strlen(records[(recordssequence[i-1]*fieldsperrecord)+field_id].text)) ? strlen(records[(recordssequence[i]*fieldsperrecord)+field_id].text) : strlen(records[(recordssequence[i-1]*fieldsperrecord)+field_id].text);
+     tlength=((int) strlen(records[(recordssequence[i]*fieldsperrecord)+field_id].text)<(int) strlen(records[(recordssequence[i-1]*fieldsperrecord)+field_id].text)) ? (int) strlen(records[(recordssequence[i]*fieldsperrecord)+field_id].text) : (int) strlen(records[(recordssequence[i-1]*fieldsperrecord)+field_id].text);
      for (n=0;n<tlength;n++) {
       if ((int)(records[(recordssequence[i]*fieldsperrecord)+field_id].text[n])<(int)(records[(recordssequence[i-1]*fieldsperrecord)+field_id].text[n]) && !sortflag) {
        sortflag=1; loopflag=1;
@@ -696,6 +704,9 @@ void INThandler(int sig)
  char c;
  
     signal(sig, SIG_IGN);
+    if ( sig == SIGSEGV )
+     End_Program(SEGMENTATIONFAULT);
+    
     Show_Menu_Bar(1);
     Change_Color(RED);
     gotoxy(1,24);
@@ -709,21 +720,34 @@ void INThandler(int sig)
     Show_Menu_Bar();
 }
 
+// does file contain binary
+int filecontainsbinary(ifstream* file)
+{
+ int t;
+ 
+  t=file->get();
+  if ( t > 126 )
+   return 1;
+  file->seekg(0, ios::beg);
+
+ return 0;
+}
+
 // add spaces to bring text in the middle of width
 char* bringstringtomiddle(char *text, int width)
 {
  int i, spacesneeded=0;
  static char newtext[MAXSTRING];
 
-  if (strlen(text)>=width)
+  if ((int) strlen(text)>=width)
    return &text[0];
-  spacesneeded=((width-strlen(text))/2)-1;
+  spacesneeded=((width-(int) strlen(text))/2)-1;
   
    strcpy(newtext, " \b");
    for (i=0;i<spacesneeded;i++)
     strcat(newtext, " ");
    strcat(newtext, text);
-   for (i=strlen(newtext);i<width+1;i++)
+   for (i=(int) strlen(newtext);i<width+1;i++)
     strcat(newtext, " ");
    strcpy(text, newtext);
     
@@ -777,7 +801,7 @@ int decimatestringtokey(char *text)
   char ttext[MAXSTRING];
   strcpy(ttext, text);
   
-   for (i=0;i<strlen(ttext);i++)
+   for (i=0;i<(int) strlen(ttext);i++)
     ttext[i]=tolower(ttext[i]);
   
    if (!strcmp(ttext, "down"))
@@ -859,7 +883,7 @@ int blockunblockgetch(int delay)
 // see if automatic value contains format instructions
 int isautomaticvalueformatinstruction(int field_id)
 { 
-   for (int i=0;i<strlen(record[field_id].automatic_value);i++)
+   for (int i=0;i<(int) strlen(record[field_id].automatic_value);i++)
     if (record[field_id].automatic_value[i]==INSTRUCTION)
      return 1;
     
@@ -869,10 +893,10 @@ int isautomaticvalueformatinstruction(int field_id)
 // see if automatic value contains script command
 int isfieldscriptdirector(int field_id)
 {
-   if ( record[field_id].type != STRING || record[field_id].decimals == 0 || record[field_id].decimals > ONENTRYANDEXIT )
+   if ( record[field_id].type != STRING || record[field_id].decimals == 0 || record[field_id].decimals > ONENTRYANDEXIT || record[field_id].buttonbox != NOBUTTON )
     return NOSCRIPT;
     
-   for (int i=0;i<strlen(record[field_id].automatic_value);i++)
+   for (int i=0;i<(int) strlen(record[field_id].automatic_value);i++)
     if (record[field_id].automatic_value[i]==COMMAND)
      return i+1;
     
@@ -887,9 +911,9 @@ char *formatmonetarystring(char *text)
   
   int i, i1, separatord, length;
   separatord=(separatort==46) ? 44 : 46;
-  length=strlen(text);
+  length=(int) strlen(text);
   
-  for (i=0;i<strlen(text);i++)
+  for (i=0;i<(int) strlen(text);i++)
    if (text[i]=='.') {
     text[i]=separatord;
     break;
@@ -986,7 +1010,7 @@ char* aligntext(char text[MAXSTRING], Annotated_Field *field, int alignment)
    while (operation) {
     operation=printablechars=0;
     
-    for (i=0;i<strlen(fieldcopy);i++) {
+    for (i=0;i<(int) strlen(fieldcopy);i++) {
      
      if (fieldcopy[i]=='\\') { // instruction follows
       switch (fieldcopy[i+1]) {
@@ -1024,7 +1048,7 @@ char* aligntext(char text[MAXSTRING], Annotated_Field *field, int alignment)
        break;
      }
     }
-    i=(i>strlen(fieldcopy)) ? strlen(fieldcopy) : i;
+    i=(i>(int) strlen(fieldcopy)) ? (int) strlen(fieldcopy) : i;
     extracttextpart(fieldcopy, ttext, 0, i);
     strcpy(tfield.text, ttext);
     aligntextsingley(&tfield, alignment, row);   
@@ -1059,16 +1083,16 @@ int isfieldtextlink(Annotated_Field *tfield, int linkparameters[]) // 0 record, 
     
    if (record[tfield->id].buttonbox!=NOBUTTON)
     return 0;
-   while (tfield->text[i]!='\\' && i<strlen(tfield->text))
+   while (tfield->text[i]!='\\' && i<(int) strlen(tfield->text))
     ++i;
-   while (tfield->text[i]!='>' && i<strlen(tfield->text))
+   while (tfield->text[i]!='>' && i<(int) strlen(tfield->text))
     ++i;
-   if (i++==strlen(tfield->text))
+   if (i++==(int) strlen(tfield->text))
     return 0;
-   while (tfield->text[i]!='<' && i<strlen(tfield->text))
+   while (tfield->text[i]!='<' && i<(int) strlen(tfield->text))
     ttext[i1++]=tfield->text[i++];
    ttext[i1]='\0';
-   if (i==strlen(tfield->text) && ttext[i1-1]!='<')
+   if (i==(int) strlen(tfield->text) && ttext[i1-1]!='<')
     return 0;
    
    if ((assignstringvaluestoarray(ttext, destination, 2)!=2))
@@ -1104,11 +1128,11 @@ int fieldsadjoiningfields(Annotated_Field *tfield, vector<int>& adjoiningfields)
   adjoiningfields.push_back(recordid);
   Annotated_Field *ttfield;
   
-   while (pos<adjoiningfields.size()) {
+   while (pos<(int) adjoiningfields.size()) {
     ttfield=&records[(currentrecord*fieldsperrecord)+adjoiningfields[pos++]];
     recordid=ttfield->id;
      
-     if (ttfield->text[strlen(ttfield->text)-1]=='>') {
+     if (ttfield->text[(int) strlen(ttfield->text)-1]=='>') {
       for (i1=0;i1<fieldsperrecord;i1++)
        if (records[(currentrecord*fieldsperrecord)+i1].text[0]=='<') {
         if ((findinintvector(i1, adjoiningfields)) || ((arefieldsneighbours(recordid, i1)==0)))
@@ -1118,7 +1142,7 @@ int fieldsadjoiningfields(Annotated_Field *tfield, vector<int>& adjoiningfields)
      }
      if (ttfield->text[0]=='<') {
       for (i1=0;i1<fieldsperrecord;i1++) {
-       if (records[(currentrecord*fieldsperrecord)+i1].text[strlen(records[(currentrecord*fieldsperrecord)+i1].text)-1]=='>') {
+       if (records[(currentrecord*fieldsperrecord)+i1].text[(int) strlen(records[(currentrecord*fieldsperrecord)+i1].text)-1]=='>') {
         if ((findinintvector(i1, adjoiningfields)) || ((arefieldsneighbours(i1, recordid)==0))) {
          continue;
         }
@@ -1131,7 +1155,7 @@ int fieldsadjoiningfields(Annotated_Field *tfield, vector<int>& adjoiningfields)
     }
     sort(adjoiningfields.begin(), adjoiningfields.end());
 
- return adjoiningfields.size();
+ return (int) adjoiningfields.size();
 }
 
 // fields touch borders
@@ -1167,11 +1191,11 @@ int findinintvector(int element, vector<int>& tv)
 {
   int i;
   
-   for (i=0;i<tv.size();i++)
+   for (i=0;i<(int) tv.size();i++)
     if (element == tv[i])
      break;
     
- return (i==tv.size()) ? 0 : i;
+ return (i==(int) tv.size()) ? 0 : i;
 } 
 
 // generate calendar
