@@ -5,9 +5,9 @@ begin and end with character seen below, so no others allowed in strings
 
 structure of record: <title (12 chars max), title_pos (0~~4), title attributes, title color, pos_x, pos_y, size_x, size_y, attributes, color, box or not, box color, type (0 int or double 1 date 2 string 3 mixed), number of decimals, suffix if number or formula, formula or not, field list reference (0 for none), editable, active, auto enter value> 
 #
-date&time 0 000000000 3 10 5 10 2 000000000 5 1 1 1 2 $ 0 0 1 1 ~ 
-string 2 000100100 2 20 15 9 2 001010000 1 1 2 2 2 !!! 0 0 1 1 Giorgos 
-formula 3 000000000 34 40 5 8 1 000000000 2 1 4 0 2 eur 1 0 0 1 22_+_22 
-fieldlist 0 000010000 1 40 15 9 2 001010000 6 1 5 2 2 ~ 0 1 1 1 ~ 
-number 0 000000000 2 35 11 5 1 000000000 6 1 1 0 2 ~ 0 0 1 1 ~ 
+date&time 0 000000000 25 10 5 10 2 000000000 43 1 9 1 2 $ 0 0 1 1 ~ 
+string 2 000100100 17 20 15 9 2 001010000 9 1 17 2 2 !!! 0 0 1 1 Giorgos 
+formula 3 000000000 44 40 5 8 1 000000000 17 1 33 0 2 eur 1 0 0 1 22_+_22 
+fieldlist 0 000010000 9 40 15 9 2 001010000 49 1 43 2 2 ~ 0 1 1 1 ~ 
+number 0 000000000 17 35 11 5 1 000000000 49 1 9 0 2 ~ 0 0 1 1 ~ 
 #
