@@ -1,7 +1,7 @@
 // reccurse, the filemaker of ncurses
 #include "reccurse.h"
 
-const double version=0.485;
+const double version=0.487;
 
 int main(int argc, char *argv[])
 {
@@ -309,6 +309,8 @@ int Read_Write_db_File(int mode) // 0 read, 1 write, 2 create from file, 3&4 rec
     --s;
     records.erase(s);
     recordsnumber=(int) records.size()/fieldsperrecord;
+    if ( recordsnumber == 0 )
+     recordsnumber=1;
     if (!activefields) {
      Show_Message(1, 24, RED, "no active fields in database");
     End_Program(NOACTIVEFIELDS); }
@@ -579,7 +581,7 @@ int Read_Record_Field(ifstream &instream, Field &tfield)
 // is Record properly dictated
 int isrecordproperlydictated(Field &tfield)
 {
-   if ( tfield.title_position < 0 || tfield.title_position > 4 ||  strlen(tfield.title_attributes) != 9  || tfield.title_color < 0 || tfield.title_color > 64 || tfield.pt.x < 0 || tfield.pt.x > 79 || tfield.pt.y < 0 || tfield.pt.y > 23 || tfield.size.x < 0 || tfield.size.x > 79 || tfield.size.y < 0 || tfield.size.y > 23 || strlen(tfield.attributes) != 9 || tfield.color < 0 || tfield.color > 64 || tfield.box < 0 || tfield.box > 1 || tfield.box_color < 0 || tfield.box_color > 64 || tfield.type < NUMERICAL || tfield.type > CLOCK || tfield.decimals < 0 || tfield.formula < 0 || tfield.formula > 1 || tfield.fieldlist < 0 || tfield.editable < 0 || tfield.editable > 1 || tfield.active < 0 || tfield.active > 1 ) 
+   if ( tfield.title_position < 0 || tfield.title_position > 4 ||  strlen(tfield.title_attributes) != 9  || tfield.title_color < 0 || tfield.title_color > 64 || tfield.pt.x < 0 || tfield.pt.x > 79 || tfield.pt.y < 0 || tfield.pt.y > 23 || tfield.size.x < 0 || tfield.size.x > 79 || tfield.size.y < 0 || tfield.size.y > 23 || strlen(tfield.attributes) != 9 || tfield.color < 0 /*|| tfield.color > 64*/ || tfield.box < 0 || tfield.box > 1 || tfield.box_color < 0 || tfield.box_color > 64 || tfield.type < NUMERICAL || tfield.type > CLOCK || tfield.decimals < 0 || tfield.formula < 0 || tfield.formula > 1 || tfield.fieldlist < 0 || tfield.editable < 0 || tfield.editable > 1 || tfield.active < 0 || tfield.active > 1 ) 
        return 0;
 
  return 1;
@@ -990,6 +992,9 @@ int Read_Write_Field(Annotated_Field &tfield, long int field_position, int mode)
    replaceunderscoresandbrackets(tfield.text, 1);
   replaceunderscoresandbrackets(tfield.formula, 1);  }
   
+  dbfileaccess.close();
+  dbfileaccess.flush();
+  
  return 0;
 }
   
@@ -1088,18 +1093,6 @@ int Show_Record_and_Menu()
     for (i=1;i<81;i++)
      for (i1=1;i1<25;i1++)
       screen[i][i1]=SPACE;
-    // remake field texts for automatic values that use other fields
-    if ( changedrecord || previousfield != currentfield ) {
-     i1=currentfield;
-     for (i=0;i<fieldsperrecord;i++) {
-      if ( i!=i1 && strcmp(record[i].automatic_value, EMPTYSTRING) && record[i].formula ) {
-       currentfield=i;
-       Generate_Field_String(&records[(currentrecord*fieldsperrecord)+currentfield], ttext);
-       strcpy(records[(currentrecord*fieldsperrecord)+currentfield].text, ttext);
-      }
-     }
-     currentfield=i1;
-    }
      
     // handle field repetitions
     if (changedrecord) {
@@ -1262,6 +1255,11 @@ int Show_Record_and_Menu()
          mousemask(ALL_MOUSE_EVENTS, NULL);
         break;
        }
+      break;
+      case SCANAUTOMATICVALUE:
+       Show_Menu_Bar(1);
+       Scan_Input(record[currentfield].automatic_value, 1, 24, record[currentfield].color);
+       alteredparameters=1;
       break;
       case 'q':
        if (!printscreenmode)
@@ -1976,6 +1974,9 @@ int negatekeysforcurrentmenu(int t)
    
   if ( t == TOGGLEMOUSE )
    return t;
+
+  if ( t == SCANAUTOMATICVALUE && currentmenu == 2 )
+   return t;
    
   if (currentmenu==2 && t=='\n')
    return 'd';
@@ -2369,12 +2370,12 @@ void Generate_Field_String(Annotated_Field *field, char *ttext)
    break;
    case STRING:
     strcpy(ttext, field->text);
-    if ( strcmp(tfield->automatic_value, EMPTYSTRING) && !isautomaticvalueformatinstruction(tfield->id) && field->id == currentfield ) {
+    if ( strcmp(tfield->automatic_value, EMPTYSTRING) && !isautomaticvalueformatinstruction(tfield->id) ) {
      strcpy(ttext, tfield->automatic_value);
      if ( (i=isfieldscriptdirector(tfield->id)) )
       ttext[i-1]='\0';
     }
-    if ( tfield->formula && field->id == currentfield ) {
+    if ( tfield->formula ) {
      strcpy(formula, field->text);
      if (strcmp(tfield->automatic_value, EMPTYSTRING))
       strcpy(formula, tfield->automatic_value);
@@ -2387,9 +2388,9 @@ void Generate_Field_String(Annotated_Field *field, char *ttext)
    break; 
    case MIXEDTYPE:
     strcpy(ttext, field->text);
-    if ( strcmp(tfield->automatic_value, EMPTYSTRING) && field->id == currentfield )
+    if ( strcmp(tfield->automatic_value, EMPTYSTRING) )
      strcpy(ttext, tfield->automatic_value);
-    if (tfield->formula && field->id == currentfield ) {
+    if (tfield->formula ) {
      if ( strcmp(tfield->automatic_value, EMPTYSTRING) )
       strcpy(field->text, tfield->automatic_value);
      strcpy(formula, field->text);
@@ -3007,29 +3008,32 @@ void pushspaceonfield(int field_id)
             record[record[field_id].fieldlist-1].type=NUMERICAL; // trick to bring reversepolishcalculator
            break;
           }
-          Read_Write_Field(records[(currentrecord*fieldsperrecord)+record[field_id].fieldlist-1], fieldposition(currentrecord, record[field_id].fieldlist-1), 1);
          }
        }
-     return; }
-     if (record[field_id].buttonbox==BUTTONCOMMAND) {
-      if (runscript) {
-       keyonnextloop.push_back(SPACE);
-       runscript=0;
-      return; }
-      Execute_Script_Command(field_id);
-    }
-    if (record[field_id].buttonbox==AUTOMATICSCRIPT) {
-     lastfieldrepeated=field_id;
-     if (fieldrepetitions[field_id]>-1 && fieldrepetitions[field_id]!=59)
-      --fieldrepetitions[field_id];
-     if (fieldrepetitions[field_id]==59)
-      fieldrepetitions[field_id]=0;
-     Execute_Script_Command(field_id);
-    }
-    if (isfieldtextlink(&records[(currentrecord*fieldsperrecord)+currentfield], linkparameters)) {
-     currentrecord=linkparameters[0] - 1;
-     currentfield=linkparameters[1] - 1;
-    }
+       if ( autosave )
+        Read_Write_Field(records[(currentrecord*fieldsperrecord)+record[field_id].fieldlist-1], fieldposition(currentrecord, record[field_id].fieldlist-1), 1);
+       return;
+      }
+      if (record[field_id].buttonbox==BUTTONCOMMAND) {
+       if (runscript) {
+        keyonnextloop.push_back(SPACE);
+        runscript=0;
+       return; }
+       Execute_Script_Command(field_id);
+      }
+      if (record[field_id].buttonbox==AUTOMATICSCRIPT) {
+       lastfieldrepeated=field_id;
+       if (fieldrepetitions[field_id]>-1 && fieldrepetitions[field_id]!=65)
+        --fieldrepetitions[field_id];
+       if (fieldrepetitions[field_id]==65)
+        fieldrepetitions[field_id]=0;
+       Execute_Script_Command(field_id);
+      }
+      if (isfieldtextlink(&records[(currentrecord*fieldsperrecord)+currentfield], linkparameters)) {
+       currentrecord=linkparameters[0] - 1;
+       currentfield=linkparameters[1] - 1;
+      }
+      
 }
 
 // copy to clipboard
