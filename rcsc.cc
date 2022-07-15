@@ -72,9 +72,6 @@ void inserttextpart(char text[MAXSTRING], char part[MAXSTRING], int point);
 int commandparser(int reference, char tcommand[MAXSTRING]);
 char* formatreplacer(char source[MAXSTRING], int field_id);
 char *performinstruction(char instruction[MAXSTRING], int field_id);
-extern void replacepartoftextwithcorrespondingvalue(char ttext[MAXSTRING], int record_id);
-extern int extracttextpart(char source[MAXSTRING], char dest[MAXSTRING], int startpt, int endpt);
-extern void inserttextpart(char text[MAXSTRING], char part[MAXSTRING], int point);
 extern int findsimple(char text[], char token[]);
 
 int stringformulacalculator(char formula[MAXSTRING], int record_id)
@@ -129,7 +126,7 @@ void replacepartoftextwithcorrespondingvalue(char ttext[MAXSTRING], int record_i
      s[i1++]=ttext[i];
     s[i1]='\0';
     --i;
-    if (atoi(s) && atoi(s)<fieldsperrecord && atoi(s)-1!=currentfield)
+    if ( atoi(s) && atoi(s)<fieldsperrecord && atoi(s)-1!=currentfield && strlen(records[(record_id*fieldsperrecord)+atoi(s)-1].text) )
      strcpy(s, records[(record_id*fieldsperrecord)+atoi(s)-1].text);
      else 
     strcpy(s, " ");
@@ -219,12 +216,12 @@ int commandparser(int reference, char tcommand[MAXSTRING])
    n=0;
    switch (reference) {
     case 0: // mid$
-     for (i=parameters[0]-1;i<parameters[0]+parameters[1]-1;i++)
+     for (i=parameters[0]-1;i<parameters[0]+parameters[1]-1 && i < (int) strlen(ttext);i++)
       tttext[n++]=ttext[i];
      tttext[n]='\0';
     break;
     case 1: // left$
-     for (i=0;i<parameters[0];i++)
+     for (i=0;i<parameters[0] && i < (int) strlen(ttext);i++)
       tttext[n++]=ttext[i];
      tttext[n]='\0';
     break;

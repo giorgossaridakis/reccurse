@@ -706,6 +706,8 @@ void INThandler(int sig)
     signal(sig, SIG_IGN);
     if ( sig == SIGSEGV )
      End_Program(SEGMENTATIONFAULT);
+    if ( sig == SIGFPE )
+     End_Program(FLOATINGPOINTEXCEPTION);
     
     Show_Menu_Bar(1);
     Change_Color(RED);
@@ -725,12 +727,23 @@ int filecontainsbinary(ifstream* file)
 {
  int t;
  
-  t=file->get();
+  t=file->peek();
   if ( t > 126 )
    return 1;
-  file->seekg(0, ios::beg);
 
  return 0;
+}
+
+// number of active fields in Record
+int activefields()
+{
+  int i, active=0;
+  
+   for (i=0;i<(int) record.size();i++)
+    if ( record[i].active == 1 )
+     ++active;
+    
+ return active;
 }
 
 // add spaces to bring text in the middle of width

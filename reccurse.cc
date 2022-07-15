@@ -1,7 +1,7 @@
 // reccurse, the filemaker of ncurses
 #include "reccurse.h"
 
-const double version=0.481;
+const double version=0.485;
 
 int main(int argc, char *argv[])
 {
@@ -59,7 +59,7 @@ int main(int argc, char *argv[])
       ofstream outdbfile(dbfile, ios::binary);
       outdbfile.close();
       ofstream outrcfile(rcfile);
-      outrcfile << "#date&time 0 000000000 3 10 5 10 2 000000000 5 1 1 1 2 $ 0 0 1 1 . " << endl << "#";
+      outrcfile << "#date&time 0 000000000 25 10 5 10 2 000000000 43 1 9 1 2 $ 0 0 1 1 . " << endl << "#";
       outrcfile.close();
       strcpy(tmessage, "created file: ");
     Read_rc_File(); } }
@@ -114,7 +114,7 @@ void Intro_Screen()
      printw("multipage edition");
      Change_Color(MAGENTA);
      gotoxy(8,15);
-     printw("the record maker with Linux ncurses");
+     printw("the record maker with NCURSES");
     
   refresh();
 }
@@ -124,7 +124,7 @@ int End_Program(int code)
 {
   char tmessage[MAXSTRING];
   
-   if ( code == 0 )
+   if ( code == NORMALEXIT )
     checkalteredparameters();
    Read_Write_Current_Parameters(4, 1);
 
@@ -135,7 +135,16 @@ int End_Program(int code)
    End_Screen();
    system("clear");
    if ( code == SEGMENTATIONFAULT )
-    printf("Reccurse has ran into a memory error. I regret this unfortunate incident, which may indicate a bug. It could also have been caused by your attempt to do something illogical, like using a bad syntax file in loading/reading/importing. Please note down the circumstances and email me -> giorgossaridakis@gmail.com with the details. Have a nice day!\n");
+    printf("Reccurse has ran into a memory error. I regret this unfortunate incident, which may indicate a bug. It could also have been caused by your attempt to do something illogical, like using a bad syntax file in loading/reading/importing. ");
+   if ( code == FLOATINGPOINTEXCEPTION )
+    printf("Reccurse has ran into a floating point exception, something impossible was asked to be done with a floating point number, such as division by zero. I suspect that this is not the result of a bug, rather your attempt to load/read a corrupt database file. ");
+   if ( code == NOACTIVEFIELDS )
+    printf("Reccurse has closed because your first-page database file has no active fields. This can be the result of a malformed .rc or .db file or it's possible that all fields in the database have been deactivated. ");
+   if ( code == FILEERROR )
+    printf("Reccuse was forced to exit due to a file i/o error. Please see that you have write permissions in the folder where your rc/database/output file is located and that requested files for reading exist in your folder. ");
+   
+   if ( code != NORMALEXIT )
+    printf("If, however, you believe this was a program malfunction, please note down the circumstances and email me -> giorgossaridakis@gmail.com with the details. Have a nice day!\n");
   
  exit(code);
 }
@@ -206,9 +215,13 @@ int Read_rc_File()
     if (c=='#' || c==EOF)
      break;
     tfield.id=fieldsperrecord;
-    Read_Record_Field(rcinput, tfield);
+    if ( (Read_Record_Field(rcinput, tfield)) == -1 )
+     continue;
     record.push_back(tfield);
-   ++fieldsperrecord; }
+    ++fieldsperrecord; 
+   }
+   if ( fieldsperrecord < 1 || activefields() == 0 )
+    End_Program(NOACTIVEFIELDS);
    vector<Field>::iterator p=record.end(); // delete last read
    --p;
    record.erase(p);
@@ -486,31 +499,90 @@ int Read_Write_Current_Parameters(int item, int mode) // item:0 currentrecord, 1
 }
 
 // read record fields from ifstream 
-void Read_Record_Field(ifstream &instream, Field &tfield)
-{    
-    instream >> tfield.title;
-    replaceunderscoresandbrackets(tfield.title, 1);
-    instream >> tfield.title_position;
-    instream >> tfield.title_attributes;
-    instream >> tfield.title_color;
-    instream >> tfield.pt.x;
-    instream >> tfield.pt.y;
-    instream >> tfield.size.x;
-    instream >> tfield.size.y;
-    instream >> tfield.attributes;
-    instream >> tfield.color;
-    instream >> tfield.box;
-    instream >> tfield.box_color;
-    instream >> tfield.type;
-    instream >> tfield.decimals;
-    instream >> tfield.suffix;
-    replaceunderscoresandbrackets(tfield.suffix, 1);
-    instream >> tfield.formula;
-    instream >> tfield.fieldlist;
-    instream >> tfield.editable;
-    instream >> tfield.active;
-    instream >> tfield.automatic_value;
-    replaceunderscoresandbrackets(tfield.automatic_value, 1);
+int Read_Record_Field(ifstream &instream, Field &tfield)
+{  
+  int i;
+  
+   for (i=0;i<nrecordparameters;i++) {
+    if ( !instream )
+     break;
+    switch (i) {
+     case 0:
+      instream >> tfield.title;
+      replaceunderscoresandbrackets(tfield.title, 1);
+     break;
+     case 1:
+      instream >> tfield.title_position;
+     break;
+     case 2:
+      instream >> tfield.title_attributes;
+     break;
+     case 3:
+      instream >> tfield.title_color;
+     break;
+     case 4:
+      instream >> tfield.pt.x;
+     break;
+     case 5:
+      instream >> tfield.pt.y;
+     break;
+     case 6:
+      instream >> tfield.size.x;
+     break;
+     case 7:
+      instream >> tfield.size.y;
+     break;
+     case 8:
+      instream >> tfield.attributes;
+     break;
+     case 9:
+      instream >> tfield.color;
+     break;
+     case 10:
+      instream >> tfield.box;
+     break;
+     case 11:
+      instream >> tfield.box_color;
+     break;
+     case 12:
+      instream >> tfield.type;
+     break;
+     case 13:
+      instream >> tfield.decimals;
+     break;
+     case 14:
+      instream >> tfield.suffix;
+      replaceunderscoresandbrackets(tfield.suffix, 1);
+     break;
+     case 15:
+      instream >> tfield.formula;
+     break;
+     case 16:
+      instream >> tfield.fieldlist;
+     break;
+     case 17:
+      instream >> tfield.editable;
+     break;
+     case 18:
+      instream >> tfield.active;
+     break;
+     case 19:
+      instream >> tfield.automatic_value;
+      replaceunderscoresandbrackets(tfield.automatic_value, 1);
+     break;
+    }
+   }
+    
+ return (i == nrecordparameters && isrecordproperlydictated(tfield) ) ? 0 : -1;
+}
+
+// is Record properly dictated
+int isrecordproperlydictated(Field &tfield)
+{
+   if ( tfield.title_position < 0 || tfield.title_position > 4 ||  strlen(tfield.title_attributes) != 9  || tfield.title_color < 0 || tfield.title_color > 64 || tfield.pt.x < 0 || tfield.pt.x > 79 || tfield.pt.y < 0 || tfield.pt.y > 23 || tfield.size.x < 0 || tfield.size.x > 79 || tfield.size.y < 0 || tfield.size.y > 23 || strlen(tfield.attributes) != 9 || tfield.color < 0 || tfield.color > 64 || tfield.box < 0 || tfield.box > 1 || tfield.box_color < 0 || tfield.box_color > 64 || tfield.type < NUMERICAL || tfield.type > CLOCK || tfield.decimals < 0 || tfield.formula < 0 || tfield.formula > 1 || tfield.fieldlist < 0 || tfield.editable < 0 || tfield.editable > 1 || tfield.active < 0 || tfield.active > 1 ) 
+       return 0;
+
+ return 1;
 }
 
 // read record fields from istringstream 
@@ -1016,6 +1088,19 @@ int Show_Record_and_Menu()
     for (i=1;i<81;i++)
      for (i1=1;i1<25;i1++)
       screen[i][i1]=SPACE;
+    // remake field texts for automatic values that use other fields
+    if ( changedrecord || previousfield != currentfield ) {
+     i1=currentfield;
+     for (i=0;i<fieldsperrecord;i++) {
+      if ( i!=i1 && strcmp(record[i].automatic_value, EMPTYSTRING) && record[i].formula ) {
+       currentfield=i;
+       Generate_Field_String(&records[(currentrecord*fieldsperrecord)+currentfield], ttext);
+       strcpy(records[(currentrecord*fieldsperrecord)+currentfield].text, ttext);
+      }
+     }
+     currentfield=i1;
+    }
+     
     // handle field repetitions
     if (changedrecord) {
      lastfieldrepeated=-1;
@@ -1055,7 +1140,9 @@ int Show_Record_and_Menu()
     
     // if changed field had script command in automatic value
     if ( previousfield != currentfield ) {
-        
+
+     if ( autosave ) 
+      Read_Write_Field(records[(currentrecord*fieldsperrecord)+previousfield], fieldposition(currentrecord, previousfield), 1); 
      if ( scriptdirection == ONEXIT || scriptdirection == ONENTRYANDEXIT )
       Execute_Script_Command(previousfield);
      
@@ -1685,6 +1772,8 @@ int Show_Record_and_Menu()
      case 'u':
       if (currentmenu==3) {
        Field_Editor();
+       if ( activefields() == 0 )
+        End_Program(NOACTIVEFIELDS);
        // determine button boxes
        for (i=0;i<(int) record.size();i++)
         Determine_Button_Box(i);
@@ -2280,25 +2369,27 @@ void Generate_Field_String(Annotated_Field *field, char *ttext)
    break;
    case STRING:
     strcpy(ttext, field->text);
-    if ( strcmp(tfield->automatic_value, EMPTYSTRING) && !isautomaticvalueformatinstruction(tfield->id) ) {
+    if ( strcmp(tfield->automatic_value, EMPTYSTRING) && !isautomaticvalueformatinstruction(tfield->id) && field->id == currentfield ) {
      strcpy(ttext, tfield->automatic_value);
      if ( (i=isfieldscriptdirector(tfield->id)) )
       ttext[i-1]='\0';
     }
-    if (tfield->formula) {
+    if ( tfield->formula && field->id == currentfield ) {
      strcpy(formula, field->text);
      if (strcmp(tfield->automatic_value, EMPTYSTRING))
       strcpy(formula, tfield->automatic_value);
      i=stringformulacalculator(formula, currentrecord);
      if (i) {
       cropstring(formula, MAXSTRING);
-    strcpy(ttext, formula); } }
+      strcpy(ttext, formula);
+     }
+    }
    break; 
    case MIXEDTYPE:
     strcpy(ttext, field->text);
-    if ( strcmp(tfield->automatic_value, EMPTYSTRING) )
+    if ( strcmp(tfield->automatic_value, EMPTYSTRING) && field->id == currentfield )
      strcpy(ttext, tfield->automatic_value);
-    if (tfield->formula) {
+    if (tfield->formula && field->id == currentfield ) {
      if ( strcmp(tfield->automatic_value, EMPTYSTRING) )
       strcpy(field->text, tfield->automatic_value);
      strcpy(formula, field->text);
@@ -2315,8 +2406,8 @@ void Generate_Field_String(Annotated_Field *field, char *ttext)
      if (n)
       field->number=reversepolishcalculator(formula);
      else
-    field->number=0; }
-//     field->number=0; }
+      field->number=0;
+    }
     if (field->number || record[field->id].buttonbox==BUTTONSCREEN) {
      strcpy(ttext, dtoa(field->number));
      limitsignificantnumbers(ttext, tfield->decimals);

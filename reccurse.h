@@ -50,6 +50,7 @@ const int MAXRELATIONSHIPS=25; // will fit into above 1kb, same as MAXPAGES
 const int MAXSEARCHDEPTH=5;
 const int INSTRUCTION='%';
 const int COMMAND='@';
+const int nrecordparameters=20;
 enum { HORIZONTALLY=1, VERTICALLY };
 const int NUMERICALLIMIT=32765;
 int BLOCK=-1, UNBLOCK=1000, PRINTUNBLOCK=25, QUITUNBLOCK=2500, SCANUNBLOCK=10000; // wait times for getch()
@@ -256,7 +257,8 @@ int Write_rc_File(char *file);
 int Read_Write_db_File(int mode=0);
 int Read_External_Database(int externaldatabaseid);
 int Read_Write_Current_Parameters(int item, int mode=0); // 0 read, 1 write
-void Read_Record_Field(ifstream &instream, Field &tfield);
+int Read_Record_Field(ifstream &instream, Field &tfield);
+int isrecordproperlydictated(Field &tfield);
 void Read_Record_Field(istringstream &instream, Field &tfield);
 void Write_Record_Field(ofstream &outstream, Field &tfield);
 void Write_Record_Field(char *ttext, Field &tfield);
@@ -311,6 +313,7 @@ void outputscreenarraytofile();
 // rclib.cc
 void INThandler(int sig);
 int filecontainsbinary(ifstream* file);
+int activefields();
 char charcoder(char d, int mode=0);
 int filecodedecode(char *source, char *destination, int mode=0);
 void Show_File_Error(char *filename);
