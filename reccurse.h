@@ -100,6 +100,7 @@ const int HOME=262;
 const int END=360;
 const int COPY=11;
 const int TOGGLEMOUSE=12;
+const int SCANAUTOMATICVALUE=16;
 const int PASTE=22;
 const int TAB=9;
 const int SHIFT_TAB=353;
@@ -313,7 +314,6 @@ void outputscreenarraytofile();
 // rclib.cc
 void INThandler(int sig);
 int filecontainsbinary(ifstream* file);
-int activefields();
 char charcoder(char d, int mode=0);
 int filecodedecode(char *source, char *destination, int mode=0);
 void Show_File_Error(char *filename);

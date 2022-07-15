@@ -734,18 +734,6 @@ int filecontainsbinary(ifstream* file)
  return 0;
 }
 
-// number of active fields in Record
-int activefields()
-{
-  int i, active=0;
-  
-   for (i=0;i<(int) record.size();i++)
-    if ( record[i].active == 1 )
-     ++active;
-    
- return active;
-}
-
 // add spaces to bring text in the middle of width
 char* bringstringtomiddle(char *text, int width)
 {

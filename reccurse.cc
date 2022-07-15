@@ -1,7 +1,7 @@
 // reccurse, the filemaker of ncurses
 #include "reccurse.h"
 
-const double version=0.487;
+const double version=0.492;
 
 int main(int argc, char *argv[])
 {
@@ -159,9 +159,11 @@ int checkalteredparameters()
 
    Show_Message(1, 24, GREEN, "save altered parameters (y/n):", 0);
    c=sgetch();
-   if ( c == 'y' )
-    Read_Write_db_File(4);
-   alteredparameters=0;
+   if ( c == 'y' ) {
+    alteredparameters=0;
+    Read_Write_db_File(3);
+    Read_Write_db_File(1); 
+   }
 
   return 1;
 }
@@ -220,12 +222,11 @@ int Read_rc_File()
     record.push_back(tfield);
     ++fieldsperrecord; 
    }
-   if ( fieldsperrecord < 1 || activefields() == 0 )
+   if ( fieldsperrecord < 1 )
     End_Program(NOACTIVEFIELDS);
-   vector<Field>::iterator p=record.end(); // delete last read
-   --p;
-   record.erase(p);
-   --fieldsperrecord;
+//    vector<Field>::iterator p=record.end(); // delete last read
+//    --p;
+//    record.erase(p);
    rcinput.close();
     
    Reccurse_File_Extension(dbfile, 2);
@@ -309,12 +310,14 @@ int Read_Write_db_File(int mode) // 0 read, 1 write, 2 create from file, 3&4 rec
     --s;
     records.erase(s);
     recordsnumber=(int) records.size()/fieldsperrecord;
-    if ( recordsnumber == 0 )
-     recordsnumber=1;
     if (!activefields) {
      Show_Message(1, 24, RED, "no active fields in database");
-    End_Program(NOACTIVEFIELDS); }
-   Read_Write_Relationships(); }
+     End_Program(NOACTIVEFIELDS);
+    }
+    Read_Write_Relationships(); 
+    for (i=0;i<fieldsperrecord;i++)
+     Determine_Button_Box(i);
+   }
    
    if (mode==3) { // recreate rc data into string and rewrite dbfile, relationships
     char ttext3[MAXSTRING*5];
@@ -732,7 +735,7 @@ void Initialize_Record()
   ++recordsnumber;
   
   Read_Write_db_File(1);
-  Read_Write_db_File(); 
+  Read_Write_db_File();
 }
 
 // add a field
@@ -760,7 +763,7 @@ int Add_Field(int type, char *name, char *textvalue)
     if (type==VARIABLE) {
      tx=99; ty=99; 
     }
-    Field tfield(fieldsperrecord, name, 0, const_cast <char *> ("000000000"), 58, tx, ty, 1, 1, const_cast <char *> ("000000000"), 58, 0, 58, type, const_cast <char *> (EMPTYSTRING), 2, 0, 0, 1, (type==VARIABLE || type==PROGRAM) ? 0 : 1, (type==VARIABLE) ? textvalue : const_cast <char *> (EMPTYSTRING));
+    Field tfield(fieldsperrecord, name, 0, const_cast <char *> ("000000000"), WHITEONBLACK, tx, ty, 1, 1, const_cast <char *> ("000000000"), WHITEONBLACK, 0, WHITEONBLACK, type, const_cast <char *> (EMPTYSTRING), 2, 0, 0, 1, (type==VARIABLE || type==PROGRAM) ? 0 : 1, (type==VARIABLE) ? textvalue : const_cast <char *> (EMPTYSTRING));
     record.push_back(tfield);
     Annotated_Field ttfield(fieldsperrecord, atof(textvalue), textvalue, " ");
     for (i=0;i<recordsnumber-1;i++) {
@@ -992,8 +995,8 @@ int Read_Write_Field(Annotated_Field &tfield, long int field_position, int mode)
    replaceunderscoresandbrackets(tfield.text, 1);
   replaceunderscoresandbrackets(tfield.formula, 1);  }
   
-  dbfileaccess.close();
   dbfileaccess.flush();
+  dbfileaccess.close();
   
  return 0;
 }
@@ -1082,7 +1085,7 @@ void Duplicate_Record(int record_id)
 int Show_Record_and_Menu()
 {
   int i, i1, n, trecordsnumber, c, backupmenu=0, replaychar=0;
-  int previousfield=-1, scriptdirection=NOSCRIPT;
+  int previousfield, scriptdirection=NOSCRIPT;
   int findresults[MAXSEARCHDEPTH+1][MAXRECORDS], tsortresults[MAXRECORDS];
   char ttext[MAXSTRING];
   FindSchedule tfindschedule;
@@ -1097,11 +1100,9 @@ int Show_Record_and_Menu()
     // handle field repetitions
     if (changedrecord) {
      lastfieldrepeated=-1;
-     previousfield=-1;
      for (i=0;i<fieldsperrecord;i++)
       fieldrepetitions[i]=((record[i].color) ? record[i].color : -1);
     }
-    changedrecord=0;
     // show fields
     if (renewscreen)
      clear();
@@ -1132,7 +1133,7 @@ int Show_Record_and_Menu()
     }
     
     // if changed field had script command in automatic value
-    if ( previousfield != currentfield ) {
+    if ( previousfield != currentfield && changedrecord == 0 ) {
 
      if ( autosave ) 
       Read_Write_Field(records[(currentrecord*fieldsperrecord)+previousfield], fieldposition(currentrecord, previousfield), 1); 
@@ -1146,7 +1147,8 @@ int Show_Record_and_Menu()
       Execute_Script_Command(currentfield);
 
     }     
-    previousfield=currentfield; 
+    previousfield=currentfield;
+    changedrecord=0;
        
     Show_Menu_Bar();
     cleanstdin();
@@ -1770,8 +1772,6 @@ int Show_Record_and_Menu()
      case 'u':
       if (currentmenu==3) {
        Field_Editor();
-       if ( activefields() == 0 )
-        End_Program(NOACTIVEFIELDS);
        // determine button boxes
        for (i=0;i<(int) record.size();i++)
         Determine_Button_Box(i);
@@ -2375,7 +2375,7 @@ void Generate_Field_String(Annotated_Field *field, char *ttext)
      if ( (i=isfieldscriptdirector(tfield->id)) )
       ttext[i-1]='\0';
     }
-    if ( tfield->formula ) {
+    if ( tfield->formula && (isfieldscriptdirector(tfield->id)) == 0 ) {
      strcpy(formula, field->text);
      if (strcmp(tfield->automatic_value, EMPTYSTRING))
       strcpy(formula, tfield->automatic_value);
@@ -2715,7 +2715,8 @@ int Read_Write_Relationships(int mode) // 0 read all, 1 write/add
     stringcodedecode(ttext, ttext);
     for (i=0;i<(int) strlen(ttext);i++)
    dbfileaccess.put(ttext[i]); }
-    
+
+  dbfileaccess.flush();
   dbfileaccess.close();
     
  return 0;
@@ -2724,8 +2725,6 @@ int Read_Write_Relationships(int mode) // 0 read all, 1 write/add
 // setup necessary variables
 void Initialize_Database_Parameters(int mode)
 {
- int i;
- 
   if (!mode) {
    currentrecord=Read_Write_Current_Parameters(0);
    currentmenu=Read_Write_Current_Parameters(1);
@@ -2733,10 +2732,6 @@ void Initialize_Database_Parameters(int mode)
    autosave=Read_Write_Current_Parameters(3);
    currentfield=Read_Write_Current_Parameters(4);
   }
-   
-   // determine button boxes
-   for (i=0;i<(int) record.size();i++)
-    Determine_Button_Box(i);
 }
 
 // load database
@@ -2822,7 +2817,8 @@ int Pages_Selector(int pagetochange)
    changedrecord=1;
    checkalteredparameters();
   }
-  Read_Write_Current_Parameters(4, 1); // write out currentfield in case of change
+  if ( autosave )
+   Read_Write_Current_Parameters(4, 1); // write out currentfield in case of change
   Load_Database(currentpage);
   
  return currentpage;

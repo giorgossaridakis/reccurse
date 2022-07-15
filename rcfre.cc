@@ -40,6 +40,7 @@ extern const char *onoff[];
 extern int fieldsperrecord;
 extern int changedrecord, editoroption;
 extern int currentrecord;
+extern int currentfield;
 extern int recordsnumber;
 extern int alteredparameters;
 
@@ -167,7 +168,7 @@ extern void cropstring(char ttext[], int noofcharacters, int flag=0);
 // field editor and setup routine
 void Field_Editor()
 {
-  int i, selection, fieldshown=0, t=0, x, y;
+  int i, selection, fieldshown=currentfield, t=0, x, y;
   char ttext[MAXSTRING];
   editoroption=1;
   
@@ -270,6 +271,12 @@ void Field_Editor()
       t=sgetch();
       if (tolower(t)=='y') {
        Delete_Field(fieldshown);
+       for (i=0;i<fieldshown;i++)
+        if ( record[i].fieldlist )
+         record[i].fieldlist=0;
+       for (;i<fieldsperrecord;i++)
+        if ( record[i].fieldlist > fieldshown )
+         --record[i].fieldlist;
        for (i=0;i<(int) relationships.size();i++)
         if (relationships[i].localFields[0]==fieldshown || relationships[i].localFields[1]==fieldshown)
          break;
@@ -424,7 +431,8 @@ void Field_Editor()
   if (tolower(t)=='y') {
    alteredparameters=0;
    Read_Write_db_File(3);
-  Read_Write_db_File(1); }
+   Read_Write_db_File(1); 
+  }
   editoroption=0;
 }
 
