@@ -1,7 +1,7 @@
 // reccurse, the filemaker of ncurses
 #include "reccurse.h"
 
-const double version=0.492;
+const double version=0.494;
 
 int main(int argc, char *argv[])
 {
@@ -1133,12 +1133,14 @@ int Show_Record_and_Menu()
     }
     
     // if changed field had script command in automatic value
-    if ( previousfield != currentfield && changedrecord == 0 ) {
+    if ( previousfield != currentfield || changedrecord ) {
 
-     if ( autosave ) 
-      Read_Write_Field(records[(currentrecord*fieldsperrecord)+previousfield], fieldposition(currentrecord, previousfield), 1); 
-     if ( scriptdirection == ONEXIT || scriptdirection == ONENTRYANDEXIT )
-      Execute_Script_Command(previousfield);
+     if ( changedrecord == 0 ) {
+      if ( autosave )
+       Read_Write_Field(records[(currentrecord*fieldsperrecord)+previousfield], fieldposition(currentrecord, previousfield), 1); 
+      if ( scriptdirection == ONEXIT || scriptdirection == ONENTRYANDEXIT )
+        Execute_Script_Command(previousfield);
+     }
      
      scriptdirection=Determine_Script_Direction(currentfield);
      if ( scriptdirection > ONENTRYANDEXIT )
@@ -2816,6 +2818,7 @@ int Pages_Selector(int pagetochange)
   if (currentpage!=tpage) {
    changedrecord=1;
    checkalteredparameters();
+   alteredparameters=0; // anyways
   }
   if ( autosave )
    Read_Write_Current_Parameters(4, 1); // write out currentfield in case of change
