@@ -148,6 +148,7 @@ int changedrecord=1, editoroption=0;
 char input_string[MAXSTRING];
 int altpressed;
 int MOUSE=ON;
+int savedfield=-1;
 extern int scriptsleeptime;
 extern int terminalhascolor;
 

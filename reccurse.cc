@@ -1,7 +1,7 @@
 // reccurse, the filemaker of ncurses
 #include "reccurse.h"
 
-const double version=0.494;
+const double version=0.495;
 
 int main(int argc, char *argv[])
 {
@@ -224,9 +224,6 @@ int Read_rc_File()
    }
    if ( fieldsperrecord < 1 )
     End_Program(NOACTIVEFIELDS);
-//    vector<Field>::iterator p=record.end(); // delete last read
-//    --p;
-//    record.erase(p);
    rcinput.close();
     
    Reccurse_File_Extension(dbfile, 2);
@@ -961,6 +958,9 @@ int Read_Write_Field(Annotated_Field &tfield, long int field_position, int mode)
   if (!mode)
    dbfileaccess.seekg(field_position, ios::beg);
   else {
+   if ( savedfield == tfield.id )
+    return -1; // already saved
+   savedfield=tfield.id;
    dbfileaccess.seekp(field_position, ios::beg);
    replaceunderscoresandbrackets(tfield.text, 0);
    replaceunderscoresandbrackets(tfield.formula, 0);
@@ -1085,7 +1085,7 @@ void Duplicate_Record(int record_id)
 int Show_Record_and_Menu()
 {
   int i, i1, n, trecordsnumber, c, backupmenu=0, replaychar=0;
-  int previousfield, scriptdirection=NOSCRIPT;
+  int previousfield=0, scriptdirection=NOSCRIPT;
   int findresults[MAXSEARCHDEPTH+1][MAXRECORDS], tsortresults[MAXRECORDS];
   char ttext[MAXSTRING];
   FindSchedule tfindschedule;
@@ -1100,6 +1100,7 @@ int Show_Record_and_Menu()
     // handle field repetitions
     if (changedrecord) {
      lastfieldrepeated=-1;
+     savedfield=-1;
      for (i=0;i<fieldsperrecord;i++)
       fieldrepetitions[i]=((record[i].color) ? record[i].color : -1);
     }
