@@ -1,7 +1,7 @@
 // reccurse, the filemaker of ncurses
 #include "reccurse.h"
 
-const double version=0.495;
+const double version=0.498;
 
 int main(int argc, char *argv[])
 {
@@ -1136,6 +1136,7 @@ int Show_Record_and_Menu()
     // if changed field had script command in automatic value
     if ( previousfield != currentfield || changedrecord ) {
 
+     backupfield=records[(currentrecord*fieldsperrecord)+currentfield];
      if ( changedrecord == 0 ) {
       if ( autosave )
        Read_Write_Field(records[(currentrecord*fieldsperrecord)+previousfield], fieldposition(currentrecord, previousfield), 1); 
@@ -1270,6 +1271,19 @@ int Show_Record_and_Menu()
        if (!printscreenmode)
         break;
        outputscreenarraytofile();
+      break;
+      case UNDO:
+       records[(currentrecord*fieldsperrecord)+currentfield]=backupfield;
+       if ( autosave )
+        Read_Write_Field(records[(currentrecord*fieldsperrecord)+currentfield], fieldposition(currentrecord, currentfield), 1);
+      break;
+      case SCRIPT_PLAYER:
+       Show_Message(1, 24, MAGENTA, "filename:", 0);
+       i=Scan_Input(input_string, 10, 24, MAGENTAONBLACK);
+       strcpy((scriptcommand=(char *)malloc(MAXSTRING)), "file ");
+       strcat(scriptcommand, input_string);
+       runscript=1;
+       memset(input_string, 0, MAXSTRING);
       break;
       case 'w': // demonstrate all records
        if (recordsdemoall) {
@@ -1669,7 +1683,7 @@ int Show_Record_and_Menu()
        c=sgetch();
        if (tolower(c)=='y')
         Delete_Record(currentrecord);
-     }
+      }
      break;
      case 'p':
       if (record[records[(currentrecord*fieldsperrecord)+currentfield].id].type==CALENDAR) {
@@ -1977,8 +1991,14 @@ int negatekeysforcurrentmenu(int t)
    
   if ( t == TOGGLEMOUSE )
    return t;
+  
+  if ( t == SCRIPT_PLAYER)
+   return t;
 
   if ( t == SCANAUTOMATICVALUE && currentmenu == 2 )
+   return t;
+  
+  if ( t == UNDO && currentmenu == 2 )
    return t;
    
   if (currentmenu==2 && t=='\n')

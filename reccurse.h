@@ -101,6 +101,7 @@ const int END=360;
 const int COPY=11;
 const int TOGGLEMOUSE=12;
 const int SCANAUTOMATICVALUE=16;
+const int UNDO=18;
 const int PASTE=22;
 const int TAB=9;
 const int SHIFT_TAB=353;
@@ -240,6 +241,7 @@ vector<Field> record, dummyrecord, externalrecord[MAXRELATIONSHIPS];
 vector<Annotated_Field> records, dummyrecords, externalrecords[MAXRELATIONSHIPS];
 vector<Relationship> relationships;
 vector <FindSchedule> findschedule;
+Annotated_Field backupfield;
 
 // external variables
 // rcscr.cc

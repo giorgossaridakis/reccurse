@@ -93,6 +93,8 @@ class Field {
   Field() { } ;
 ~Field() { } ; } ;
 
+Field backuprecord;
+
 class Annotated_Field {
   // to be annotated in each record
   public:
@@ -168,11 +170,17 @@ extern void cropstring(char ttext[], int noofcharacters, int flag=0);
 // field editor and setup routine
 void Field_Editor()
 {
-  int i, selection, fieldshown=currentfield, t=0, x, y;
+  int i, selection, fieldshown=currentfield, previousrecord=-1, t=0, x, y;
   char ttext[MAXSTRING];
   editoroption=1;
   
   while ( t != ESC ) {
+   
+   if ( previousrecord != fieldshown || previousrecord == -1 ) {
+    backuprecord=record[fieldshown];
+    previousrecord=fieldshown;
+   }
+      
    Draw_Box(BOXCHAR, 6, 17, 33, 5, 16, 25);
    Show_Menu_Bar(1);
    clearinputline();
@@ -229,15 +237,18 @@ void Field_Editor()
    Change_Color(MAGENTA);
    gotoxy(18, 18);
    printw("<arrows><enter><space><esc><* &>");
-   gotoxy(22, 19);
-   printw("<j>ump <insert> <delete>");
+   gotoxy(19, 19);
+   printw("<j>ump <u>ndo <insert> <delete>");
    Change_Color(YELLOW);
    gotoxy(18,20);
    t=sgetch(18,20);
    cleanstdin();
-   if (t!=SPACE && t!=LEFT && t!=RIGHT && t!=ESC && t!=INSERT && t!=DELETE && t!='j' && t!='*' && t!='&')
+   if (t!=SPACE && t!=LEFT && t!=RIGHT && t!=ESC && t!=INSERT && t!=DELETE && t!='j' && t!='*' && t!='&' && t!='u')
     t='\n';
    switch (t) {
+    case 'u':
+     record[fieldshown]=backuprecord;
+    break;
     case SPACE:
      clear();
      Show_Field(&records[fieldshown]);
@@ -434,6 +445,7 @@ void Field_Editor()
    Read_Write_db_File(1); 
   }
   editoroption=0;
+  
 }
 
 // references editor
