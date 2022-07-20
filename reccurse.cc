@@ -1,7 +1,7 @@
 // reccurse, the filemaker of ncurses
 #include "reccurse.h"
 
-const double version=0.498;
+const double version=0.452;
 
 int main(int argc, char *argv[])
 {
@@ -581,7 +581,7 @@ int Read_Record_Field(ifstream &instream, Field &tfield)
 // is Record properly dictated
 int isrecordproperlydictated(Field &tfield)
 {
-   if ( tfield.title_position < 0 || tfield.title_position > 4 ||  strlen(tfield.title_attributes) != 9  || tfield.title_color < 0 || tfield.title_color > 64 || tfield.pt.x < 0 || tfield.pt.x > 79 || tfield.pt.y < 0 || tfield.pt.y > 23 || tfield.size.x < 0 || tfield.size.x > 79 || tfield.size.y < 0 || tfield.size.y > 23 || strlen(tfield.attributes) != 9 || tfield.color < 0 /*|| tfield.color > 64*/ || tfield.box < 0 || tfield.box > 1 || tfield.box_color < 0 || tfield.box_color > 64 || tfield.type < NUMERICAL || tfield.type > CLOCK || tfield.decimals < 0 || tfield.formula < 0 || tfield.formula > 1 || tfield.fieldlist < 0 || tfield.editable < 0 || tfield.editable > 1 || tfield.active < 0 || tfield.active > 1 ) 
+   if ( tfield.title_position < 0 || tfield.title_position > 4 ||  strlen(tfield.title_attributes) != 9  || tfield.title_color < 0 || tfield.title_color > 64 || tfield.pt.x - tfield.box < 1 || tfield.pt.x > 80 || tfield.pt.y - tfield.box < 1 || tfield.pt.y > 23 || tfield.size.x < 0 || tfield.size.x > 80 || tfield.size.y < 0 || tfield.size.y > 23 || (tfield.size.x * tfield.size.y) > MAXSTRING || (tfield.pt.x+tfield.size.x+tfield.box) > 81 || (tfield.pt.y+tfield.size.y+tfield.box) > 24 ||  strlen(tfield.attributes) != 9 || tfield.color < 0 /*|| tfield.color > 64*/ || tfield.box < 0 || tfield.box > 1 || tfield.box_color < 0 || tfield.box_color > 64 || tfield.type < NUMERICAL || tfield.type > CLOCK || tfield.decimals < 0 || tfield.formula < 0 || tfield.formula > 1 || tfield.fieldlist < 0 || tfield.editable < 0 || tfield.editable > 1 || tfield.active < 0 || tfield.active > 1 ) 
        return 0;
 
  return 1;
@@ -1090,6 +1090,7 @@ int Show_Record_and_Menu()
   char ttext[MAXSTRING];
   FindSchedule tfindschedule;
   vector<Annotated_Field> trecords;
+  Annotated_Field backupfield;
   
    while ( true ) {
     // clear screen array
@@ -1272,10 +1273,13 @@ int Show_Record_and_Menu()
         break;
        outputscreenarraytofile();
       break;
-      case UNDO:
+      case UNDO: {
+       Annotated_Field tbackupfield=records[(currentrecord*fieldsperrecord)+currentfield];
        records[(currentrecord*fieldsperrecord)+currentfield]=backupfield;
+       backupfield=tbackupfield;
        if ( autosave )
         Read_Write_Field(records[(currentrecord*fieldsperrecord)+currentfield], fieldposition(currentrecord, currentfield), 1);
+      }
       break;
       case SCRIPT_PLAYER:
        Show_Message(1, 24, MAGENTA, "filename:", 0);
@@ -2170,7 +2174,7 @@ int Show_Field(Annotated_Field *field, int flag) // 1 highlight, 2 only in scree
   int attributestable[9]; // normal, standout, underline, reverse, blink, dim, bold, protect, invisible
   int linkparameters[2];
 
-  if (!tfield->active || (tfield->type>MIXEDTYPE && tfield->type!=CLOCK))
+  if ( !tfield->active || (tfield->type>MIXEDTYPE && tfield->type!=CLOCK) || record[tfield->id].buttonbox == AUTOMATICSCRIPT )
    return -1;
   lima=(tfield->box) ? 80 : 81;
   limb=(tfield->box) ? 23 : 24;
@@ -2252,14 +2256,20 @@ int Show_Field(Annotated_Field *field, int flag) // 1 highlight, 2 only in scree
     aligntext(ttext, field, ctoi(ttext[i+2])); 
    }
    // highlight field
-   if (flag == 1) {
-    tcolor=(tfield->color==highlightcolors[0]) ? highlightcolors[1] : highlightcolors[0];
+   if ( flag == 1 ) {
+    if ( editoroption == -1 )
+     tcolor=(tfield->color==highlightcolors[0]) ? highlightcolors[1] : highlightcolors[0];
     for (i=strlen(ttext);i<((tfield->size.x)+1)*((tfield->size.y)+1);i++)
      ttext[i]=SPACE;
     ttext[i]='\0';
     if ( terminalhascolor == 0 )
      Change_Attributes(REVERSE);
    }
+   if ( editoroption > -1 && flag == 0 )
+    Change_Attributes(DIM);
+   if ( editoroption > -1 && flag == 1 )
+    Change_Attributes(BOLD);
+   
    Change_Color(tcolor); 
    columninprint=tfield->pt.x, rowinprint=tfield->pt.y;
    for (i=0;i<(int) strlen(ttext);i++) {
@@ -2345,11 +2355,13 @@ int Show_Field_ID(Annotated_Field *tfield)
   }
   
    Change_Color(highlightcolor);
+   if ( terminalhascolor == 0 )
+    Change_Attributes(REVERSE);
    attron(A_BLINK);
    gotoxy(record[trecord].pt.x, record[trecord].pt.y);
    printw("%d", tfield->id+1);
    refresh();
-   attroff(A_BLINK);
+   Change_Attributes(NORMAL);
    
  return 0;
 }
@@ -2619,9 +2631,10 @@ int Import_External_db_File(char *filename)
   strcpy(tstring, dbfile);
   strcpy(dbfile, filename);
   Reccurse_File_Extension(dbfile, 2);
-  if (!tryfile(dbfile)) 
-   End_Program(FILEERROR);
-  
+  if (!tryfile(dbfile)) {
+   Show_File_Error(filename);
+   return -1;
+  }
   Read_Write_db_File();
   dummyrecord=record;
   dummyrecords=records;

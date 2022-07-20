@@ -115,7 +115,7 @@ char Scan_Input(char istring[MAXSTRING], int x_pos, int y_pos, int color, int le
   int i, t=0, column, fieldreferenceflag=0, fieldreferencelist, dummyfieldreferencelist, fieldreferencerecord=currentrecord;
   char tstring[MAXSTRING], iistring[MAXSTRING];
   
-  if (record.size() && records.size() && record[currentfield].fieldlist && !editoroption) {
+  if ( record.size() && records.size() && record[currentfield].fieldlist && editoroption == -1 ) {
    fieldreferenceflag=1;
    if (fieldhasdependancy==2) {
      fieldreferencerecord=0;

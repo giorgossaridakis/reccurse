@@ -43,11 +43,20 @@ extern int currentrecord;
 extern int currentfield;
 extern int recordsnumber;
 extern int alteredparameters;
+extern int currentmenu;
+extern int menubar;
 
 // keyboard
+const int DOWN=258;
+const int UP=259;
 const int LEFT=260;
 const int RIGHT=261;
+const int SHIFT_LEFT=393;
+const int SHIFT_RIGHT=402;
+const int SHIFT_UP=337;
+const int SHIFT_DOWN=336;
 const int ESC=27;
+const int ENTER=10;
 const int SPACE=32;
 const int DELETE=330;
 const int INSERT=331;
@@ -55,11 +64,22 @@ const int HOME=262;
 const int END=360;
 const int MAXFIELDS=999; // fields per record
 extern int BLACK, RED, GREEN, YELLOW, BLUE, MAGENTA, CYAN, WHITE;
-
+enum { BLACKONBLACK=1, BLACKONRED, BLACKONGREEN, BLACKONYELLOW, BLACKONBLUE, BLACKONMAGENTA,
+       BLACKONCYAN, BLACKONWHITE,
+       REDONBLACK, REDONRED, REDONGREEN, REDONYELLOW, REDONBLUE, REDONMAGENTA, REDONCYAN, REDONWHITE,
+       GREENONBLACK, GREENONRED, GREENONGREEN, GREENONYELLOW, GREENONBLUE, GREENONMAGENTA, GREENONCYAN, GREENONWHITE,
+       YELLOWONBLACK, YELLOWONRED, YELLOWONGREEN, YELLOWONYELLOW, YELLOWONBLUE, YELLOWONMAGENTA, YELLOWONCYAN, YELLOWONWHITE,
+       BLUEONBLACK, BLUEONRED, BLUEONGREEN, BLUEONYELLOW, BLUEONBLUE, BLUEONMAGENTA, BLUEONCYAN, BLUEONWHITE,
+       MAGENTAONBLACK, MAGENTAONRED, MAGENTAONGREEN, MAGENTAONYELLOW, MAGENTAONBLUE, MAGENTAONMAGENTA, MAGENTAONCYAN, MAGENTAONWHITE,
+       CYANONBLACK, CYANONRED, CYANONGREEN, CYANONYELLOW, CYANONBLUE, CYANONMAGENTA, CYANONCYAN, CYANONWHITE,
+       WHITEONBLACK, WHITEONRED, WHITEONGREEN, WHITEONYELLOW, WHITEONBLUE, WHITEONMAGENTA, WHITEONCYAN, WHITEONWHITE
+      };
 enum { NOBUTTON=0, TICKBOX, BUTTONBOX, BUTTONSCREEN, BUTTONCOMMAND, AUTOMATICSCRIPT };
 enum { NUMERICAL=0, CALENDAR, STRING, MIXEDTYPE, VARIABLE, PROGRAM, CLOCK };
 enum { NORMAL=0, STANDOUT, UNDERLINE, REVERSE, BLINK, DIM, BOLD, PROTECT, INVISIBLE };
 enum { TOLEFT=1, CENTER, TORIGHT };
+const char *FIELDTYPES[]= { "numerical", "calendar", "string", "mixed", "variable", "program", "clock" };
+const char *BUTTONBOXES[]= { "no buttton", "tick box", "button box", "button screen", "button command", "automatic script" };
 
 struct Points {
  int x;
@@ -134,11 +154,13 @@ class Drawbox {
 extern vector<Field> record, dummyrecord, externalrecord[MAXRELATIONSHIPS];
 extern vector<Annotated_Field> records, dummyrecords, externalrecords[MAXRELATIONSHIPS];
 extern vector<Relationship> relationships;
+extern MEVENT mouse;
 
 // function declarations
 int References_Editor();
 void Field_Editor();
 void clearinputline();
+int Edit_Field(int field_id);
 extern void Change_Color(int choice=WHITE);
 extern void Draw_Box(int color, int x_pos, int x_size, int y_pos, int y_size, int paintcolor=BLACK);
 extern void Draw_Box(char t, int color, int x_pos, int x_size, int y_pos, int y_size, int paintcolor=0);
@@ -148,7 +170,11 @@ extern void Change_Attributes(int attribute);
 extern int sgetch(int x_pos=78, int y_pos=24, int sleeptime=250, int showflag=1);
 extern int Show_Field(Annotated_Field *tfield, int flag=0);
 extern int Show_Field_ID(Annotated_Field *tfield);
+extern int isrecordproperlydictated(Field &tfield);
 extern void Show_Menu_Bar(int mode=0);
+extern int Activate_Menubar_Choice(int x);
+extern bool leftmousebuttondoubleclicked();
+extern bool rightmousebuttonclicked();
 extern void cleanstdin();
 extern void Show_Message(int x_pos, int y_pos, int color, char *message, int sleeptime=1500);
 void Show_Message(int x_pos, int y_pos, int color, const char *message, int sleeptime=1500);
@@ -172,7 +198,8 @@ void Field_Editor()
 {
   int i, selection, fieldshown=currentfield, previousrecord=-1, t=0, x, y;
   char ttext[MAXSTRING];
-  editoroption=1;
+  editoroption=1; // reserved to point to fieldshown, if needed
+  mousemask(ALL_MOUSE_EVENTS, NULL);
   
   while ( t != ESC ) {
    
@@ -181,7 +208,7 @@ void Field_Editor()
     previousrecord=fieldshown;
    }
       
-   Draw_Box(BOXCHAR, 6, 17, 33, 5, 16, 25);
+   Draw_Box(BOXCHAR, 6, 17, 33, 5, 17, 25);
    Show_Menu_Bar(1);
    clearinputline();
    Change_Color(YELLOW);
@@ -239,6 +266,10 @@ void Field_Editor()
    printw("<arrows><enter><space><esc><* &>");
    gotoxy(19, 19);
    printw("<j>ump <u>ndo <insert> <delete>");
+   sprintf(ttext, "[%s]&[%s]", FIELDTYPES[record[fieldshown].type], BUTTONBOXES[record[fieldshown].buttonbox]);
+   Change_Color(CYAN);
+   gotoxy(18 + (32 - (int) strlen(ttext))/2, 21);
+   printw("%s", ttext);
    Change_Color(YELLOW);
    gotoxy(18,20);
    t=sgetch(18,20);
@@ -250,16 +281,15 @@ void Field_Editor()
      record[fieldshown]=backuprecord;
     break;
     case SPACE:
-     clear();
-     Show_Field(&records[fieldshown]);
-     getch();
+     Edit_Field(fieldshown);
     break;
     case '*':
      clear();
      for (i=0;i<fieldsperrecord;i++) {
-      Show_Field(&records[(currentrecord*fieldsperrecord)+i]);
-      Show_Field_ID(&records[(currentrecord*fieldsperrecord)+i]); }
-      getch();
+      Show_Field( &records[(currentrecord*fieldsperrecord)+i], ( i == fieldshown ) ? 1 : 0 );
+      Show_Field_ID( &records[(currentrecord*fieldsperrecord)+i] );
+     }
+     getch();
     break;
     case LEFT:
      if (fieldshown)
@@ -444,7 +474,7 @@ void Field_Editor()
    Read_Write_db_File(3);
    Read_Write_db_File(1); 
   }
-  editoroption=0;
+  editoroption=-1;
   
 }
 
@@ -608,4 +638,127 @@ void clearinputline()
    for (i=18;i<40;i++) {
     gotoxy(i, 20);
    addch(SPACE); }
+}
+
+int Edit_Field(int field_id)
+{
+ int i, c=0, bc=0, backupmenu=currentmenu, backupbar=menubar;
+ Field trecord=record[field_id], ttrecord;
+ currentmenu=4; menubar=1;
+ 
+  while ( c != ESC ) {
+    
+   clear();
+   Show_Menu_Bar();
+   if ( isrecordproperlydictated(record[field_id]) == 0 )
+    record[field_id]=ttrecord;
+   ttrecord=record[field_id];
+   Show_Field(&records[(currentrecord*fieldsperrecord)+field_id], 1);
+   gotoxy(80, 24);
+   if ( bc == 0 )
+    c=sgetch();
+   else
+    c=bc;
+   bc=0;
+   if ( c == SPACE )
+    c=ENTER;
+   switch ( c ) {
+    case KEY_MOUSE:   
+     if (leftmousebuttondoubleclicked())
+      if ( mouse.y+1 == 24  && menubar==1 )
+       bc=Activate_Menubar_Choice(mouse.x);
+     if (rightmousebuttonclicked())
+      bc=ENTER;
+    break;
+    case UP:
+     --record[field_id].pt.y;
+    break;
+    case DOWN:
+     ++record[field_id].pt.y;
+    break;
+    case LEFT:
+     --record[field_id].pt.x;
+    break;
+    case RIGHT:
+     ++record[field_id].pt.x;
+    break;
+    case SHIFT_UP:
+     if ( record[field_id].size.y > 1 ) 
+      --record[field_id].size.y;
+    break;
+    case SHIFT_DOWN:
+      ++record[field_id].size.y;
+    break;
+    case SHIFT_LEFT:
+     if ( record[field_id].size.x > 1 )
+      --record[field_id].size.x;
+    break;
+    case SHIFT_RIGHT:
+     ++record[field_id].size.x;
+    break;
+    case '1':
+     if ( record[field_id].title_color )
+      --record[field_id].title_color;
+     else
+      record[field_id].title_color=64;
+    break;
+    case '2':
+     if ( record[field_id].title_color < 65 )
+      ++record[field_id].title_color;
+     else
+      record[field_id].title_color=0;
+    break;
+    case '3':
+     if ( record[field_id].color )
+      --record[field_id].color;
+     else
+      record[field_id].color=64;
+    break;
+    case '4':
+     if ( record[field_id].color < 65 )
+      ++record[field_id].color;
+     else
+      record[field_id].color=0;
+    break;
+    case 'b': // box
+     record[field_id].box = ( record[field_id].box == 1 ) ? 0 : 1;
+    break;
+    case '5':
+     if ( record[field_id].box_color )
+      --record[field_id].box_color;
+     else
+      record[field_id].box_color=64;
+    break;
+    case '6':
+     if ( record[field_id].box_color < 65 )
+      ++record[field_id].box_color;
+     else
+      record[field_id].box_color=0;
+    break;
+    case 't':
+     if ( record[field_id].title_position < 4 )
+      ++record[field_id].title_position;
+     else
+      record[field_id].title_position=0;
+    break;
+    case '*':
+     for (i=0;i<fieldsperrecord;i++) {
+      Show_Field( &records[(currentrecord*fieldsperrecord)+i], ( i == field_id ) ? 1 : 0 );
+      Show_Field_ID( &records[(currentrecord*fieldsperrecord)+i] );
+     }
+     getch();
+    break;
+    case 'm':
+     menubar = ( menubar ) ? 0 : 1;
+    break;
+    case ENTER:
+     record[field_id]=trecord;
+    break;
+   }
+  }    
+  currentmenu=backupmenu;
+  menubar=backupbar;
+  addch(SPACE); // remove char printed at 80,24
+ 
+ return ( c == ESC ) ? 1 : 0;
 }
