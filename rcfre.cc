@@ -710,7 +710,7 @@ void clearinputline()
 
 int Edit_Field(int field_id)
 {
- int i, c=0, bc=0, backupmenu=currentmenu, backupbar=menubar;
+ int i, c=0, bc=0, backupmenu=currentmenu, backupbar=menubar, showallrecords=0;
  Field trecord=record[field_id], ttrecord;
  currentmenu=4; menubar=1;
  
@@ -721,6 +721,13 @@ int Edit_Field(int field_id)
    if ( isrecordproperlydictated(record[field_id]) == 0 )
     record[field_id]=ttrecord;
    ttrecord=record[field_id];
+   if ( showallrecords ) {
+    for (i=0;i<fieldsperrecord;i++) {
+     Show_Field( &records[(currentrecord*fieldsperrecord)+i], ( i == field_id ) ? 1 : 0 );
+     if ( i != field_id )
+      Show_Field_ID( &records[(currentrecord*fieldsperrecord)+i] );
+    }
+   }
    Show_Field(&records[(currentrecord*fieldsperrecord)+field_id], 1);
    gotoxy(80, 24);
    if ( bc == 0 )
@@ -808,11 +815,7 @@ int Edit_Field(int field_id)
       record[field_id].title_position=0;
     break;
     case '*':
-     for (i=0;i<fieldsperrecord;i++) {
-      Show_Field( &records[(currentrecord*fieldsperrecord)+i], ( i == field_id ) ? 1 : 0 );
-      Show_Field_ID( &records[(currentrecord*fieldsperrecord)+i] );
-     }
-     getch();
+     showallrecords = ( showallrecords == 1 ) ? 0 : 1;
     break;
     case 'm':
      menubar = ( menubar ) ? 0 : 1;
