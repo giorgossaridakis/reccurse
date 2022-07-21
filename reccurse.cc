@@ -1,7 +1,7 @@
 // reccurse, the filemaker of ncurses
 #include "reccurse.h"
 
-const double version=0.452;
+const double version=0.454;
 
 int main(int argc, char *argv[])
 {
@@ -1170,7 +1170,7 @@ int Show_Record_and_Menu()
     
     if (runscript) {
      runscript=commandparser(scriptcommand);
-     Sleep(scriptsleeptime); 
+     uSleep(scriptsleeptime); 
     }
     
     if (kbhit() && runscript) {
@@ -1211,7 +1211,7 @@ int Show_Record_and_Menu()
        c='>';
        renewscreen=1;
        if (!printscreenmode) // a little extra time to view record
-      Sleep(750); }
+      uSleep(750); }
      }
      
      // execute automatic record scripts
@@ -2174,7 +2174,7 @@ int Show_Field(Annotated_Field *field, int flag) // 1 highlight, 2 only in scree
   int attributestable[9]; // normal, standout, underline, reverse, blink, dim, bold, protect, invisible
   int linkparameters[2];
 
-  if ( !tfield->active || (tfield->type>MIXEDTYPE && tfield->type!=CLOCK) || record[tfield->id].buttonbox == AUTOMATICSCRIPT )
+  if ( isfielddisplayable(tfield->id) == 0 )
    return -1;
   lima=(tfield->box) ? 80 : 81;
   limb=(tfield->box) ? 23 : 24;
@@ -2889,7 +2889,7 @@ int Activate_Menubar_Choice(int x)
     for (x=buttonbarmenus[i].choiceStartx;x<buttonbarmenus[i].choiceEndx - 1;x++)
      addch(menutexts[currentmenu][x]);
     refresh();
-    Sleep(150);
+    uSleep(150);
     c=buttonbarmenus[i].choiceKey;
    }
     

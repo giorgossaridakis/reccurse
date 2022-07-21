@@ -1244,3 +1244,13 @@ void leavespaces(char *calendar, int spaces)
    for (i=0;i<spaces;i++)
     strcat(calendar, " ");
 }
+
+// is record field eligible for display
+int isfielddisplayable(int field_id)
+{
+  if ( record[field_id].active == 0 || ( record[field_id].type>MIXEDTYPE && record[field_id].type!=CLOCK) || record[field_id].buttonbox == AUTOMATICSCRIPT )
+   return 0;
+
+ return 1;
+}
+

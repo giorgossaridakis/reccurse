@@ -79,7 +79,7 @@ enum { NUMERICAL=0, CALENDAR, STRING, MIXEDTYPE, VARIABLE, PROGRAM, CLOCK };
 enum { NORMAL=0, STANDOUT, UNDERLINE, REVERSE, BLINK, DIM, BOLD, PROTECT, INVISIBLE };
 enum { TOLEFT=1, CENTER, TORIGHT };
 const char *FIELDTYPES[]= { "numerical", "calendar", "string", "mixed", "variable", "program", "clock" };
-const char *BUTTONBOXES[]= { "no buttton", "tick box", "button box", "button screen", "button command", "automatic script" };
+const char *BUTTONBOXES[]= { "edit field", "tick box", "button box", "button screen", "button command", "automatic script" };
 
 struct Points {
  int x;
@@ -173,8 +173,10 @@ extern int Show_Field_ID(Annotated_Field *tfield);
 extern int isrecordproperlydictated(Field &tfield);
 extern void Show_Menu_Bar(int mode=0);
 extern int Activate_Menubar_Choice(int x);
+extern int Determine_Button_Box(int field_id);
 extern bool leftmousebuttondoubleclicked();
 extern bool rightmousebuttonclicked();
+extern int isfielddisplayable(int field_id);
 extern void cleanstdin();
 extern void Show_Message(int x_pos, int y_pos, int color, char *message, int sleeptime=1500);
 void Show_Message(int x_pos, int y_pos, int color, const char *message, int sleeptime=1500);
@@ -208,64 +210,127 @@ void Field_Editor()
     previousrecord=fieldshown;
    }
       
+   Determine_Button_Box(fieldshown);
    Draw_Box(BOXCHAR, 6, 17, 33, 5, 17, 25);
    Show_Menu_Bar(1);
    clearinputline();
-   Change_Color(YELLOW);
+   Change_Color(BLUE);
    gotoxy(25, 6);
-   printw("reccurse database");
+   printw("Reccurse Database");
+   Change_Color(YELLOW);
    for (i=8;i<18;i++) {
     gotoxy(34, i);
    printw("|"); }
-   gotoxy(29, 7);
    attron(A_BOLD);
-   printw("field id:%d", fieldshown+1);
+   sprintf(ttext, "field %d/%d", fieldshown+1, fieldsperrecord);
+   gotoxy(18 + (32 - (int) strlen(ttext))/2, 7);
+   printw("%s", ttext);
    attroff(A_BOLD);
+   Change_Color(YELLOW);
    gotoxy(18, 8);
-   printw("1.title:%.8s", record[fieldshown].title);
+   printw("1.title:");
+   Change_Color(RED);
+   printw("%.8s", record[fieldshown].title);
+   Change_Color(YELLOW);
    gotoxy(18, 9);
-   printw("2.title pos:%d", record[fieldshown].title_position);
+   printw("2.title pos:");
+   Change_Color(RED);
+   printw("%d", record[fieldshown].title_position);
+   Change_Color(YELLOW);
    gotoxy(18, 10);
-   printw("3.title attrs:*");
+   printw("3.title attrs:");
+   Change_Color(RED);
+   printw("*");
+   Change_Color(YELLOW);
    gotoxy(18, 11);
-   printw("4.title color:%2d", record[fieldshown].title_color);
+   printw("4.title color:");
+   Change_Color(RED);
+   printw("%2d", record[fieldshown].title_color);
+   Change_Color(YELLOW);
    gotoxy(18,12);
-   printw("5.pos.x:%d", record[fieldshown].pt.x);
+   printw("5.pos.x:");
+   Change_Color(RED);
+   printw("%d", record[fieldshown].pt.x);
+   Change_Color(YELLOW);
    gotoxy(18,13);
-   printw("6.pos.y:%d", record[fieldshown].pt.y);
+   printw("6.pos.y:");
+   Change_Color(RED);
+   printw("%d", record[fieldshown].pt.y);
+   Change_Color(YELLOW);
    gotoxy(18,14);
-   printw("7.size.x:%d", record[fieldshown].size.x);
+   printw("7.size.x:");
+   Change_Color(RED);
+   printw("%d", record[fieldshown].size.x);
+   Change_Color(YELLOW);
    gotoxy(18,15);
-   printw("8.size.y:%d", record[fieldshown].size.y);
+   printw("8.size.y:");
+   Change_Color(RED);
+   printw("%d", record[fieldshown].size.y);
+   Change_Color(YELLOW);
    gotoxy(18,16);
-   printw("9.attributes:*");
+   printw("9.attributes:");
+   Change_Color(RED);
+   printw("*");
+   Change_Color(YELLOW);
    gotoxy(18,17);
-   printw("10.color:%2d", record[fieldshown].color);
+   printw("10.color:");
+   Change_Color(RED);
+   printw("%2d", record[fieldshown].color);
+   Change_Color(YELLOW);
    gotoxy(35,8);
-   printw("11.box:%s", onoff[record[fieldshown].box]);
+   printw("11.box:");
+   Change_Color(RED);
+   printw("%s", onoff[record[fieldshown].box]);
+   Change_Color(YELLOW);
    gotoxy(35,9);
-   printw("12.box color:%2d", record[fieldshown].box_color);
+   printw("12.box color:");
+   Change_Color(RED);
+   printw("%2d", record[fieldshown].box_color);
+   Change_Color(YELLOW);
    gotoxy(35,10);
-   printw("13.field type:%d", record[fieldshown].type);
+   printw("13.field type:");
+   Change_Color(RED);
+   printw("%d", record[fieldshown].type);
+   Change_Color(YELLOW);
    gotoxy(35,11);
-   printw("14.decimals:%d", record[fieldshown].decimals);
+   printw("14.decimals:");
+   Change_Color(RED);
+   printw("%d", record[fieldshown].decimals);
+   Change_Color(YELLOW);
    gotoxy(35,12);
-   printw("15.suffix:*");
+   printw("15.suffix:");
+   Change_Color(RED);
+   printw("*");
+   Change_Color(YELLOW);
    gotoxy(35,13);
-   printw("16.formula:%s", onoff[record[fieldshown].formula]);
+   printw("16.formula:");
+   Change_Color(RED);
+   printw("%s", onoff[record[fieldshown].formula]);
+   Change_Color(YELLOW);
    gotoxy(35,14);
-   printw("17.list:%d", record[fieldshown].fieldlist);
+   printw("17.list:");
+   Change_Color(RED);
+   printw("%d", record[fieldshown].fieldlist);
+   Change_Color(YELLOW);
    gotoxy(35,15);
-   printw("18.editable:%s", onoff[record[fieldshown].editable]);
+   printw("18.editable:");
+   Change_Color(RED);
+   printw("%s", onoff[record[fieldshown].editable]);
+   Change_Color(YELLOW);
    gotoxy(35,16);
-   printw("19.active:%s", onoff[record[fieldshown].active]);
+   printw("19.active:");
+   Change_Color(RED);
+   printw("%s", onoff[record[fieldshown].active]);
+   Change_Color(YELLOW);
    gotoxy(35,17);
-   printw("20.autovalue:*");
+   printw("20.autovalue:");
+   Change_Color(RED);
+   printw("*");
    Change_Color(MAGENTA);
    gotoxy(18, 18);
    printw("<arrows><enter><space><esc><* &>");
    gotoxy(19, 19);
-   printw("<j>ump <u>ndo <insert> <delete>");
+   printw("<j>ump <u>ndo <insert><delete>");
    sprintf(ttext, "[%s]&[%s]", FIELDTYPES[record[fieldshown].type], BUTTONBOXES[record[fieldshown].buttonbox]);
    Change_Color(CYAN);
    gotoxy(18 + (32 - (int) strlen(ttext))/2, 21);
@@ -281,6 +346,9 @@ void Field_Editor()
      record[fieldshown]=backuprecord;
     break;
     case SPACE:
+     if ( isfielddisplayable(fieldshown) == 0 )
+      break;
+     Show_Message(1, 24, GREEN, "ENTER to store, SPACE to revert or ESC to discard changes", 2500);
      Edit_Field(fieldshown);
     break;
     case '*':
@@ -646,7 +714,7 @@ int Edit_Field(int field_id)
  Field trecord=record[field_id], ttrecord;
  currentmenu=4; menubar=1;
  
-  while ( c != ESC ) {
+  while ( c != ESC && c != ENTER ) {
     
    clear();
    Show_Menu_Bar();
@@ -660,8 +728,6 @@ int Edit_Field(int field_id)
    else
     c=bc;
    bc=0;
-   if ( c == SPACE )
-    c=ENTER;
    switch ( c ) {
     case KEY_MOUSE:   
      if (leftmousebuttondoubleclicked())
@@ -751,7 +817,7 @@ int Edit_Field(int field_id)
     case 'm':
      menubar = ( menubar ) ? 0 : 1;
     break;
-    case ENTER:
+    case SPACE:
      record[field_id]=trecord;
     break;
    }
@@ -759,6 +825,9 @@ int Edit_Field(int field_id)
   currentmenu=backupmenu;
   menubar=backupbar;
   addch(SPACE); // remove char printed at 80,24
+  
+  if ( c == ESC )
+   record[field_id]=trecord;
  
  return ( c == ESC ) ? 1 : 0;
 }

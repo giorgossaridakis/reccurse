@@ -337,7 +337,6 @@ int bgetch(int delay=BLOCK);
 void cleanstdin();
 void Show_Message(int x_pos, int y_pos, int color, char *message, int sleeptime=1500);
 void Show_Message(int x_pos, int y_pos, int color, const char *message, int sleeptime=1500);
-void Sleep(ul sleepMs) { usleep(sleepMs*1000); }
 void replaceunderscoresandbrackets(char dataname[], int flag);
 int limitsignificantnumbers(char *s, int digits);
 int sortrecords(int field_id, int recordssequence[], int mode=0);
@@ -372,6 +371,9 @@ int arefieldsneighbours(int id1, int id2);
 int findinintvector(int element, vector<int>& tv);
 char *Generate_Calendar(int m, int y);
 void leavespaces(char *calendar, int spaces);
+int isfielddisplayable(int field_id);
+void Sleep(ul sleepMs) { blockunblockgetch(sleepMs); getch(); blockunblockgetch(); };
+void uSleep(ul sleepMs) { usleep(sleepMs*1000); }
 
 // rcutil.cc
 extern int mod(double a, double b);
