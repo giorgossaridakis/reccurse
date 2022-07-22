@@ -271,6 +271,7 @@ void Delete_Field(int field_id);
 int Join_Fields(int field_id, int mode);
 void Renumber_Field_References(int startingfield);
 void Renumber_Field_Relationships(int startingfield);
+void Renumber_Field_Fieldlist(int startingfield);
 int Divide_Field(int field_id, int mode);
 void Bring_DateTime_Stamp(char tdatetime[MAXSTRING], int field_id);
 int Read_Write_Field(Annotated_Field &tfield, long int field_position, int mode=0);
@@ -405,7 +406,9 @@ extern unsigned int isseparationchar(char t);
 extern int References_Editor();
 extern void Field_Editor();
 extern void clearinputline();
-extern int Edit_Field(int field_id);
+extern int Edit_Field(int &field_id);
+extern void Show_All_Fields_for_Editor(int field_id, int flag=0);
+extern void Duplicate_Field(int field_id, int flag=0);
 
 // rcpc.cc
 extern int parenthesesincluderforpolishreversecalculator(char formula[]);

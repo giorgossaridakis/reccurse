@@ -160,7 +160,9 @@ extern MEVENT mouse;
 int References_Editor();
 void Field_Editor();
 void clearinputline();
-int Edit_Field(int field_id);
+int Edit_Field(int &field_id);
+void Duplicate_Field(int field_id, int flag=0); // 0 only record, 1 copy records, 2 both
+void Show_All_Fields_for_Editor(int field_id, int flag=0);
 extern void Change_Color(int choice=WHITE);
 extern void Draw_Box(int color, int x_pos, int x_size, int y_pos, int y_size, int paintcolor=BLACK);
 extern void Draw_Box(char t, int color, int x_pos, int x_size, int y_pos, int y_size, int paintcolor=0);
@@ -200,7 +202,7 @@ void Field_Editor()
 {
   int i, selection, fieldshown=currentfield, previousrecord=-1, t=0, x, y;
   char ttext[MAXSTRING];
-  editoroption=1; // reserved to point to fieldshown, if needed
+  editoroption=alteredparameters=1;; // reserved to point to fieldshown, if needed
   mousemask(ALL_MOUSE_EVENTS, NULL);
   
   while ( t != ESC ) {
@@ -329,8 +331,8 @@ void Field_Editor()
    Change_Color(MAGENTA);
    gotoxy(18, 18);
    printw("<arrows><enter><space><esc><* &>");
-   gotoxy(19, 19);
-   printw("<j>ump <u>ndo <insert><delete>");
+   gotoxy(18, 19);
+   printw("<j>ump <u>ndo <f>ront <ins><del>");
    sprintf(ttext, "[%s]&[%s]", FIELDTYPES[record[fieldshown].type], BUTTONBOXES[record[fieldshown].buttonbox]);
    Change_Color(CYAN);
    gotoxy(18 + (32 - (int) strlen(ttext))/2, 21);
@@ -339,24 +341,29 @@ void Field_Editor()
    gotoxy(18,20);
    t=sgetch(18,20);
    cleanstdin();
-   if (t!=SPACE && t!=LEFT && t!=RIGHT && t!=ESC && t!=INSERT && t!=DELETE && t!='j' && t!='*' && t!='&' && t!='u')
+   if ( t!=SPACE && t!=LEFT && t!=RIGHT && t!=ESC && t!=INSERT && t!=DELETE && t!='j' && t!='*' && t!='&' && t!='u' && t != 'f' )
     t='\n';
    switch (t) {
     case 'u':
      record[fieldshown]=backuprecord;
     break;
+    case 'f':
+     if ( isfielddisplayable(fieldshown) == 0 )
+      break;
+     Duplicate_Field(fieldshown, 2);
+     Delete_Field(fieldshown);
+     fieldshown=record.size()-1;
+     backuprecord=record[fieldshown];
+    break;
     case SPACE:
      if ( isfielddisplayable(fieldshown) == 0 )
       break;
-     Show_Message(1, 24, GREEN, "ENTER to store, SPACE to revert or ESC to discard changes", 2500);
      Edit_Field(fieldshown);
     break;
     case '*':
      clear();
-     for (i=0;i<fieldsperrecord;i++) {
-      Show_Field( &records[(currentrecord*fieldsperrecord)+i], ( i == fieldshown ) ? 1 : 0 );
-      Show_Field_ID( &records[(currentrecord*fieldsperrecord)+i] );
-     }
+     Show_All_Fields_for_Editor( currentfield, 1 );
+     Show_Field_ID( &records[(currentrecord*fieldsperrecord)+currentfield] );
      getch();
     break;
     case LEFT:
@@ -380,31 +387,18 @@ void Field_Editor()
       t=sgetch();
       if (tolower(t)=='y') {
        Delete_Field(fieldshown);
-       for (i=0;i<fieldshown;i++)
-        if ( record[i].fieldlist )
-         record[i].fieldlist=0;
-       for (;i<fieldsperrecord;i++)
-        if ( record[i].fieldlist > fieldshown )
-         --record[i].fieldlist;
-       for (i=0;i<(int) relationships.size();i++)
-        if (relationships[i].localFields[0]==fieldshown || relationships[i].localFields[1]==fieldshown)
-         break;
-       if (i<(int) relationships.size())
-        for (i=fieldshown;i<fieldsperrecord;i++)
-         if (record[i].fieldlist>fieldshown)
-          --record[i].fieldlist;
        clearinputline();
        Show_Message(18, 20, RED, "field deleted", 1500);
-      --fieldshown; }
+       if ( fieldshown )
+        --fieldshown; 
+      }
      break;
      case '&':
       printw("duplicate (y/n):");
       t=sgetch();
       if (tolower(t)!='y')
        break;
-      Add_Field();
-      record[record.size()-1]=record[fieldshown];
-      record[record.size()-1].id=record.size()-1;
+      Duplicate_Field(fieldshown);
       strcpy(ttext, "duplicate to field ");
       strcat(ttext, itoa(fieldsperrecord));
       Show_Message(18, 20, RED, ttext, 1500);
@@ -415,8 +409,7 @@ void Field_Editor()
       t=sgetch();
       if (tolower(t)!='y')
        break;
-      for (i=0;i<recordsnumber;i++)
-       strcpy(records[(i*fieldsperrecord)+record.size()-1].text, records[(i*fieldsperrecord)+fieldshown].text);
+      Duplicate_Field(fieldshown, 1);
      break;
      case 'j':
       printw("to field:");
@@ -530,7 +523,6 @@ void Field_Editor()
         Scan_Input(record[fieldshown].automatic_value, 1, 24, record[fieldshown].color);
       break; }
   break; } }
-  alteredparameters=1;
   clearinputline();
   Change_Color(RED);
   gotoxy(18,20);
@@ -554,6 +546,7 @@ int References_Editor()
   vector<Relationship> trelationships=relationships; // create a copy, copy back afterwards if wanted
   Relationship trelationship(const_cast <char *> ("dummydatabase"), 0, 1, 2, 3);
   vector<Relationship>::iterator p;
+  alteredparameters=1;
   
   if ( trelationships.size() == 0 )
    trelationships.push_back(trelationship);
@@ -678,7 +671,6 @@ int References_Editor()
      if (i && i<MAXFIELDS+1)
       trelationships[relationshipshown].localFields[1]=i;
   break; } }
-  alteredparameters=1;
   clearinputline();
   gotoxy(18,20);
   Change_Color(RED);
@@ -708,9 +700,9 @@ void clearinputline()
    addch(SPACE); }
 }
 
-int Edit_Field(int field_id)
+int Edit_Field(int &field_id)
 {
- int i, c=0, bc=0, backupmenu=currentmenu, backupbar=menubar, showallrecords=0;
+ int c=0, bc=0, backupmenu=currentmenu, backupbar=menubar, showallrecords=0;
  Field trecord=record[field_id], ttrecord;
  currentmenu=4; menubar=1;
  
@@ -718,17 +710,20 @@ int Edit_Field(int field_id)
     
    clear();
    Show_Menu_Bar();
+   if ( menubar == 2 ) { // add new menu
+    Show_Menu_Bar(1);
+    Change_Color(MAGENTAONYELLOW);
+    gotoxy(1, 24);
+    printw("<m> toggle bar|<f>ield in front|<ENTER>store|<SPACE>revert|<ESC>discard");
+    refresh();
+   }
    if ( isrecordproperlydictated(record[field_id]) == 0 )
     record[field_id]=ttrecord;
    ttrecord=record[field_id];
-   if ( showallrecords ) {
-    for (i=0;i<fieldsperrecord;i++) {
-     Show_Field( &records[(currentrecord*fieldsperrecord)+i], ( i == field_id ) ? 1 : 0 );
-     if ( i != field_id )
-      Show_Field_ID( &records[(currentrecord*fieldsperrecord)+i] );
-    }
-   }
-   Show_Field(&records[(currentrecord*fieldsperrecord)+field_id], 1);
+   if ( showallrecords ) 
+    Show_All_Fields_for_Editor( field_id );
+   else
+    Show_Field( &records[(currentrecord*fieldsperrecord)+field_id], 1 );
    gotoxy(80, 24);
    if ( bc == 0 )
     c=sgetch();
@@ -818,7 +813,16 @@ int Edit_Field(int field_id)
      showallrecords = ( showallrecords == 1 ) ? 0 : 1;
     break;
     case 'm':
-     menubar = ( menubar ) ? 0 : 1;
+     ++menubar;
+     menubar=(menubar==3) ? 0 : menubar;
+    break;
+    case 'f':
+     if ( isfielddisplayable(field_id) == 0 )
+      break;
+     Duplicate_Field(field_id, 2);
+     Delete_Field(field_id);
+     field_id=record.size()-1;
+     trecord=ttrecord=record[field_id];
     break;
     case SPACE:
      record[field_id]=trecord;
@@ -833,4 +837,41 @@ int Edit_Field(int field_id)
    record[field_id]=trecord;
  
  return ( c == ESC ) ? 1 : 0;
+ 
+}
+
+// display all fields dimmed, except field_id
+void Show_All_Fields_for_Editor(int field_id, int flag) // 0 only fields, 1 field ids
+{
+  int i;
+  
+    for (i=0;i<fieldsperrecord;i++) {
+     Show_Field( &records[(currentrecord*fieldsperrecord)+i], ( i == field_id ) ? 1 : 0 );
+     if ( i != field_id && flag )
+      Show_Field_ID( &records[(currentrecord*fieldsperrecord)+i] );
+    }
+    
+}
+  
+// copy field
+void Duplicate_Field(int field_id, int flag)
+{
+ int i;   
+    
+  if ( flag == 0 ) {
+   Add_Field();
+   record[record.size()-1]=record[field_id];
+   record[record.size()-1].id=record.size()-1;
+   if ( record[field_id].fieldlist-1 == field_id )
+    record[record.size()-1].fieldlist=(int) record.size();
+  }
+  if ( flag == 1 ) {
+   for (i=0;i<recordsnumber;i++)
+    strcpy(records[(i*fieldsperrecord)+record.size()-1].text, records[(i*fieldsperrecord)+field_id].text);
+  }
+  if ( flag == 2 ) {
+   Duplicate_Field(field_id);
+   Duplicate_Field(field_id, 1);
+  }
+    
 }

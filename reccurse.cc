@@ -1,7 +1,7 @@
 // reccurse, the filemaker of ncurses
 #include "reccurse.h"
 
-const double version=0.454;
+const double version=0.501;
 
 int main(int argc, char *argv[])
 {
@@ -773,8 +773,10 @@ int Add_Field(int type, char *name, char *textvalue)
    Generate_Field_String(&records[(int) records.size()-1], ttext);
    ++fieldsperrecord;
    
-   Read_Write_db_File(3);
-   Read_Write_db_File(1);
+   if ( editoroption == -1 && autosave ) {
+    Read_Write_db_File(3);
+    Read_Write_db_File(1);
+   }
    
  return fieldsperrecord;
 }
@@ -797,9 +799,10 @@ void Delete_Field(int field_id)
    while (p!=records.end())
     for (i=0;i<fieldsperrecord;i++)
      p++->id=i;
-   
+    
    Renumber_Field_References(field_id);
    Renumber_Field_Relationships(field_id);
+   Renumber_Field_Fieldlist(field_id);
    Read_Write_db_File(3);
    Read_Write_db_File(1);
 }
@@ -893,6 +896,19 @@ void Renumber_Field_Relationships(int startingfield) // autoremove if same field
       --relationships[i].localFields[0];
      if (relationships[i].localFields[1]>startingfield)
    --relationships[i].localFields[1]; }
+}
+
+// renumber fields ids for fieldlists
+void Renumber_Field_Fieldlist(int startingfield)
+{
+ int i;
+ 
+   for (i=0;i<startingfield && i<fieldsperrecord;i++)
+    if ( record[i].fieldlist == startingfield )
+     record[i].fieldlist=0;
+   for (;i<fieldsperrecord;i++)
+    if ( record[i].fieldlist && record[i].fieldlist > startingfield )
+     --record[i].fieldlist;
 }
 
 // divide a field into two parts
