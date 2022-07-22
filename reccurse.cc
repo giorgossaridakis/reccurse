@@ -1,7 +1,7 @@
 // reccurse, the filemaker of ncurses
 #include "reccurse.h"
 
-const double version=0.501;
+const double version=0.503;
 
 int main(int argc, char *argv[])
 {
@@ -892,10 +892,11 @@ void Renumber_Field_Relationships(int startingfield) // autoremove if same field
       p=relationships.begin();
       p+=i;
      relationships.erase(p); }
-     if (relationships[i].localFields[0]>startingfield)
+     if (relationships[i].localFields[0]-1>startingfield)
       --relationships[i].localFields[0];
-     if (relationships[i].localFields[1]>startingfield)
-   --relationships[i].localFields[1]; }
+     if (relationships[i].localFields[1]-1>startingfield)
+      --relationships[i].localFields[1];
+    }
 }
 
 // renumber fields ids for fieldlists
@@ -903,12 +904,12 @@ void Renumber_Field_Fieldlist(int startingfield)
 {
  int i;
  
-   for (i=0;i<startingfield && i<fieldsperrecord;i++)
-    if ( record[i].fieldlist == startingfield )
+   for (i=0;i<fieldsperrecord;i++) {
+    if ( record[i].fieldlist-1 == startingfield )
      record[i].fieldlist=0;
-   for (;i<fieldsperrecord;i++)
-    if ( record[i].fieldlist && record[i].fieldlist > startingfield )
+    if ( record[i].fieldlist && record[i].fieldlist-1 > startingfield )
      --record[i].fieldlist;
+   }
 }
 
 // divide a field into two parts

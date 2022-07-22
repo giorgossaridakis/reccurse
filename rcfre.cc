@@ -396,20 +396,18 @@ void Field_Editor()
      case '&':
       printw("duplicate (y/n):");
       t=sgetch();
-      if (tolower(t)!='y')
+      if (t!='y')
        break;
-      Duplicate_Field(fieldshown);
-      strcpy(ttext, "duplicate to field ");
-      strcat(ttext, itoa(fieldsperrecord));
-      Show_Message(18, 20, RED, ttext, 1500);
       clearinputline();
       gotoxy(18,20);
       Change_Color(GREEN);
       printw("copy records (y/n):");
       t=sgetch();
-      if (tolower(t)!='y')
-       break;
-      Duplicate_Field(fieldshown, 1);
+      t = (t=='y') ? 2 : 0;
+      Duplicate_Field(fieldshown, t);
+      strcpy(ttext, "duplicate to field ");
+      strcat(ttext, itoa(fieldsperrecord));
+      Show_Message(18, 20, RED, ttext, 1500);
      break;
      case 'j':
       printw("to field:");
@@ -698,6 +696,7 @@ void clearinputline()
    for (i=18;i<40;i++) {
     gotoxy(i, 20);
    addch(SPACE); }
+   refresh();
 }
 
 int Edit_Field(int &field_id)
