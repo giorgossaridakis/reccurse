@@ -609,7 +609,19 @@ void sortfieldsbyxpt(int field_id, vector <int> &fieldxidentities)
    for (i=0;i<fieldsperrecord;i++)
     if ( record[field_id].pt.y == record[i].pt.y && record[i].editable && record[i].active )
      fieldxidentities.push_back(i);
-   sort(fieldxidentities.begin(), fieldxidentities.end());
+   i=0;
+   int operation=1, t;
+   while (operation) {
+    operation=0;
+    for (i=0;i<(int) fieldxidentities.size()-1;i++) {
+     if (record[fieldxidentities[i+1]].pt.x<record[fieldxidentities[i]].pt.x) {
+      operation=1;
+      t=fieldxidentities[i];
+      fieldxidentities[i]=fieldxidentities[i+1];
+      fieldxidentities[i+1]=t;
+     }
+    }
+   }
 }
 
 // return table with sorted by y.pt fields
@@ -620,7 +632,19 @@ void sortfieldsbyypt(int field_id, vector <int> &fieldyidentities)
    for (i=0;i<fieldsperrecord;i++)
     if (record[field_id].pt.x==record[i].pt.x && record[i].editable && record[i].active)
      fieldyidentities.push_back(i);
-   sort(fieldyidentities.begin(), fieldyidentities.end());   
+   i=0;
+   int operation=1, t;
+   while (operation) {
+    operation=0;
+    for (i=0;i<(int) fieldyidentities.size()-1;i++) {
+     if (record[fieldyidentities[i+1]].pt.y<record[fieldyidentities[i]].pt.y) {
+      operation=1;
+      t=fieldyidentities[i];
+      fieldyidentities[i]=fieldyidentities[i+1];
+      fieldyidentities[i+1]=t;
+     }
+    }
+   }
 }
 
 // find first/last active & editable field
