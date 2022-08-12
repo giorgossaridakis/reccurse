@@ -72,6 +72,7 @@ enum { BLACKONBLACK=1, BLACKONRED, BLACKONGREEN, BLACKONYELLOW, BLACKONBLUE, BLA
 enum { TOLEFT=1, CENTER, TORIGHT };
 enum { NOSCRIPT = 0, ONENTRY, ONEXIT, ONENTRYANDEXIT };
 enum { SEGMENTATIONFAULT = -4, FLOATINGPOINTEXCEPTION = -3, NOACTIVEFIELDS = -2, FILEERROR, NORMALEXIT = 0 };
+enum { X = 0, Y, XY, YX };
 const char *exittexts[]= { "SEGMENTATION FAULT", "FLOATING POINT EXCEPTION", "NO ACTIVE FIELDS", "FILE I/O ERROR", "NORMAL" };
 const char *menukeys[]={ "eot`", "alsh`", "dckpjv+-*/.!@`", "ifru`", "yn`", "0123456789/*-+^,.()=`", "udixl`", "ir`" }; // m works in all menus
 const char *buttonkeys[]={ "0", "1", "2", "3", "4", "5", "6", "7", "8", "9", "/", "*", 
@@ -235,12 +236,22 @@ struct FindSchedule {
    int field_id;
 char texttolookfor[MAXSTRING]; } ;
 
+enum { STARTOFWORD = 0, ENDOFWORD };
+class Word { 
+  public:
+   char formulaWord[MAXSTRING]; 
+   int formulaPosition[2];
+   Word(char *word, int i1, int i2): formulaPosition{i1,i2} { strcpy(formulaWord, word); };
+   Word() { };
+~Word() { }; };
+
 // vectors
 vector<ButtonBarMenuEntry> buttonbarmenus;
 vector<Field> record, dummyrecord, externalrecord[MAXRELATIONSHIPS];
 vector<Annotated_Field> records, dummyrecords, externalrecords[MAXRELATIONSHIPS];
 vector<Relationship> relationships;
 vector <FindSchedule> findschedule;
+vector<Word> separatedwords;
 
 // external variables
 // rcscr.cc
@@ -319,6 +330,8 @@ void INThandler(int sig);
 int filecontainsbinary(ifstream* file);
 char charcoder(char d, int mode=0);
 int filecodedecode(char *source, char *destination, int mode=0);
+int separatewords(char formula[], vector<Word> &separatedwords, char *separator);
+Word* strtok2(char *formula, char *separator);
 void Show_File_Error(char *filename);
 void stringcodedecode(char *source, char *destination, int mode=0);
 void checkpoint(int id, int color=58);
@@ -364,10 +377,14 @@ void aligntextsingley(Annotated_Field *field, int alignment, int row=0);
 char* aligntext(char text[MAXSTRING], Annotated_Field *field, int alignment);
 int pagehasclockfields();
 int isfieldtextlink(Annotated_Field *field, int linkparameters[]);
+int isfieldmultipleselection(int field_id);
+int multiplechoiceinstructions(int field_id);
+void moveinstructioninfieldtext(int field_id, int flag=0);
 int assignstringvaluestoarray(char *line, char array[MAXWORDS][MAXSTRING], int entries);
 int readstringentry(char *line, char *linepart);
 unsigned int isseparationchar(char t);
 int fieldsadjoiningfields(Annotated_Field *tfield, vector<int>& adjoiningfields);
+void sortxy(vector<int>& fieldstosort, int preference=XY);
 int arefieldsneighbours(int id1, int id2);
 int findinintvector(int element, vector<int>& tv);
 char *Generate_Calendar(int m, int y);

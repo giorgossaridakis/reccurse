@@ -353,7 +353,6 @@ void Field_Editor()
      Duplicate_Field(fieldshown, 2);
      Delete_Field(fieldshown);
      fieldshown=record.size()-1;
-     backuprecord=record[fieldshown];
     break;
     case SPACE:
      if ( isfielddisplayable(fieldshown) == 0 )
@@ -719,6 +718,7 @@ int Edit_Field(int &field_id)
    if ( isrecordproperlydictated(record[field_id]) == 0 )
     record[field_id]=ttrecord;
    ttrecord=record[field_id];
+   Determine_Button_Box(field_id);
    if ( showallrecords ) 
     Show_All_Fields_for_Editor( field_id );
    else
@@ -820,6 +820,7 @@ int Edit_Field(int &field_id)
       break;
      Duplicate_Field(field_id, 2);
      Delete_Field(field_id);
+//      record[field_id].active=0;
      field_id=record.size()-1;
      trecord=ttrecord=record[field_id];
     break;

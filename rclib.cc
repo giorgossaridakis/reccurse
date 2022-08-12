@@ -60,6 +60,53 @@ int filecodedecode(char *source, char *destination, int mode) // 0 code, 1 decod
  return 0;
 }
 
+// separate words in string and store in vector inside structures
+int separatewords(char formula[], vector<Word> &separatedwords, char *separator)
+{
+  vector<Word>::iterator p=separatedwords.begin();
+  while (p<separatedwords.end()) // because words.clear() only moves pointer, words are kept
+   separatedwords.erase(p++);
+  separatedwords.clear();
+    
+   Word *tstringpart=strtok2(formula, separator);
+   while (tstringpart!=NULL) {
+    separatedwords.push_back(*tstringpart);
+    tstringpart=strtok2(NULL, separator);
+   }
+
+  return (int) separatedwords.size();
+}
+
+// strtok2, strtok alike, returns struct with char and word position, start and end in string
+Word* strtok2(char *formula, char *separator)
+{
+  int n=0;
+  char tformula[MAXSTRING];
+  Word *sP=NULL;
+  static int position;
+  static char lformula[MAXSTRING];
+  
+  // initilizations
+  if (formula!=NULL) {
+   position=0;
+   strcpy(lformula, formula);
+  }
+
+    while ( (lformula[position]==separator[0] || lformula[position]==separator[1] || lformula[position]==separator[2] || lformula[position]==separator[3]) && position<(int) strlen(lformula))
+     ++position;
+    while (lformula[position]!=separator[0] && lformula[position]!=separator[1] && lformula[position]!=separator[2] && lformula[position]!=separator[3] && position<(int) strlen(lformula))
+     tformula[n++]=lformula[position++];
+    tformula[n]='\0';
+    if (n) {
+     sP=new Word;
+     strcpy(sP->formulaWord, tformula);
+     sP->formulaPosition[STARTOFWORD]=position-strlen(tformula);
+     sP->formulaPosition[ENDOFWORD]=position;
+    }
+
+  return sP;
+}
+
 // show error for file access
 void Show_File_Error(char *filename)
 {
@@ -609,19 +656,7 @@ void sortfieldsbyxpt(int field_id, vector <int> &fieldxidentities)
    for (i=0;i<fieldsperrecord;i++)
     if ( record[field_id].pt.y == record[i].pt.y && record[i].editable && record[i].active )
      fieldxidentities.push_back(i);
-   i=0;
-   int operation=1, t;
-   while (operation) {
-    operation=0;
-    for (i=0;i<(int) fieldxidentities.size()-1;i++) {
-     if (record[fieldxidentities[i+1]].pt.x<record[fieldxidentities[i]].pt.x) {
-      operation=1;
-      t=fieldxidentities[i];
-      fieldxidentities[i]=fieldxidentities[i+1];
-      fieldxidentities[i+1]=t;
-     }
-    }
-   }
+   sortxy(fieldxidentities, X);
 }
 
 // return table with sorted by y.pt fields
@@ -632,19 +667,7 @@ void sortfieldsbyypt(int field_id, vector <int> &fieldyidentities)
    for (i=0;i<fieldsperrecord;i++)
     if (record[field_id].pt.x==record[i].pt.x && record[i].editable && record[i].active)
      fieldyidentities.push_back(i);
-   i=0;
-   int operation=1, t;
-   while (operation) {
-    operation=0;
-    for (i=0;i<(int) fieldyidentities.size()-1;i++) {
-     if (record[fieldyidentities[i+1]].pt.y<record[fieldyidentities[i]].pt.y) {
-      operation=1;
-      t=fieldyidentities[i];
-      fieldyidentities[i]=fieldyidentities[i+1];
-      fieldyidentities[i+1]=t;
-     }
-    }
-   }
+   sortxy(fieldyidentities, Y);
 }
 
 // find first/last active & editable field
@@ -1134,6 +1157,60 @@ int isfieldtextlink(Annotated_Field *tfield, int linkparameters[]) // 0 record, 
  return i1;
 }
 
+// is field eligible for pushspaceonfield with words separated by spaces
+int isfieldmultipleselection(int field_id)
+{
+  int i;
+  char separator[5];
+  strcpy(separator, " ~<>");
+  
+   i=separatewords(records[(currentrecord*fieldsperrecord)+field_id].text, separatedwords, separator);
+   if ( i < 2 || separatedwords[0].formulaPosition[STARTOFWORD] == 0 || (multiplechoiceinstructions(field_id)) > 1 )
+    i=0;
+          
+ return i;
+}
+
+// count multiple choice instruction in field text
+int multiplechoiceinstructions(int field_id)
+{
+  int i1, instructioncounter;
+  
+   for (i1=instructioncounter=0;i1<(int)strlen(records[(currentrecord*fieldsperrecord)+field_id].text);i1++)
+    if ( records[(currentrecord*fieldsperrecord)+field_id].text[i1] == '~' )
+     ++instructioncounter;
+    
+ return instructioncounter;
+}
+
+// move instruction % in field text
+void moveinstructioninfieldtext(int field_id, int flag) // 0 entire procedure, 1 no adjoining
+{
+ int i1, instructionpoint;
+ 
+    for (instructionpoint=0;instructionpoint<(int)strlen(records[(currentrecord*fieldsperrecord)+field_id].text);instructionpoint++) {
+     if ( records[(currentrecord*fieldsperrecord)+field_id].text[instructionpoint] == '~' ) {
+      records[(currentrecord*fieldsperrecord)+field_id].text[instructionpoint]=SPACE;
+      for (i1=0;i1<(int)separatedwords.size();i1++) {
+       if ( separatedwords[i1].formulaPosition[STARTOFWORD] - 1 == instructionpoint && i1 < (int) separatedwords.size() - 1 ) {
+        instructionpoint=separatedwords[i1+1].formulaPosition[STARTOFWORD] - 1;
+        break;
+       }
+       if ( i1 == (int)separatedwords.size() - 1 )
+        break;
+      }
+      break;
+     }
+    }
+    if ( instructionpoint == (int)strlen(records[(currentrecord*fieldsperrecord)+field_id].text) || i1 == (int)separatedwords.size() ) // to next or first adjoining
+     instructionpoint=separatedwords[0].formulaPosition[STARTOFWORD] - 1 ;
+    if ( i1 != (int) separatedwords.size() - 1 )
+     records[(currentrecord*fieldsperrecord)+field_id].text[instructionpoint]='~';
+    
+    if ( autosave ) // save all adjoining
+     Read_Write_Field(records[(currentrecord*fieldsperrecord)+field_id], fieldposition(currentrecord, field_id), 1); 
+}
+
 // using readstringentry, assign strings to array of pointers
 int assignstringvaluestoarray(char *line, char array[MAXWORDS][MAXSTRING], int entries)
 {
@@ -1157,30 +1234,71 @@ int fieldsadjoiningfields(Annotated_Field *tfield, vector<int>& adjoiningfields)
     ttfield=&records[(currentrecord*fieldsperrecord)+adjoiningfields[pos++]];
     recordid=ttfield->id;
      
-     if (ttfield->text[(int) strlen(ttfield->text)-1]=='>') {
+     if ( ttfield->text[(int) strlen(ttfield->text)-1]=='>' ) {
       for (i1=0;i1<fieldsperrecord;i1++)
        if (records[(currentrecord*fieldsperrecord)+i1].text[0]=='<') {
         if ((findinintvector(i1, adjoiningfields)) || ((arefieldsneighbours(recordid, i1)==0)))
          continue;
         else 
-         adjoiningfields.push_back(i1); }
+         if ( tfield->id != i1 )
+          adjoiningfields.push_back(i1); 
+       }
      }
-     if (ttfield->text[0]=='<') {
+     if ( ttfield->text[0]== '<' ) {
       for (i1=0;i1<fieldsperrecord;i1++) {
        if (records[(currentrecord*fieldsperrecord)+i1].text[(int) strlen(records[(currentrecord*fieldsperrecord)+i1].text)-1]=='>') {
         if ((findinintvector(i1, adjoiningfields)) || ((arefieldsneighbours(i1, recordid)==0))) {
          continue;
         }
        else
-        adjoiningfields.push_back(i1);
+        if ( tfield->id != i1 )
+         adjoiningfields.push_back(i1);
        }
       }
      }
        
     }
-    sort(adjoiningfields.begin(), adjoiningfields.end());
+    sortxy(adjoiningfields, XY);
 
  return (int) adjoiningfields.size();
+}
+
+// sort fields by x or y
+void sortxy(vector<int>& fieldstosort, int preference) // 0 x, 1 y
+{
+  int i;
+  
+    if ( preference == XY )
+     for (i=X;i<XY;i++)
+      sortxy(fieldstosort, i);
+    if ( preference == YX )
+     for (i=Y;i>-1;i--)
+      sortxy(fieldstosort, i);
+    if ( preference > Y )
+     return;
+    int operation=1, t, pta, ptb;
+      
+    while ( operation ) {
+     operation=0;
+     for (i=0;i<(int) fieldstosort.size()-1;i++) {
+      switch ( preference ) {
+       case X:
+        pta=record[fieldstosort[i+1]].pt.x;
+        ptb=record[fieldstosort[i]].pt.x;
+       break;
+       case Y:
+        pta=record[fieldstosort[i+1]].pt.y;
+        ptb=record[fieldstosort[i]].pt.y;
+       break;
+      }
+      if (pta<ptb) {
+       operation=1;
+       t=fieldstosort[i];
+       fieldstosort[i]=fieldstosort[i+1];
+       fieldstosort[i+1]=t;
+      }
+     }
+    }
 }
 
 // fields touch borders
