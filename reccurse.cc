@@ -1,7 +1,7 @@
 // reccurse, the filemaker of ncurses
 #include "reccurse.h"
 
-const double version=0.507;
+const double version=0.508;
 
 int main(int argc, char *argv[])
 {
@@ -2293,7 +2293,7 @@ int Show_Field(Annotated_Field *field, int flag) // 1 highlight, 2 only in scree
    for (i=0;i<(int)strlen(ttext);i++) {
     if (strlen(ttext)==1 && isspace(ttext[0]))
      break;
-    if ( flag == 0 && ismultipleselection && ttext[i] == SPACE )
+    if ( flag < 2 && ismultipleselection && ttext[i] == SPACE )
      Change_Color(tcolor);
     if (ttext[i]=='\\') {
      switch (ttext[i+1]) {
@@ -2348,8 +2348,10 @@ int Show_Field(Annotated_Field *field, int flag) // 1 highlight, 2 only in scree
     // change color for multiple selections
     if ( ismultipleselection && ttext[i] == '~' ) {
      ttext[i]=SPACE;
-     if ( flag == 0 ) {
+     if ( flag < 2 ) {
       i1 = (tcolor == RED) ? GREEN : RED;
+      if ( flag == 1 )
+       i1 = (tcolor == highlightcolors[0]) ? highlightcolors[2] : highlightcolors[3];
       Change_Color(i1);
      }
     }

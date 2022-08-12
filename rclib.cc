@@ -1184,7 +1184,7 @@ int multiplechoiceinstructions(int field_id)
 }
 
 // move instruction % in field text
-void moveinstructioninfieldtext(int field_id, int flag) // 0 entire procedure, 1 no adjoining
+void moveinstructioninfieldtext(int field_id)
 {
  int i1, instructionpoint;
  
@@ -1268,14 +1268,11 @@ void sortxy(vector<int>& fieldstosort, int preference) // 0 x, 1 y
 {
   int i;
   
-    if ( preference == XY )
+    if ( preference == XY ) {
      for (i=X;i<XY;i++)
       sortxy(fieldstosort, i);
-    if ( preference == YX )
-     for (i=Y;i>-1;i--)
-      sortxy(fieldstosort, i);
-    if ( preference > Y )
      return;
+    }
     int operation=1, t, pta, ptb;
       
     while ( operation ) {

@@ -72,7 +72,7 @@ enum { BLACKONBLACK=1, BLACKONRED, BLACKONGREEN, BLACKONYELLOW, BLACKONBLUE, BLA
 enum { TOLEFT=1, CENTER, TORIGHT };
 enum { NOSCRIPT = 0, ONENTRY, ONEXIT, ONENTRYANDEXIT };
 enum { SEGMENTATIONFAULT = -4, FLOATINGPOINTEXCEPTION = -3, NOACTIVEFIELDS = -2, FILEERROR, NORMALEXIT = 0 };
-enum { X = 0, Y, XY, YX };
+enum { X = 0, Y, XY };
 const char *exittexts[]= { "SEGMENTATION FAULT", "FLOATING POINT EXCEPTION", "NO ACTIVE FIELDS", "FILE I/O ERROR", "NORMAL" };
 const char *menukeys[]={ "eot`", "alsh`", "dckpjv+-*/.!@`", "ifru`", "yn`", "0123456789/*-+^,.()=`", "udixl`", "ir`" }; // m works in all menus
 const char *buttonkeys[]={ "0", "1", "2", "3", "4", "5", "6", "7", "8", "9", "/", "*", 
@@ -257,7 +257,7 @@ vector<Word> separatedwords;
 // rcscr.cc
 const int UNDERSCORE=95;
 const char BOXCHAR='*';
-extern int highlightcolors[2];
+extern int highlightcolors[4];
 
 // function declarations
 
@@ -379,7 +379,7 @@ int pagehasclockfields();
 int isfieldtextlink(Annotated_Field *field, int linkparameters[]);
 int isfieldmultipleselection(int field_id);
 int multiplechoiceinstructions(int field_id);
-void moveinstructioninfieldtext(int field_id, int flag=0);
+void moveinstructioninfieldtext(int field_id);
 int assignstringvaluestoarray(char *line, char array[MAXWORDS][MAXSTRING], int entries);
 int readstringentry(char *line, char *linepart);
 unsigned int isseparationchar(char t);
