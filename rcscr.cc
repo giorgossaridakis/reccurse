@@ -57,7 +57,7 @@ class Drawbox {
 // local variables
 WINDOW *win1=newwin(80, 24, 1, 1);
 const char BOXCHAR='*';
-int highlightcolors[2]={ MAGENTAONYELLOW, YELLOWONMAGENTA };
+int highlightcolors[4]={ MAGENTAONYELLOW, YELLOWONMAGENTA, REDONYELLOW, GREENONMAGENTA };
 int terminalhascolor=1;
 
 // external
