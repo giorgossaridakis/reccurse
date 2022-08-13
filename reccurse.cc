@@ -1,7 +1,7 @@
 // reccurse, the filemaker of ncurses
 #include "reccurse.h"
 
-const double version=0.508;
+const double version=0.512;
 
 int main(int argc, char *argv[])
 {
@@ -1140,8 +1140,11 @@ int Show_Record_and_Menu()
        }
       }
     }
+    // highlight current field(s)
     for (i=0;i<(int) adjoiningfields.size();i++)
      Show_Field(&records[(currentrecord*fieldsperrecord)+adjoiningfields[i]], 1);
+    if ( adjoiningfields.size() > 1 && (previousfield != currentfield || changedrecord) )
+     Flash_Field(currentfield);
     refresh();
 
     if (!recordsdemo) {
@@ -1712,9 +1715,9 @@ int Show_Record_and_Menu()
       Read_Write_Field(records[(currentrecord*fieldsperrecord)+currentfield], fieldposition(currentrecord, currentfield), 1); }
      break;
      case 'k':
-      // calendar requires 8 consecutive fields with least x size 29, y size 1
+      // calendar requires 8 consecutive fields with least x size 29, y size 1, no box
       for (i=0;i<8;i++)
-       if (record[currentfield+i].type!=STRING || record[currentfield+i].size.x<29 || record[currentfield+i].size.y!=1)
+       if (record[currentfield+i].type!=STRING || record[currentfield+i].size.x<29 || record[currentfield+i].size.y!=1 || record[currentfield+i].box == ON )
         break;
       for (i1=0;i1<6;i1++)
        if ((arefieldsneighbours(currentfield+i1, currentfield+i1+1)!=VERTICALLY))
@@ -2372,6 +2375,16 @@ int Show_Field(Annotated_Field *field, int flag) // 1 highlight, 2 only in scree
    Change_Attributes(NORMAL);
     
  return 0;   
+}
+
+// flash with reverse colors
+void Flash_Field(int field_id, int sleeptime)
+{
+     Change_Attributes(REVERSE);
+     Show_Field(&records[(currentrecord*fieldsperrecord)+field_id], 1);
+     Sleep(sleeptime);
+     Change_Attributes(NORMAL);
+     Show_Field(&records[(currentrecord*fieldsperrecord)+field_id], 1);
 }
 
 // show field id and highlight
@@ -3098,8 +3111,7 @@ void pushspaceonfield(int field_id)
        return;
       }
       // multiple selections in field text
-      if ( (isfieldmultipleselection(field_id)) )
-       moveinstructioninfieldtext(field_id);
+      selectmultiplechoicefield(field_id);
 }
 
 // copy to clipboard
