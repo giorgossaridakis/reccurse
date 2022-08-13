@@ -252,6 +252,7 @@ vector<Annotated_Field> records, dummyrecords, externalrecords[MAXRELATIONSHIPS]
 vector<Relationship> relationships;
 vector <FindSchedule> findschedule;
 vector<Word> separatedwords;
+vector<int> multiplechoicefields;
 
 // external variables
 // rcscr.cc
@@ -299,6 +300,7 @@ void Show_Menu_Bar(int mode=0);
 void Show_Help_Screen();
 void Show_DB_Information();
 int Show_Field(Annotated_Field *tfield, int flag=0);
+void Flash_Field(int field_id, int sleeptime=250);
 int Show_Field_ID(Annotated_Field *tfield);
 void Generate_Field_String(Annotated_Field *tfield, char *ttext);
 int Generate_Dependant_Field_String(Annotated_Field *field, char *ttext);
@@ -379,6 +381,7 @@ int pagehasclockfields();
 int isfieldtextlink(Annotated_Field *field, int linkparameters[]);
 int isfieldmultipleselection(int field_id);
 int multiplechoiceinstructions(int field_id);
+int selectmultiplechoicefield(int field_id);
 void moveinstructioninfieldtext(int field_id);
 int assignstringvaluestoarray(char *line, char array[MAXWORDS][MAXSTRING], int entries);
 int readstringentry(char *line, char *linepart);

@@ -1174,20 +1174,57 @@ int isfieldmultipleselection(int field_id)
 // count multiple choice instruction in field text
 int multiplechoiceinstructions(int field_id)
 {
-  int i1, instructioncounter;
+  int i1, instructioncounter=0;
   
-   for (i1=instructioncounter=0;i1<(int)strlen(records[(currentrecord*fieldsperrecord)+field_id].text);i1++)
+   for (i1=0;i1<(int)strlen(records[(currentrecord*fieldsperrecord)+field_id].text);i1++)
     if ( records[(currentrecord*fieldsperrecord)+field_id].text[i1] == '~' )
      ++instructioncounter;
     
  return instructioncounter;
 }
 
-// move instruction % in field text
+// select multiple field, move instruction
+int selectmultiplechoicefield(int field_id)
+{
+  vector<int> tmultiplechoicefields;
+  fieldsadjoiningfields(&records[(currentrecord*fieldsperrecord)+field_id], tmultiplechoicefields);
+  multiplechoicefields.clear();
+  int i, totalinstructions=0, fieldwithinstruction;
+  
+   for (i=0;i<(int)tmultiplechoicefields.size();i++)
+    if ( isfieldmultipleselection(tmultiplechoicefields[i]) )
+     multiplechoicefields.push_back(tmultiplechoicefields[i]);
+   if ( tmultiplechoicefields.size() != multiplechoicefields.size() )
+    return 0;
+   tmultiplechoicefields.clear();
+   for (i=0;i<(int)multiplechoicefields.size();i++)
+    totalinstructions+=multiplechoiceinstructions(multiplechoicefields[i]);
+   if ( totalinstructions > 1 )
+    return 0;
+   fieldwithinstruction=multiplechoicefields[0];
+  
+   for (i=0;i<(int)multiplechoicefields.size();i++) {
+    if ( multiplechoiceinstructions(multiplechoicefields[i]) == 1 ) {
+     fieldwithinstruction=multiplechoicefields[i];
+     break;
+    }
+   }
+   moveinstructioninfieldtext(fieldwithinstruction);
+   
+ return 1;
+}
+
+// move instruction in adjoiningfields
 void moveinstructioninfieldtext(int field_id)
 {
- int i1, instructionpoint;
+ int i1, instructionpoint, fieldpositioninvector;
  
+    if ( isfieldmultipleselection(field_id) == 0 )
+     return;
+    for (fieldpositioninvector=0;fieldpositioninvector<(int)multiplechoicefields.size();fieldpositioninvector++)
+     if ( multiplechoicefields[fieldpositioninvector] == field_id )
+      break;
+
     for (instructionpoint=0;instructionpoint<(int)strlen(records[(currentrecord*fieldsperrecord)+field_id].text);instructionpoint++) {
      if ( records[(currentrecord*fieldsperrecord)+field_id].text[instructionpoint] == '~' ) {
       records[(currentrecord*fieldsperrecord)+field_id].text[instructionpoint]=SPACE;
@@ -1196,19 +1233,29 @@ void moveinstructioninfieldtext(int field_id)
         instructionpoint=separatedwords[i1+1].formulaPosition[STARTOFWORD] - 1;
         break;
        }
-       if ( i1 == (int)separatedwords.size() - 1 )
+       if ( multiplechoicefields.size() == 1 && i1 == (int)separatedwords.size() - 1 )
         break;
       }
       break;
      }
     }
-    if ( instructionpoint == (int)strlen(records[(currentrecord*fieldsperrecord)+field_id].text) || i1 == (int)separatedwords.size() ) // to next or first adjoining
-     instructionpoint=separatedwords[0].formulaPosition[STARTOFWORD] - 1 ;
-    if ( i1 != (int) separatedwords.size() - 1 )
+    if ( instructionpoint == (int)strlen(records[(currentrecord*fieldsperrecord)+field_id].text) || i1 == (int)separatedwords.size() ) {
+     if ( i1 == (int)separatedwords.size() ) {
+      if ( fieldpositioninvector == (int)multiplechoicefields.size() - 1 )
+       fieldpositioninvector=0;
+      else
+       ++fieldpositioninvector;
+      isfieldmultipleselection( multiplechoicefields[fieldpositioninvector] ); // separate words
+      field_id=multiplechoicefields[fieldpositioninvector];
+     }
+     instructionpoint=separatedwords[0].formulaPosition[STARTOFWORD] - 1;
+    }
+    if ( multiplechoicefields.size() > 1 || i1 != (int) separatedwords.size() - 1 )
      records[(currentrecord*fieldsperrecord)+field_id].text[instructionpoint]='~';
     
     if ( autosave ) // save all adjoining
-     Read_Write_Field(records[(currentrecord*fieldsperrecord)+field_id], fieldposition(currentrecord, field_id), 1); 
+     for (i1=0;i1<(int)multiplechoicefields.size();i1++)
+      Read_Write_Field(records[(currentrecord*fieldsperrecord)+multiplechoicefields[i1]], fieldposition(currentrecord, multiplechoicefields[i1]), 1);
 }
 
 // using readstringentry, assign strings to array of pointers
@@ -1258,7 +1305,9 @@ int fieldsadjoiningfields(Annotated_Field *tfield, vector<int>& adjoiningfields)
      }
        
     }
-    sortxy(adjoiningfields, XY);
+    sortxy(adjoiningfields, X);
+    sortxy(adjoiningfields, Y);
+//     sortxy(adjoiningfields, XY);
 
  return (int) adjoiningfields.size();
 }
