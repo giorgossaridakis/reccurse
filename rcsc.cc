@@ -40,6 +40,8 @@ enum { SAME=0, LOWER, UPPER };
 
 int nextletterssize;
 const char *commands[]={ "mid$(", "left$(", "right$(", "toupper$(", "tolower$(" };
+enum { MID = 0, LEFT, RIGHT, TOUPPER, TOLOWER };
+const int commandssize=5;
 extern int fieldsperrecord;
 extern int changedrecord, editoroption;
 extern int currentrecord;
@@ -76,7 +78,7 @@ extern int findsimple(char text[], char token[]);
 
 int stringformulacalculator(char formula[MAXSTRING], int record_id)
 {
-  int i, startpt, endpt, findinstructions=1;
+  int i, startpt, endpt, findinstructions=1, operations=0;
   char ttext[MAXSTRING], tcommand[MAXSTRING];
   strcpy(ttext, formula);
 
@@ -85,21 +87,25 @@ int stringformulacalculator(char formula[MAXSTRING], int record_id)
   // locate instruction, calculate, reappend to ttext
   while (findinstructions) {
    findinstructions=0;
-   for (i=0;i<5;i++) {
+   for (i=0;i<commandssize;i++) {
     if ((startpt=findsimple(ttext, const_cast <char *> (commands[i])))) {
      break;
     }
    }
-   if (i<5) {
+   if (i<commandssize) {
     findinstructions=1;
+    ++operations;
     --startpt;
     endpt=startpt;
     while (ttext[endpt]!=')' && endpt<(int) strlen(ttext))
      ++endpt;
+    if ( endpt == (int)strlen(ttext) )
+     return 0;
     ++endpt;
     extracttextpart(ttext, tcommand, startpt, endpt);
     // parse tcommand
-    commandparser(i, tcommand);
+    if ( (commandparser(i, tcommand)) == 0 )
+     return 0;
     // now insert tcommand into startpt
    inserttextpart(ttext, tcommand, startpt);
    }
@@ -107,7 +113,7 @@ int stringformulacalculator(char formula[MAXSTRING], int record_id)
 
   strcpy(formula, ttext);
   
- return 1;
+ return operations;
 }
 
 //replace #id with values from corresponding records
@@ -178,11 +184,11 @@ int commandparser(int reference, char tcommand[MAXSTRING])
   char tparameter[10], ttext[MAXSTRING], tttext[MAXSTRING];
 
   // how many parameters to read  
-  if (reference==1 || reference==2) { // 0 toupper,tolower, 1 left$,right$
+  if ( reference==LEFT || reference==RIGHT ) { // 0 for toupper,tolower, 1 for left$,right$
    requiredparameters=1;
   }
-  if ( reference == 0 ) {
-   requiredparameters=2; // mid$
+  if ( reference == MID ) {
+   requiredparameters=2; // 2 parameters for mid$
   }
    
    // go back from end of tcommand
@@ -215,27 +221,27 @@ int commandparser(int reference, char tcommand[MAXSTRING])
    // apply command on ttext
    n=0;
    switch (reference) {
-    case 0: // mid$
+    case MID: // mid$
      for (i=parameters[0]-1;i<parameters[0]+parameters[1]-1 && i < (int) strlen(ttext);i++)
       tttext[n++]=ttext[i];
      tttext[n]='\0';
     break;
-    case 1: // left$
+    case LEFT: // left$
      for (i=0;i<parameters[0] && i < (int) strlen(ttext);i++)
       tttext[n++]=ttext[i];
      tttext[n]='\0';
     break;
-    case 2: // right$
+    case RIGHT: // right$
      for (i=(int) strlen(ttext)-parameters[0];i<(int) strlen(ttext);i++)
       tttext[n++]=ttext[i];
      tttext[n]='\0';
     break;
-    case 3: // toupper
+    case TOUPPER: // toupper
      for (i=0;i<(int) strlen(ttext);i++)
       tttext[n++]=toupper(ttext[i]);
      tttext[n]='\0';
     break;
-    case 4: // tolower
+    case TOLOWER: // tolower
      for (i=0;i<(int) strlen(ttext);i++)
       tttext[n++]=tolower(ttext[i]);
      tttext[n]='\0';

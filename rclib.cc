@@ -700,8 +700,9 @@ int locatefieldbymouseclick()
       for (y=record[i].pt.y;y<record[i].pt.y+record[i].size.y;y++)
        if (mouse.x+1==x && mouse.y+1==y) {
         field=i;
-    break; }
-
+         break;
+       }
+       
   return field;
 }
 

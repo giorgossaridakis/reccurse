@@ -102,6 +102,7 @@ const int END=360;
 const int COPY=11;
 const int TOGGLEMOUSE=12;
 const int SCANAUTOMATICVALUE=16;
+const int SCANTITLE=14;
 const int UNDO=18;
 const int PASTE=22;
 const int TAB=9;

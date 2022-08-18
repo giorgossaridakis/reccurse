@@ -1,9 +1,10 @@
-reccurse manual ~0.440 version
+reccurse manual ~0.513 version
 
 starting up
 -----------
 reccurse is a "filemaker" type program for the terminal. It is basically a 
-database with  customizable page setup for it's fields.
+database with  customizable page setup for it's fields. Each record has the
+same number of fields and each field is given with a number of parameters.
 there are three ways to start a new database:
 1. reccurse existing.rc:
 this will prompt the program to read page structure from a text file with .rc 
@@ -45,6 +46,7 @@ w will show all records in the current database, one by one. w or ESC exits.
 <space> ticks/unticks tickboxes (1x1fields)
 0 to 9 will call or arrign a script button (see below)
 clicking on a field will highlight it
+ctrl+r will undo the last change
 
 z will switch to / from a printable (ASCII) version of the current screen
 a filename will be asked for, in case you'll want to print out to
@@ -143,10 +145,35 @@ including the suffix .db 3 characters.
 It's a good idea to have all database pages files in the same directory, 
 to avoid long path in filenames.
 
+formulas
+--------
+if formula is activated (1) then an entry of (12345+54321)/(1*0.33443) will 
+produce a numerical result in a numerical or a mixed type field. 
+formula entries can also be given in reverse polish calculator notation, 
+i.e. (12345 12345 +) (1*0.33433) / . 
+A #5 is a reference to the value of the 5th field in the same record as 
+the one being edited. A formula of #5+12345 will calculate 
+<what's in field 5>+12345. 
+Mathematical functions have been implemented: exp(a,b), sin(a), cos(a), 
+tan(a), cotan(a), sqr(a), abs(a), log(a)
+formulas for string fields can also be used. 
+examples: #5 will collect the text value from field 5. 
+string functions:
+mid$(text or field reference, start character, number of characters) 
+mid$(hello, 1, 2), left$(text, 2), right$(text, 2), toupper$(text), 
+tolower$(text). leave spaces after each function end. 
+string formulas apply to string or mixed type fields with formula set to 1.
+a field list entry above 0 means that field can collect values from the 
+field declared.
+
 automatic values
 ----------------
-an automatic value of a field can be a script command, if the field's type is STRING and 
-the decimal positions of that field are declared as follows: 1 execute on entry, 2 execute on exit, 3 execute both on entry and exit on the field.
+automatic value is the value the field in the current record will be given 
+automatically. it can have a formula format, with numerical or text functions.
+an automatic value of a field can be a script command, if the field's type is 
+STRING and the decimal positions of that field are declared as follows:
+1 execute on entry, 2 execute on exit, 3 execute both on entry and exit.
+ctrl+p will ask for the current field's automatic value.
 
 script commands
 ---------------
@@ -198,6 +225,8 @@ down, up, left, right, shift_left, shift_right, escape or esc, enter,
 backspace or bs, delete or del, insert or ins, home, end, copy, paste,
 tab, shift_tab, space
 
+ctrl+s in edit mode will ask for a script file to be played.
+
 the editor
 ----------
 ctrl+t and u will take you to the database field editor. choices follow
@@ -235,24 +264,6 @@ the comments above are give or take self-explanatory. a suffix (max 3 chars)
 will be appended to end of a field's contents if that field is of type 
 0 (numerical). spaces in the .rc file are strictly to be replaced by 
 underscores. hello world -> hello_world.
-if formula is activated (1) then an entry of (12345+54321)/(1*0.33443) will 
-produce a numerical result in a numerical or a mixed type field. 
-formula entries can also be given in reverse polish calculator notation, 
-i.e. (12345 12345 +) (1*0.33433) / . 
-A #5 is a reference to the value of the 5th field in the same record as 
-the one being edited. A formula of #5+12345 will calculate 
-<what's in field 5>+12345. 
-Mathematical functions have been implemented: exp(a,b), sin(a), cos(a), 
-tan(a), cotan(a), sqr(a), abs(a), log(a)
-formulas for string fields can also be used. 
-examples: #5 will collect the text value from field 5. 
-string functions:
-mid$(text or field reference, start character, number of characters) 
-mid$(hello, 1, 2), left$(text, 2), right$(text, 2), toupper$(text), 
-tolower$(text). leave spaces after each function end. 
-string formulas apply to string or mixed type fields with formula set to 1.
-a field list entry above 0 means that field can collect values from the 
-field declared.
 
 attributes
 ----------

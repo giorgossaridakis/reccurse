@@ -1,7 +1,7 @@
 // reccurse, the filemaker of ncurses
 #include "reccurse.h"
 
-const double version=0.512;
+const double version=0.513;
 
 int main(int argc, char *argv[])
 {
@@ -1288,6 +1288,11 @@ int Show_Record_and_Menu()
        Scan_Input(record[currentfield].automatic_value, 1, 24, record[currentfield].color);
        alteredparameters=1;
       break;
+      case SCANTITLE:
+       Show_Menu_Bar(1);
+       Scan_Input(record[currentfield].title, 1, 24, record[currentfield].color);
+       alteredparameters=1;
+      break;
       case 'q':
        if (!printscreenmode)
         break;
@@ -2022,6 +2027,9 @@ int negatekeysforcurrentmenu(int t)
   if ( t == SCANAUTOMATICVALUE && currentmenu == 2 )
    return t;
   
+  if ( t == SCANTITLE && currentmenu == 2 )
+   return t;
+  
   if ( t == UNDO && currentmenu == 2 )
    return t;
    
@@ -2211,6 +2219,9 @@ int Show_Field(Annotated_Field *field, int flag) // 1 highlight, 2 only in scree
   
   //title
   if (strcmp(tfield->title, EMPTYSTRING)) {
+      
+   strcpy(ttext, tfield->title);
+   stringformulacalculator(ttext, currentrecord);   
    switch (tfield->title_position) {
     case 0:
      tposx=tfield->pt.x;
@@ -2245,12 +2256,13 @@ int Show_Field(Annotated_Field *field, int flag) // 1 highlight, 2 only in scree
      Change_Color(tfield->title_color);
     gotoxy(tposx, tposy);
     if (flag<2)
-     printw("%s", tfield->title);
-    for (i=0;i<(int) strlen(tfield->title);i++)
-     screen[tposx+i][tposy]=tfield->title[i];
+     printw("%s", ttext);
+    for (i=0;i<(int) strlen(ttext);i++)
+     screen[tposx+i][tposy]=ttext[i];
     // remove attributes
     Change_Attributes(NORMAL);
    }
+   
   }
 
    // field string to field size and lines
