@@ -80,6 +80,7 @@ enum { NORMAL=0, STANDOUT, UNDERLINE, REVERSE, BLINK, DIM, BOLD, PROTECT, INVISI
 enum { TOLEFT=1, CENTER, TORIGHT };
 const char *FIELDTYPES[]= { "numerical", "calendar", "string", "mixed", "variable", "program", "clock" };
 const char *BUTTONBOXES[]= { "edit field", "tick box", "button box", "button screen", "button command", "automatic script" };
+enum { OFF = 0, ON };
 
 struct Points {
  int x;
@@ -518,8 +519,13 @@ void Field_Editor()
        break;
        case 20:
         Scan_Input(record[fieldshown].automatic_value, 1, 24, record[fieldshown].color);
-      break; }
-  break; } }
+       break;
+      }
+      if ( isrecordproperlydictated(record[fieldshown]) == 0 )
+       record[fieldshown]=backuprecord;
+      break;
+   }
+  }
   clearinputline();
   Change_Color(RED);
   gotoxy(18,20);
@@ -667,7 +673,9 @@ int References_Editor()
      i=Scan_Input(1, 1, MAXFIELDS, 3);
      if (i && i<MAXFIELDS+1)
       trelationships[relationshipshown].localFields[1]=i;
-  break; } }
+     break;
+   }
+  }
   clearinputline();
   gotoxy(18,20);
   Change_Color(RED);
@@ -717,6 +725,8 @@ int Edit_Field(int &field_id)
    }
    if ( isrecordproperlydictated(record[field_id]) == 0 )
     record[field_id]=ttrecord;
+   if ( (record[field_id].size.x * record[field_id].size.y) > MAXSTRING )
+    record[field_id].editable=OFF;
    ttrecord=record[field_id];
    Determine_Button_Box(field_id);
    if ( showallrecords ) 

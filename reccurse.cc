@@ -1,7 +1,7 @@
 // reccurse, the filemaker of ncurses
 #include "reccurse.h"
 
-const double version=0.513;
+const double version=0.514;
 
 int main(int argc, char *argv[])
 {
@@ -581,8 +581,11 @@ int Read_Record_Field(ifstream &instream, Field &tfield)
 // is Record properly dictated
 int isrecordproperlydictated(Field &tfield)
 {
-   if ( tfield.title_position < 0 || tfield.title_position > 4 ||  strlen(tfield.title_attributes) != 9  || tfield.title_color < 0 || tfield.title_color > 64 || tfield.pt.x - tfield.box < 1 || tfield.pt.x > 80 || tfield.pt.y - tfield.box < 1 || tfield.pt.y > 23 || tfield.size.x < 0 || tfield.size.x > 80 || tfield.size.y < 0 || tfield.size.y > 23 || (tfield.size.x * tfield.size.y) > MAXSTRING || (tfield.pt.x+tfield.size.x+tfield.box) > 81 || (tfield.pt.y+tfield.size.y+tfield.box) > 24 ||  strlen(tfield.attributes) != 9 || tfield.color < 0 /*|| tfield.color > 64*/ || tfield.box < 0 || tfield.box > 1 || tfield.box_color < 0 || tfield.box_color > 64 || tfield.type < NUMERICAL || tfield.type > CLOCK || tfield.decimals < 0 || tfield.formula < 0 || tfield.formula > 1 || tfield.fieldlist < 0 || tfield.editable < 0 || tfield.editable > 1 || tfield.active < 0 || tfield.active > 1 ) 
+   if ( tfield.title_position < 0 || tfield.title_position > 4 ||  strlen(tfield.title_attributes) != 9  || tfield.title_color < 0 || tfield.title_color > 64 || tfield.pt.x - tfield.box < 1 || tfield.pt.x > 80 || tfield.pt.y - tfield.box < 1 || tfield.pt.y > 23 || tfield.size.x < 0 || tfield.size.x > 80 || tfield.size.y < 0 || tfield.size.y > 23 || (tfield.pt.x+tfield.size.x+tfield.box) > 81 || (tfield.pt.y+tfield.size.y+tfield.box) > 24 ||  strlen(tfield.attributes) != 9 || tfield.color < 0 /*|| tfield.color > 64*/ || tfield.box < 0 || tfield.box > 1 || tfield.box_color < 0 || tfield.box_color > 64 || tfield.type < NUMERICAL || tfield.type > CLOCK || tfield.decimals < 0 || tfield.formula < 0 || tfield.formula > 1 || tfield.fieldlist < 0 || tfield.editable < 0 || tfield.editable > 1 || tfield.active < 0 || tfield.active > 1 ) 
        return 0;
+   
+   if ( (tfield.size.x * tfield.size.y) > MAXSTRING )
+    tfield.editable=OFF;
 
  return 1;
 }
@@ -1672,8 +1675,8 @@ int Show_Record_and_Menu()
      break;
      // from menu 2
      case 'd':
-      if (currentmenu==2) {
-      if (record[currentfield].type!=CALENDAR && record[currentfield].type!=CLOCK && record[currentfield].buttonbox==NOBUTTON) {
+      if ( currentmenu == 2 ) {
+      if ( record[currentfield].type!=CALENDAR && record[currentfield].type!=CLOCK && record[currentfield].buttonbox==NOBUTTON && record[currentfield].editable == ON ) {
        if (record[currentfield].buttonbox==BUTTONSCREEN)
         record[currentfield].type=NUMERICAL; // trick to bring reversepolishcalculator
        if (!record[currentfield].fieldlist) 
