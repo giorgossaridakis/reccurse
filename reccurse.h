@@ -103,6 +103,8 @@ const int COPY=11;
 const int TOGGLEMOUSE=12;
 const int SCANAUTOMATICVALUE=16;
 const int SCANTITLE=14;
+const int IMPORTASCII=25;
+const int TEXTTOAUTOMATICVALUE=21;
 const int UNDO=18;
 const int PASTE=22;
 const int TAB=9;
@@ -249,7 +251,7 @@ class Word {
 // vectors
 vector<ButtonBarMenuEntry> buttonbarmenus;
 vector<Field> record, dummyrecord, externalrecord[MAXRELATIONSHIPS];
-vector<Annotated_Field> records, dummyrecords, externalrecords[MAXRELATIONSHIPS];
+vector<Annotated_Field> records, dummyrecords, externalrecords[MAXRELATIONSHIPS], copiedrecords;
 vector<Relationship> relationships;
 vector <FindSchedule> findschedule;
 vector<Word> separatedwords;
@@ -387,15 +389,19 @@ void moveinstructioninfieldtext(int field_id);
 int assignstringvaluestoarray(char *line, char array[MAXWORDS][MAXSTRING], int entries);
 int readstringentry(char *line, char *linepart);
 unsigned int isseparationchar(char t);
-int fieldsadjoiningfields(Annotated_Field *tfield, vector<int>& adjoiningfields);
+int fieldsadjoiningfields(Annotated_Field *tfield, vector<int>& adjoiningfields, int possibilityoption=0);
 void sortxy(vector<int>& fieldstosort, int preference=XY);
-int arefieldsneighbours(int id1, int id2);
+int arefieldsneighbours(int id1, int id2, int possibilityoption=0);
 int findinintvector(int element, vector<int>& tv);
 char *Generate_Calendar(int m, int y);
 void leavespaces(char *calendar, int spaces);
 int isfielddisplayable(int field_id);
 void Sleep(ul sleepMs) { blockunblockgetch(sleepMs); getch(); blockunblockgetch(); };
-void uSleep(ul sleepMs) { usleep(sleepMs*1000); }
+void uSleep(ul sleepMs) { usleep(sleepMs*1000); };
+int loadasciitofields(int field_id, char *filename);
+vector<Annotated_Field>& Records_From_Adjoining_Fields(int field_id);
+void Write_Fields_Int_Vector(vector<int> tv, int recordid=-1);
+void Write_Fields_AnnotatedField_Vector(vector<Annotated_Field> tv, int recordid=-1);
 
 // rcutil.cc
 extern int mod(double a, double b);
@@ -448,7 +454,7 @@ extern int parseformulaforerrors(char formula[]);
 
 // rcsc.cc
 extern int stringformulacalculator(char formula[MAXSTRING], int record_id);
-extern void replacepartoftextwithcorrespondingvalue(char ttext[MAXSTRING], int record_id);
+extern int replacepartoftextwithcorrespondingvalue(char ttext[MAXSTRING], int record_id);
 extern int extracttextpart(char source[MAXSTRING], char dest[MAXSTRING], int startpt, int endpt);
 extern void inserttextpart(char text[MAXSTRING], char part[MAXSTRING], int point);
 extern int commandparser(int reference, char tcommand[MAXSTRING]);

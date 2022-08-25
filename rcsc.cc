@@ -29,6 +29,7 @@ using namespace std;
 
 // numericals
 const int MAXSTRING=80; // characters in a regular string
+const int MAXPARAMETER=25;
 const int MAXRELATIONSHIPS=25; // will fit into above 1kb, same as MAXPAGES
 const int INSTRUCTION='%';
 enum { HORIZONTALLY=1, VERTICALLY };
@@ -68,7 +69,7 @@ extern vector<Annotated_Field> records, dummyrecords, externalrecords[MAXRELATIO
 
 // function declarations
 int stringformulacalculator(char formula[MAXSTRING], int record_id);
-void replacepartoftextwithcorrespondingvalue(char ttext[MAXSTRING], int record_id);
+int replacepartoftextwithcorrespondingvalue(char ttext[MAXSTRING], int record_id);
 int extracttextpart(char source[MAXSTRING], char dest[MAXSTRING], int startpt, int endpt);
 void inserttextpart(char text[MAXSTRING], char part[MAXSTRING], int point);
 int commandparser(int reference, char tcommand[MAXSTRING]);
@@ -78,12 +79,12 @@ extern int findsimple(char text[], char token[]);
 
 int stringformulacalculator(char formula[MAXSTRING], int record_id)
 {
-  int i, startpt, endpt, findinstructions=1, operations=0;
+  int i, startpt, endpt, findinstructions=1, operations;
   char ttext[MAXSTRING], tcommand[MAXSTRING];
   strcpy(ttext, formula);
 
   // replace id references
-  replacepartoftextwithcorrespondingvalue(ttext, record_id);
+  operations=replacepartoftextwithcorrespondingvalue(ttext, record_id);
   // locate instruction, calculate, reappend to ttext
   while (findinstructions) {
    findinstructions=0;
@@ -117,29 +118,35 @@ int stringformulacalculator(char formula[MAXSTRING], int record_id)
 }
 
 //replace #id with values from corresponding records
-void replacepartoftextwithcorrespondingvalue(char ttext[MAXSTRING], int record_id)
+int replacepartoftextwithcorrespondingvalue(char ttext[MAXSTRING], int record_id)
 {
-  int i, i1, n;
+  int i, i1, n, operations=0;
   char transformedtext[MAXSTRING], s[MAXSTRING];
 
   n=0;
-  for (i=0;i<(int) strlen(ttext);i++) {
+  for (i=0;i<(int)strlen(ttext);i++) {
    if (ttext[i]!='#')
     transformedtext[n++]=ttext[i];
    else {
     i1=0;
-    while (isdigit(ttext[++i]) && i<(int) strlen(ttext))
+    while ( i<(int)strlen(ttext) && isdigit(ttext[++i]) )
      s[i1++]=ttext[i];
     s[i1]='\0';
     --i;
-    if ( atoi(s) && atoi(s)<fieldsperrecord && atoi(s)-1!=currentfield && strlen(records[(record_id*fieldsperrecord)+atoi(s)-1].text) )
+    if ( atoi(s) && atoi(s)<fieldsperrecord && atoi(s)-1!=currentfield && strlen(records[(record_id*fieldsperrecord)+atoi(s)-1].text) ) {
      strcpy(s, records[(record_id*fieldsperrecord)+atoi(s)-1].text);
-     else 
-    strcpy(s, " ");
-    for (i1=0;i1<(int) strlen(s);i1++)
-  transformedtext[n++]=s[i1]; } }
+     ++operations;
+    }
+    else 
+     strcpy(s, " ");
+    for (i1=0;n < MAXSTRING - 1 && i1<(int)strlen(s);i1++)
+     transformedtext[n++]=s[i1];
+   }
+  }
   transformedtext[n]='\0';
   strcpy(ttext, transformedtext);
+  
+ return operations;
 }
 
 // remove part of text and place in a char array
@@ -181,10 +188,10 @@ void inserttextpart(char text[MAXSTRING], char part[MAXSTRING], int point)
 int commandparser(int reference, char tcommand[MAXSTRING])
 {
   int i, n, pos, endpos, requiredparameters=0, parameters[2];
-  char tparameter[10], ttext[MAXSTRING], tttext[MAXSTRING];
+  char tparameter[MAXPARAMETER], ttext[MAXSTRING], tttext[MAXSTRING];
 
   // how many parameters to read  
-  if ( reference==LEFT || reference==RIGHT ) { // 0 for toupper,tolower, 1 for left$,right$
+  if ( reference == LEFT || reference == RIGHT ) { // 0 for toupper,tolower, 1 for left$,right$
    requiredparameters=1;
   }
   if ( reference == MID ) {
@@ -192,7 +199,7 @@ int commandparser(int reference, char tcommand[MAXSTRING])
   }
    
    // go back from end of tcommand
-   pos=(int) strlen(tcommand);
+   pos=(int)strlen(tcommand);
    n=requiredparameters;
    while (n && pos)
     if (tcommand[pos--]==',')
@@ -201,20 +208,21 @@ int commandparser(int reference, char tcommand[MAXSTRING])
     return 0;
    pos+=2; // now pos is at first numerical parameter or space
    if (!requiredparameters)
-    pos=(int) strlen(tcommand);
+    pos=(int)strlen(tcommand);
    endpos=pos-1; // use later
    // read parameters
    for (i=0;i<requiredparameters;n=0, i++) {
-    while (isdigit(tcommand[pos]) || isspace(tcommand[pos]))
+    while ( pos < (int)strlen(tcommand) && ((isdigit(tcommand[pos]) || isspace(tcommand[pos]))) )
      tparameter[n++]=tcommand[pos++];
     tparameter[n]='\0';
     ++pos;
     parameters[i]=atoi(tparameter); 
-    if (!parameters[i])
-   return 0; }
+    if ( parameters[i] == 0 )
+     return 0;
+   }
    // get string to apply command on
    i=0; n=0;
-   while (tcommand[i++]!='(');
+   while ( i < (int)strlen(tcommand) && tcommand[i++]!='(');
    for (;i<endpos;i++)
     ttext[n++]=tcommand[i];
    ttext[n]='\0';
@@ -222,27 +230,27 @@ int commandparser(int reference, char tcommand[MAXSTRING])
    n=0;
    switch (reference) {
     case MID: // mid$
-     for (i=parameters[0]-1;i<parameters[0]+parameters[1]-1 && i < (int) strlen(ttext);i++)
+     for (i=parameters[0]-1;i < (int)strlen(ttext) && i<parameters[0]+parameters[1]-1;i++)
       tttext[n++]=ttext[i];
      tttext[n]='\0';
     break;
     case LEFT: // left$
-     for (i=0;i<parameters[0] && i < (int) strlen(ttext);i++)
+     for (i=0;i < (int)strlen(ttext) && i<parameters[0];i++)
       tttext[n++]=ttext[i];
      tttext[n]='\0';
     break;
     case RIGHT: // right$
-     for (i=(int) strlen(ttext)-parameters[0];i<(int) strlen(ttext);i++)
+     for (i=(int)strlen(ttext)-parameters[0];i<(int)strlen(ttext);i++)
       tttext[n++]=ttext[i];
      tttext[n]='\0';
     break;
     case TOUPPER: // toupper
-     for (i=0;i<(int) strlen(ttext);i++)
+     for (i=0;i<(int)strlen(ttext);i++)
       tttext[n++]=toupper(ttext[i]);
      tttext[n]='\0';
     break;
     case TOLOWER: // tolower
-     for (i=0;i<(int) strlen(ttext);i++)
+     for (i=0;i<(int)strlen(ttext);i++)
       tttext[n++]=tolower(ttext[i]);
      tttext[n]='\0';
    break; }

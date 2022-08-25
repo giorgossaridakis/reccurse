@@ -698,7 +698,7 @@ int locatefieldbymouseclick()
     for (i=0;i<fieldsperrecord;i++)
      for (x=record[i].pt.x;x<record[i].pt.x+record[i].size.x;x++)
       for (y=record[i].pt.y;y<record[i].pt.y+record[i].size.y;y++)
-       if (mouse.x+1==x && mouse.y+1==y) {
+       if ( mouse.x+1==x && mouse.y+1==y && record[i].editable && record[i].active ) {
         field=i;
          break;
        }
@@ -1255,8 +1255,7 @@ void moveinstructioninfieldtext(int field_id)
      records[(currentrecord*fieldsperrecord)+field_id].text[instructionpoint]='~';
     
     if ( autosave ) // save all adjoining
-     for (i1=0;i1<(int)multiplechoicefields.size();i1++)
-      Read_Write_Field(records[(currentrecord*fieldsperrecord)+multiplechoicefields[i1]], fieldposition(currentrecord, multiplechoicefields[i1]), 1);
+     Write_Fields_Int_Vector(multiplechoicefields);
 }
 
 // using readstringentry, assign strings to array of pointers
@@ -1272,7 +1271,7 @@ int assignstringvaluestoarray(char *line, char array[MAXWORDS][MAXSTRING], int e
 }
 
 // fields adjoining field
-int fieldsadjoiningfields(Annotated_Field *tfield, vector<int>& adjoiningfields)
+int fieldsadjoiningfields(Annotated_Field *tfield, vector<int>& adjoiningfields, int possibilityoption)
 {
   int i1, recordid=tfield->id, pos=0;
   adjoiningfields.push_back(recordid);
@@ -1282,20 +1281,20 @@ int fieldsadjoiningfields(Annotated_Field *tfield, vector<int>& adjoiningfields)
     ttfield=&records[(currentrecord*fieldsperrecord)+adjoiningfields[pos++]];
     recordid=ttfield->id;
      
-     if ( ttfield->text[(int) strlen(ttfield->text)-1]=='>' ) {
+     if ( possibilityoption || ttfield->text[(int)strlen(ttfield->text)-1]=='>' ) {
       for (i1=0;i1<fieldsperrecord;i1++)
-       if (records[(currentrecord*fieldsperrecord)+i1].text[0]=='<') {
-        if ((findinintvector(i1, adjoiningfields)) || ((arefieldsneighbours(recordid, i1)==0)))
+       if ( possibilityoption || records[(currentrecord*fieldsperrecord)+i1].text[0]=='<' ) {
+        if ( (findinintvector(i1, adjoiningfields)) || ((arefieldsneighbours(recordid, i1, possibilityoption)==0)) )
          continue;
         else 
          if ( tfield->id != i1 )
           adjoiningfields.push_back(i1); 
        }
      }
-     if ( ttfield->text[0]== '<' ) {
+     if ( possibilityoption || ttfield->text[0]== '<' ) {
       for (i1=0;i1<fieldsperrecord;i1++) {
-       if (records[(currentrecord*fieldsperrecord)+i1].text[(int) strlen(records[(currentrecord*fieldsperrecord)+i1].text)-1]=='>') {
-        if ((findinintvector(i1, adjoiningfields)) || ((arefieldsneighbours(i1, recordid)==0))) {
+       if ( possibilityoption || records[(currentrecord*fieldsperrecord)+i1].text[(int) strlen(records[(currentrecord*fieldsperrecord)+i1].text)-1]=='>' ) {
+        if ( (findinintvector(i1, adjoiningfields)) || ((arefieldsneighbours(i1, recordid, possibilityoption)==0)) ) {
          continue;
         }
        else
@@ -1310,7 +1309,7 @@ int fieldsadjoiningfields(Annotated_Field *tfield, vector<int>& adjoiningfields)
     sortxy(adjoiningfields, Y);
 //     sortxy(adjoiningfields, XY);
 
- return (int) adjoiningfields.size();
+ return (int)adjoiningfields.size();
 }
 
 // sort fields by x or y
@@ -1349,7 +1348,7 @@ void sortxy(vector<int>& fieldstosort, int preference) // 0 x, 1 y
 }
 
 // fields touch borders
-int arefieldsneighbours(int id1, int id2) // id1 is always to the left or above of id2
+int arefieldsneighbours(int id1, int id2, int possibilityoption) // id1 is always to the left or above of id2, possibilityoption = equal in size
 {
   int x1, y1, x2, y2, tresult, result;
   tresult=result=0;
@@ -1360,7 +1359,7 @@ int arefieldsneighbours(int id1, int id2) // id1 is always to the left or above 
       for (y2=record[id2].pt.y;y2<record[id2].pt.y+record[id2].size.y+1;y2++)
        if (y1==y2)
         tresult=HORIZONTALLY;
-    if (tresult)
+    if ( (possibilityoption == 0 && tresult) || (possibilityoption && tresult && record[id1].size.x == record[id2].size.x && record[id1].size.y == record[id2].size.y) )
      result+=tresult;
     
     // vertical neighbours
@@ -1370,7 +1369,7 @@ int arefieldsneighbours(int id1, int id2) // id1 is always to the left or above 
       for (x2=record[id2].pt.x;x2<record[id2].pt.x+record[id2].size.x+1;x2++)
        if (x1==x2)
         tresult=VERTICALLY;
-    if (tresult)
+    if ( (possibilityoption == 0 && tresult) || (possibilityoption && tresult && record[id1].size.x == record[id2].size.x && record[id1].size.y == record[id2].size.y) )
      result+=tresult;
     
  return result;
@@ -1442,4 +1441,82 @@ int isfielddisplayable(int field_id)
 
  return 1;
 }
+
+// load ascii to multiple fields
+int loadasciitofields(int field_id, char *filename)
+{
+  vector<int> tmultiplechoicefields;
+  fieldsadjoiningfields(&records[(currentrecord*fieldsperrecord)+field_id], tmultiplechoicefields, 1);
+  int i, i1, correction;
+  char c;
+  FILE* f=fopen(filename, "r");
+  i=i1=0;
+  
+  if ( !f )
+   return 0;
+    
+    while ( (c=fgetc(f)) != EOF && i < (int)tmultiplechoicefields.size() ) {
+     if ( isprintablecharacter(c) )
+      records[(currentrecord*fieldsperrecord)+tmultiplechoicefields[i]].text[i1++]=c;
+     correction = ( i == 0 ) ? 0 : 1;
+     if ( i1 == (int)(record[tmultiplechoicefields[i]].size.x *  record[tmultiplechoicefields[i]].size.y) + correction ) {
+      records[(currentrecord*fieldsperrecord)+tmultiplechoicefields[i]].text[i1++]='>';
+      records[(currentrecord*fieldsperrecord)+tmultiplechoicefields[i]].text[i1]='\0';
+      i1=0; i++;
+      if ( i < (int)tmultiplechoicefields.size() - 1 )
+       records[(currentrecord*fieldsperrecord)+tmultiplechoicefields[i]].text[i1++]='<';
+     }
+    }
+    records[(currentrecord*fieldsperrecord)+tmultiplechoicefields[i-1]].text[i1]='\0';
+   
+    if ( autosave ) // save all adjoining
+     Write_Fields_Int_Vector(tmultiplechoicefields);
+  
+   fclose(f);
+    
+ return (int)tmultiplechoicefields.size();
+}
+
+// copy records from adjoining fields to Annotated_Field vector
+vector<Annotated_Field>& Records_From_Adjoining_Fields(int field_id)
+{
+  vector<int> tadjoiningfields;
+  int i;
+  static vector<Annotated_Field> adjoininingrecordfields;
+  fieldsadjoiningfields(&records[(currentrecord*fieldsperrecord)+field_id], tadjoiningfields);
+  
+   adjoininingrecordfields.clear();
+   for (i=0;i<(int)tadjoiningfields.size();i++)
+    adjoininingrecordfields.push_back(records[(currentrecord*fieldsperrecord)+tadjoiningfields[i]]);
+  
+ return adjoininingrecordfields; 
+}
+
+
+// save fields with ids in vector
+void Write_Fields_Int_Vector(vector<int> tv, int recordid)
+{
+ int i;
+ 
+   if ( recordid == -1 )
+    recordid=currentrecord;
+  
+   for (i=0;i<(int)tv.size();i++)
+    Read_Write_Field(records[(recordid*fieldsperrecord)+tv[i]], fieldposition(recordid, tv[i]), 1);
+}
+
+
+// save fields with ids in vector
+void Write_Fields_AnnotatedField_Vector(vector<Annotated_Field> tv, int recordid)
+{
+ int i;
+ 
+   if ( recordid == -1 )
+    recordid=currentrecord;
+  
+   for (i=0;i<(int)tv.size();i++)
+    Read_Write_Field(records[(recordid*fieldsperrecord)+tv[i].id], fieldposition(recordid, tv[i].id), 1);
+}
+
+
 

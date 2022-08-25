@@ -1,7 +1,7 @@
 // reccurse, the filemaker of ncurses
 #include "reccurse.h"
 
-const double version=0.514;
+const double version=0.525;
 
 int main(int argc, char *argv[])
 {
@@ -1110,7 +1110,7 @@ int Show_Record_and_Menu()
   char ttext[MAXSTRING];
   FindSchedule tfindschedule;
   vector<Annotated_Field> trecords;
-  Annotated_Field backupfield;
+  vector<Annotated_Field> backupfields;
   
    while ( true ) {
     // clear screen array
@@ -1160,7 +1160,7 @@ int Show_Record_and_Menu()
     // if changed field had script command in automatic value
     if ( previousfield != currentfield || changedrecord ) {
 
-     backupfield=records[(currentrecord*fieldsperrecord)+currentfield];
+     backupfields=Records_From_Adjoining_Fields(currentfield);
      if ( changedrecord == 0 ) {
       if ( autosave )
        Read_Write_Field(records[(currentrecord*fieldsperrecord)+previousfield], fieldposition(currentrecord, previousfield), 1); 
@@ -1296,17 +1296,32 @@ int Show_Record_and_Menu()
        Scan_Input(record[currentfield].title, 1, 24, record[currentfield].color);
        alteredparameters=1;
       break;
+      case IMPORTASCII:
+       memset(input_string, 0, MAXSTRING);
+       Show_Message(1, 24, MAGENTA, "filename:", 0);
+       i=Scan_Input(input_string, 10, 24, MAGENTAONBLACK);
+       loadasciitofields(currentfield, input_string);
+      break;
+      case TEXTTOAUTOMATICVALUE: {
+       vector<int> texttoautomaticvaluefields;
+       fieldsadjoiningfields(&records[(currentrecord*fieldsperrecord)+currentfield], texttoautomaticvaluefields);
+       for (i=0;i<(int)texttoautomaticvaluefields.size();i++)
+        strcpy(record[texttoautomaticvaluefields[i]].automatic_value, records[(currentrecord*fieldsperrecord)+texttoautomaticvaluefields[i]].text);
+       alteredparameters=1;
+      }
+      break;
       case 'q':
        if (!printscreenmode)
         break;
        outputscreenarraytofile();
       break;
       case UNDO: {
-       Annotated_Field tbackupfield=records[(currentrecord*fieldsperrecord)+currentfield];
-       records[(currentrecord*fieldsperrecord)+currentfield]=backupfield;
-       backupfield=tbackupfield;
+       vector<Annotated_Field> tbackupfields=Records_From_Adjoining_Fields(currentfield);
+       for (i=0;i<(int)backupfields.size();i++)
+        records[(currentrecord*fieldsperrecord)+backupfields[i].id]=backupfields[i];
        if ( autosave )
-        Read_Write_Field(records[(currentrecord*fieldsperrecord)+currentfield], fieldposition(currentrecord, currentfield), 1);
+        Write_Fields_AnnotatedField_Vector(backupfields);
+       backupfields=tbackupfields;
       }
       break;
       case SCRIPT_PLAYER:
@@ -1471,7 +1486,6 @@ int Show_Record_and_Menu()
         break;
        {
          vector <int> fieldyidentities;
-         n=0;
          sortfieldsbyypt(currentfield, fieldyidentities);
          for (i=0;i<(int) fieldyidentities.size();i++) 
           if (currentfield==fieldyidentities[i])
@@ -1503,11 +1517,10 @@ int Show_Record_and_Menu()
        if (recordsdemo)
         break;
        { 
-         vector <int> fieldyidentities;
-         n=0;
+         vector<int> fieldyidentities;
          sortfieldsbyypt(currentfield, fieldyidentities);
-         for (i=0;i<(int) fieldyidentities.size();i++) 
-          if (currentfield==fieldyidentities[i])
+         for (i=0;i<(int)fieldyidentities.size();i++) 
+          if ( currentfield == fieldyidentities[i] )
            break;
          if (i)
           currentfield=fieldyidentities[i-1];
@@ -1804,12 +1817,12 @@ int Show_Record_and_Menu()
       Read_Write_Field(records[(currentrecord*fieldsperrecord)+n-1], fieldposition(currentrecord, n-1), 1);
      break;
      case DELETE: {
-      vector<int> fieldstodelete;
+      vector<int>fieldstodelete;
       fieldsadjoiningfields(&records[(currentrecord*fieldsperrecord)+currentfield], fieldstodelete);
       for (i=0;i<(int) fieldstodelete.size();i++) {
        Delete_Field_Entry(fieldstodelete[i]);
-       if (autosave)
-        Read_Write_Field(records[(currentrecord*fieldsperrecord)+fieldstodelete[i]], fieldposition(currentrecord, fieldstodelete[i]), 1);
+       if ( autosave )
+        Write_Fields_Int_Vector(fieldstodelete);
       }
      break; }
      case INSERT:
@@ -2031,6 +2044,12 @@ int negatekeysforcurrentmenu(int t)
    return t;
   
   if ( t == SCANTITLE && currentmenu == 2 )
+   return t;
+
+  if ( t == IMPORTASCII && currentmenu == 2 )
+   return t;
+  
+  if ( t == TEXTTOAUTOMATICVALUE && currentmenu == 2 )
    return t;
   
   if ( t == UNDO && currentmenu == 2 )
@@ -2524,7 +2543,7 @@ void Generate_Field_String(Annotated_Field *field, char *ttext)
   strcpy(field->text, ttext);
   // clear neighbouring signs
   if (ttext[0]=='<') {
-   for (i=0;i<(int) strlen(ttext);i++)
+   for (i=0;i<(int)strlen(ttext) - 1;i++)
     ttext[i]=ttext[i+1];
    ttext[i]='\0';
   }
@@ -3132,15 +3151,31 @@ void pushspaceonfield(int field_id)
 // copy to clipboard
 void copytoclipboard()
 {
-  strcpy(clipboard, records[(currentrecord*fieldsperrecord)+currentfield].text);
+   copiedrecords=Records_From_Adjoining_Fields(currentfield);
+   strcpy(clipboard, records[(currentrecord*fieldsperrecord)+currentfield].text);
 }
 
 // paste from clipboard
 void pastefromclipboard()
 {
-  strcpy(records[(currentrecord*fieldsperrecord)+currentfield].text, clipboard);
-  if (autosave)
-   Read_Write_Field(records[(currentrecord*fieldsperrecord)+currentfield], fieldposition(currentrecord, currentfield), 1);
+  if ( copiedrecords.size() == 0 )
+   return;
+  
+  vector<int> tclipboardfields;
+  fieldsadjoiningfields(&records[(currentrecord*fieldsperrecord)+currentfield], tclipboardfields, 1);
+  int i, i1=findinintvector(currentfield, tclipboardfields);
+  
+   if ( (int)copiedrecords.size() > (int)(tclipboardfields.size() - i1) || copiedrecords.size() == 1 ) {
+    tclipboardfields.clear();
+    tclipboardfields.push_back(currentfield);
+    strcpy(records[(currentrecord*fieldsperrecord)+currentfield].text, clipboard);
+   }
+   else
+    for (i=0;i<(int)copiedrecords.size();i++)
+     strcpy(records[(currentrecord*fieldsperrecord)+tclipboardfields[i1++]].text, copiedrecords[i].text);
+
+   if ( autosave )
+    Write_Fields_Int_Vector(tclipboardfields);
 }
 
 // toggle autosave on/off
