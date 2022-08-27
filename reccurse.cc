@@ -1,7 +1,7 @@
 // reccurse, the filemaker of ncurses
 #include "reccurse.h"
 
-const double version=0.527;
+const double version=0.529;
 
 int main(int argc, char *argv[])
 {
@@ -1104,7 +1104,7 @@ void Duplicate_Record(int record_id)
 // show record
 int Show_Record_and_Menu()
 {
-  int i, i1, n, trecordsnumber, c, backupmenu=0, replaychar=0, fieldchange=0;
+  int i, i1, n, trecordsnumber, c, backupmenu=0, replaychar=0;
   int previousfield=0, scriptdirection=NOSCRIPT;
   int findresults[MAXSEARCHDEPTH+1][MAXRECORDS], tsortresults[MAXRECORDS];
   char ttext[MAXSTRING];
@@ -1123,18 +1123,14 @@ int Show_Record_and_Menu()
     if (changedrecord) {
      lastfieldrepeated=-1;
      savedfield=-1;
+     backupfields=currentfields;
      for (i=0;i<fieldsperrecord;i++)
       fieldrepetitions[i]=((record[i].color) ? record[i].color : -1);
     }
     // show fields
     if (renewscreen)
      clear();
-
-    if ( fieldchange ) {
-     fieldchange=0;
-     currentfields=Records_From_Adjoining_Fields(currentfield);
-    }
-    
+     
     fieldsadjoiningfields(&records[(currentrecord*fieldsperrecord)+currentfield], adjoiningfields);
     for (i=0;i<fieldsperrecord;i++)
      for (i1=0;i1<(int) adjoiningfields.size();i1++)
@@ -1305,9 +1301,8 @@ int Show_Record_and_Menu()
        memset(input_string, 0, MAXSTRING);
        Show_Message(1, 24, MAGENTA, "filename:", 0);
        i=Scan_Input(input_string, 10, 24, MAGENTAONBLACK);
-       backupfields=Records_From_Adjoining_Fields(currentfield);
+       backupfields=Records_From_Adjoining_Fields(currentfield, 1);
        loadasciitofields(currentfield, input_string);
-       fieldchange=1;
       break;
       case TEXTTOAUTOMATICVALUE: {
        vector<int> texttoautomaticvaluefields;
@@ -1330,7 +1325,6 @@ int Show_Record_and_Menu()
         Write_Fields_AnnotatedField_Vector(backupfields);
        if ( backupfields.size() == 1 ) 
         backupfields=tbackupfields; // otherwise, fieldsadjoiningfields is called without possibility, will re-bring only one after delete
-       fieldchange=1;
       }
       break;
       case SCRIPT_PLAYER:
@@ -1730,7 +1724,6 @@ int Show_Record_and_Menu()
        }
        if (record[currentfield].buttonbox==BUTTONBOX)
         pushspaceonfield();
-       fieldchange=1;
       }
       if (currentmenu==6) {
        if (recordsnumber<2)
@@ -1784,11 +1777,9 @@ int Show_Record_and_Menu()
       if (autosave)
        for (i=0;i<8;i++)
         Read_Write_Field(records[(currentrecord*fieldsperrecord)+currentfield+i], fieldposition(currentrecord, currentfield+i), 1);
-      fieldchange=1;
      break;
      case SPACE:
       pushspaceonfield();
-      fieldchange=1;
      break;
      case '+':
       if (currentmenu!=5)
@@ -1850,7 +1841,6 @@ int Show_Record_and_Menu()
        if ( autosave )
         Write_Fields_Int_Vector(fieldstodelete);
       }
-      fieldchange=1;
      break; }
      case INSERT:
       if (currentmenu==2) {
@@ -1878,11 +1868,9 @@ int Show_Record_and_Menu()
      break;
      case COPY:
       copytoclipboard();
-      fieldchange=1;
      break;
      case PASTE:
       pastefromclipboard();
-      fieldchange=1;
      break;
      // menu 3
      case 'i':

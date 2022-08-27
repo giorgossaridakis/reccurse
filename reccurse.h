@@ -399,7 +399,9 @@ int isfielddisplayable(int field_id);
 void Sleep(ul sleepMs) { blockunblockgetch(sleepMs); getch(); blockunblockgetch(); };
 void uSleep(ul sleepMs) { usleep(sleepMs*1000); };
 int loadasciitofields(int field_id, char *filename);
-vector<Annotated_Field>& Records_From_Adjoining_Fields(int field_id);
+vector<Annotated_Field>& Records_From_Adjoining_Fields(int field_id, int possibilityoption=0);
+vector<Annotated_Field>& Records_From_Current_Record();
+void CurrentRecord_From_Vector(vector<Annotated_Field>& tv);
 void Write_Fields_Int_Vector(vector<int> tv, int recordid=-1);
 void Write_Fields_AnnotatedField_Vector(vector<Annotated_Field> tv, int recordid=-1);
 

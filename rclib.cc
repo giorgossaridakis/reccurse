@@ -1483,12 +1483,12 @@ int loadasciitofields(int field_id, char *filename)
 }
 
 // copy records from adjoining fields to Annotated_Field vector
-vector<Annotated_Field>& Records_From_Adjoining_Fields(int field_id)
+vector<Annotated_Field>& Records_From_Adjoining_Fields(int field_id, int possibilityoption)
 {
   vector<int> tadjoiningfields;
   int i;
   static vector<Annotated_Field> adjoininingrecordfields;
-  fieldsadjoiningfields(&records[(currentrecord*fieldsperrecord)+field_id], tadjoiningfields);
+  fieldsadjoiningfields(&records[(currentrecord*fieldsperrecord)+field_id], tadjoiningfields, possibilityoption);
   
    adjoininingrecordfields.clear();
    for (i=0;i<(int)tadjoiningfields.size();i++)
@@ -1497,6 +1497,27 @@ vector<Annotated_Field>& Records_From_Adjoining_Fields(int field_id)
  return adjoininingrecordfields; 
 }
 
+// current record to vector
+vector<Annotated_Field>& Records_From_Current_Record()
+{
+  int i;
+  static vector<Annotated_Field> thisrecord;
+  
+   thisrecord.clear();
+   for (i=0;i<fieldsperrecord;i++)
+    thisrecord.push_back(records[(currentrecord*fieldsperrecord)+i]);
+  
+ return thisrecord;
+}
+
+void CurrentRecord_From_Vector(vector<Annotated_Field>& tv)
+{
+  int i;
+  
+   for (i=0;i<(int)tv.size();i++)
+    records[(currentrecord*fieldsperrecord)+tv[i].id]=tv[i];
+  
+}
 
 // save fields with ids in vector
 void Write_Fields_Int_Vector(vector<int> tv, int recordid)
