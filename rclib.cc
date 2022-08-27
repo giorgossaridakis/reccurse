@@ -1271,9 +1271,10 @@ int assignstringvaluestoarray(char *line, char array[MAXWORDS][MAXSTRING], int e
 }
 
 // fields adjoining field
-int fieldsadjoiningfields(Annotated_Field *tfield, vector<int>& adjoiningfields, int possibilityoption)
+int fieldsadjoiningfields(Annotated_Field *tfield, vector<int>& adjoiningfields, int possibilityoption, int sizex, int sizey)
 {
   int i1, recordid=tfield->id, pos=0;
+  adjoiningfields.clear();
   adjoiningfields.push_back(recordid);
   Annotated_Field *ttfield;
   
@@ -1284,7 +1285,7 @@ int fieldsadjoiningfields(Annotated_Field *tfield, vector<int>& adjoiningfields,
      if ( possibilityoption || ttfield->text[(int)strlen(ttfield->text)-1]=='>' ) {
       for (i1=0;i1<fieldsperrecord;i1++)
        if ( possibilityoption || records[(currentrecord*fieldsperrecord)+i1].text[0]=='<' ) {
-        if ( (findinintvector(i1, adjoiningfields)) || ((arefieldsneighbours(recordid, i1, possibilityoption)==0)) )
+        if ( (findinintvector(i1, adjoiningfields)) || ((arefieldsneighbours(recordid, i1, possibilityoption, sizex, sizey)==0)) )
          continue;
         else 
          if ( tfield->id != i1 )
@@ -1294,7 +1295,7 @@ int fieldsadjoiningfields(Annotated_Field *tfield, vector<int>& adjoiningfields,
      if ( possibilityoption || ttfield->text[0]== '<' ) {
       for (i1=0;i1<fieldsperrecord;i1++) {
        if ( possibilityoption || records[(currentrecord*fieldsperrecord)+i1].text[(int) strlen(records[(currentrecord*fieldsperrecord)+i1].text)-1]=='>' ) {
-        if ( (findinintvector(i1, adjoiningfields)) || ((arefieldsneighbours(i1, recordid, possibilityoption)==0)) ) {
+        if ( (findinintvector(i1, adjoiningfields)) || ((arefieldsneighbours(i1, recordid, possibilityoption, sizex, sizey)==0)) ) {
          continue;
         }
        else
@@ -1348,10 +1349,14 @@ void sortxy(vector<int>& fieldstosort, int preference) // 0 x, 1 y
 }
 
 // fields touch borders
-int arefieldsneighbours(int id1, int id2, int possibilityoption) // id1 is always to the left or above of id2, possibilityoption = equal in size
+int arefieldsneighbours(int id1, int id2, int possibilityoption, int sizex, int sizey) // id1 is always to the left or above of id2, possibilityoption = equal in size
 {
   int x1, y1, x2, y2, tresult, result;
   tresult=result=0;
+  if ( sizex == 0 || sizey == 0 ) {
+   sizex = record[id1].size.x;
+   sizey = record[id1].size.y;
+  }
 
     // horizontal neighbours  
     if (record[id1].pt.x+record[id1].size.x==record[id2].pt.x)
@@ -1359,7 +1364,7 @@ int arefieldsneighbours(int id1, int id2, int possibilityoption) // id1 is alway
       for (y2=record[id2].pt.y;y2<record[id2].pt.y+record[id2].size.y+1;y2++)
        if (y1==y2)
         tresult=HORIZONTALLY;
-    if ( (possibilityoption == 0 && tresult) || (possibilityoption && tresult && record[id1].size.x == record[id2].size.x && record[id1].size.y == record[id2].size.y) )
+    if ( (possibilityoption == 0 && tresult) || (possibilityoption && tresult && sizex == record[id2].size.x && sizey == record[id2].size.y) )
      result+=tresult;
     
     // vertical neighbours
@@ -1369,7 +1374,7 @@ int arefieldsneighbours(int id1, int id2, int possibilityoption) // id1 is alway
       for (x2=record[id2].pt.x;x2<record[id2].pt.x+record[id2].size.x+1;x2++)
        if (x1==x2)
         tresult=VERTICALLY;
-    if ( (possibilityoption == 0 && tresult) || (possibilityoption && tresult && record[id1].size.x == record[id2].size.x && record[id1].size.y == record[id2].size.y) )
+    if ( (possibilityoption == 0 && tresult) || (possibilityoption && tresult && sizex == record[id2].size.x && sizey == record[id2].size.y) )
      result+=tresult;
     
  return result;
@@ -1447,14 +1452,14 @@ int loadasciitofields(int field_id, char *filename)
 {
   vector<int> tmultiplechoicefields;
   fieldsadjoiningfields(&records[(currentrecord*fieldsperrecord)+field_id], tmultiplechoicefields, 1);
-  int i, i1, correction;
+  int i, i1=0, correction;
   char c;
   FILE* f=fopen(filename, "r");
-  i=i1=0;
   
   if ( !f )
    return 0;
     
+    i=findinintvector(field_id, tmultiplechoicefields);
     while ( (c=fgetc(f)) != EOF && i < (int)tmultiplechoicefields.size() ) {
      if ( isprintablecharacter(c) )
       records[(currentrecord*fieldsperrecord)+tmultiplechoicefields[i]].text[i1++]=c;

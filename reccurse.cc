@@ -1,7 +1,7 @@
 // reccurse, the filemaker of ncurses
 #include "reccurse.h"
 
-const double version=0.525;
+const double version=0.527;
 
 int main(int argc, char *argv[])
 {
@@ -1104,13 +1104,14 @@ void Duplicate_Record(int record_id)
 // show record
 int Show_Record_and_Menu()
 {
-  int i, i1, n, trecordsnumber, c, backupmenu=0, replaychar=0;
+  int i, i1, n, trecordsnumber, c, backupmenu=0, replaychar=0, fieldchange=0;
   int previousfield=0, scriptdirection=NOSCRIPT;
   int findresults[MAXSEARCHDEPTH+1][MAXRECORDS], tsortresults[MAXRECORDS];
   char ttext[MAXSTRING];
   FindSchedule tfindschedule;
   vector<Annotated_Field> trecords;
-  vector<Annotated_Field> backupfields;
+  vector<Annotated_Field> backupfields, currentfields;
+  vector<int> adjoiningfields;
   
    while ( true ) {
     // clear screen array
@@ -1128,7 +1129,12 @@ int Show_Record_and_Menu()
     // show fields
     if (renewscreen)
      clear();
-    vector<int> adjoiningfields;
+
+    if ( fieldchange ) {
+     fieldchange=0;
+     currentfields=Records_From_Adjoining_Fields(currentfield);
+    }
+    
     fieldsadjoiningfields(&records[(currentrecord*fieldsperrecord)+currentfield], adjoiningfields);
     for (i=0;i<fieldsperrecord;i++)
      for (i1=0;i1<(int) adjoiningfields.size();i1++)
@@ -1159,8 +1165,7 @@ int Show_Record_and_Menu()
     
     // if changed field had script command in automatic value
     if ( previousfield != currentfield || changedrecord ) {
-
-     backupfields=Records_From_Adjoining_Fields(currentfield);
+      
      if ( changedrecord == 0 ) {
       if ( autosave )
        Read_Write_Field(records[(currentrecord*fieldsperrecord)+previousfield], fieldposition(currentrecord, previousfield), 1); 
@@ -1300,7 +1305,9 @@ int Show_Record_and_Menu()
        memset(input_string, 0, MAXSTRING);
        Show_Message(1, 24, MAGENTA, "filename:", 0);
        i=Scan_Input(input_string, 10, 24, MAGENTAONBLACK);
+       backupfields=Records_From_Adjoining_Fields(currentfield);
        loadasciitofields(currentfield, input_string);
+       fieldchange=1;
       break;
       case TEXTTOAUTOMATICVALUE: {
        vector<int> texttoautomaticvaluefields;
@@ -1321,7 +1328,9 @@ int Show_Record_and_Menu()
         records[(currentrecord*fieldsperrecord)+backupfields[i].id]=backupfields[i];
        if ( autosave )
         Write_Fields_AnnotatedField_Vector(backupfields);
-       backupfields=tbackupfields;
+       if ( backupfields.size() == 1 ) 
+        backupfields=tbackupfields; // otherwise, fieldsadjoiningfields is called without possibility, will re-bring only one after delete
+       fieldchange=1;
       }
       break;
       case SCRIPT_PLAYER:
@@ -1689,36 +1698,39 @@ int Show_Record_and_Menu()
      // from menu 2
      case 'd':
       if ( currentmenu == 2 ) {
-      if ( record[currentfield].type!=CALENDAR && record[currentfield].type!=CLOCK && record[currentfield].buttonbox==NOBUTTON && record[currentfield].editable == ON ) {
-       if (record[currentfield].buttonbox==BUTTONSCREEN)
-        record[currentfield].type=NUMERICAL; // trick to bring reversepolishcalculator
-       if (!record[currentfield].fieldlist) 
-        for (i=0;i<fieldsperrecord;i++)
-         Show_Field_ID(&records[(currentrecord*fieldsperrecord)+i]);
-       else {
-        Show_Menu_Bar(1);
-        if (menubar==1)
-         Show_Message(1, 24, MAGENTA, "fieldlist entry. <up> and <down> arrows, <insert> to bring relevant data", 1750);
-        if (fieldhasdependancy!=2) {
-         attron(A_BLINK);
-        Show_Field(&records[(currentrecord*fieldsperrecord)+record[currentfield].fieldlist-1], 1);
-        attroff(A_BLINK); } }
-      Screen_String_Editor(records[(currentrecord*fieldsperrecord)+currentfield]); }
-      if (isautomaticvalueformatinstruction(currentfield) && (record[currentfield].type==STRING || record[currentfield].type==MIXEDTYPE))
-       strcpy(records[(currentrecord*fieldsperrecord)+currentfield].text, formatreplacer(record[currentfield].automatic_value, currentfield));
-      if (record[currentfield].type==CALENDAR) {
-       strcpy(input_string, records[(currentrecord*fieldsperrecord)+currentfield].text);
-       Scan_Date(1, 24, input_string);
-       strcpy(records[(currentrecord*fieldsperrecord)+currentfield].text, input_string);
-      }
-      if (autosave)
-       Read_Write_Field(records[(currentrecord*fieldsperrecord)+currentfield], fieldposition(currentrecord, currentfield), 1);
-      // jump to next BUTTONCOMMAND script, if any
-      if (record[currentfield].fieldlist && record[record[currentfield].fieldlist-1].buttonbox==BUTTONCOMMAND) {
-       currentfield=record[currentfield].fieldlist-1;
-      pushspaceonfield(); }
-      if (record[currentfield].buttonbox==BUTTONBOX)
-       pushspaceonfield();
+       backupfields=Records_From_Adjoining_Fields(currentfield);
+       if ( record[currentfield].type!=CALENDAR && record[currentfield].type!=CLOCK && record[currentfield].buttonbox==NOBUTTON && record[currentfield].editable == ON ) {
+        if (record[currentfield].buttonbox==BUTTONSCREEN)
+         record[currentfield].type=NUMERICAL; // trick to bring reversepolishcalculator
+        if (!record[currentfield].fieldlist) 
+         for (i=0;i<fieldsperrecord;i++)
+          Show_Field_ID(&records[(currentrecord*fieldsperrecord)+i]);
+        else {
+         Show_Menu_Bar(1);
+         if (menubar==1)
+          Show_Message(1, 24, MAGENTA, "fieldlist entry. <up> and <down> arrows, <insert> to bring relevant data", 1750);
+         if (fieldhasdependancy!=2) {
+          attron(A_BLINK);
+          Show_Field(&records[(currentrecord*fieldsperrecord)+record[currentfield].fieldlist-1], 1);
+         attroff(A_BLINK); } }
+        Screen_String_Editor(records[(currentrecord*fieldsperrecord)+currentfield]); }
+       if (isautomaticvalueformatinstruction(currentfield) && (record[currentfield].type==STRING || record[currentfield].type==MIXEDTYPE))
+        strcpy(records[(currentrecord*fieldsperrecord)+currentfield].text, formatreplacer(record[currentfield].automatic_value, currentfield));
+       if (record[currentfield].type==CALENDAR) {
+        strcpy(input_string, records[(currentrecord*fieldsperrecord)+currentfield].text);
+        Scan_Date(1, 24, input_string);
+        strcpy(records[(currentrecord*fieldsperrecord)+currentfield].text, input_string);
+       }
+       if (autosave)
+        Read_Write_Field(records[(currentrecord*fieldsperrecord)+currentfield], fieldposition(currentrecord, currentfield), 1);
+       // jump to next BUTTONCOMMAND script, if any
+       if (record[currentfield].fieldlist && record[record[currentfield].fieldlist-1].buttonbox==BUTTONCOMMAND) {
+        currentfield=record[currentfield].fieldlist-1;
+        pushspaceonfield();
+       }
+       if (record[currentfield].buttonbox==BUTTONBOX)
+        pushspaceonfield();
+       fieldchange=1;
       }
       if (currentmenu==6) {
        if (recordsnumber<2)
@@ -1753,6 +1765,10 @@ int Show_Record_and_Menu()
       m = atoi(strtok(input_string, "/"));
       y = atoi(strtok(NULL, "/"));
       calendar=Generate_Calendar(m-1, y);
+      // backup fields
+      backupfields.clear();
+      for (i=0;i<8;i++)
+       backupfields.push_back(records[(currentrecord*fieldsperrecord)+currentfield+i]);
       // now fill current&neighbouring fields
       for (i=i1=i2=0;i1<(int) strlen(calendar);i1++) {
        records[(currentrecord*fieldsperrecord)+currentfield+i].text[i2++]=calendar[i1];
@@ -1768,37 +1784,46 @@ int Show_Record_and_Menu()
       if (autosave)
        for (i=0;i<8;i++)
         Read_Write_Field(records[(currentrecord*fieldsperrecord)+currentfield+i], fieldposition(currentrecord, currentfield+i), 1);
+      fieldchange=1;
      break;
      case SPACE:
       pushspaceonfield();
+      fieldchange=1;
      break;
      case '+':
       if (currentmenu!=5)
        record[currentfield].attributes[6]=(record[currentfield].attributes[6]=='1') ? '0' : '1';
+      alteredparameters=1;
      break;
      case '-':
       if (currentmenu!=5)
        record[currentfield].attributes[2]=(record[currentfield].attributes[2]=='1') ? '0' : '1';
+      alteredparameters=1;
      break;
      case '*':
       if (currentmenu!=5)
        record[currentfield].attributes[1]=(record[currentfield].attributes[1]=='1') ? '0' : '1';
+      alteredparameters=1;
      break;
      case '/':
       if (currentmenu!=5)
        record[currentfield].attributes[4]=(record[currentfield].attributes[4]=='1') ? '0' : '1';
+      alteredparameters=1;       
      break;
      case '.':
-     if (currentmenu!=5)
-      record[currentfield].attributes[5]=(record[currentfield].attributes[5]=='1') ? '0' : '1';
+      if (currentmenu!=5)
+       record[currentfield].attributes[5]=(record[currentfield].attributes[5]=='1') ? '0' : '1';
+      alteredparameters=1;       
      break;
      case '!':
       if (currentmenu!=5)
        record[currentfield].color+=record[currentfield].color<58 ? 1 : -58;
+      alteredparameters=1;       
      break;
      case '@':
       if (currentmenu!=5)
        record[currentfield].color-=record[currentfield].color>2 ? 1 : -57;
+      alteredparameters=1;       
      break;
      case 'c':
       for (i=0;i<fieldsperrecord;i++)
@@ -1817,6 +1842,7 @@ int Show_Record_and_Menu()
       Read_Write_Field(records[(currentrecord*fieldsperrecord)+n-1], fieldposition(currentrecord, n-1), 1);
      break;
      case DELETE: {
+      backupfields=Records_From_Adjoining_Fields(currentfield);
       vector<int>fieldstodelete;
       fieldsadjoiningfields(&records[(currentrecord*fieldsperrecord)+currentfield], fieldstodelete);
       for (i=0;i<(int) fieldstodelete.size();i++) {
@@ -1824,6 +1850,7 @@ int Show_Record_and_Menu()
        if ( autosave )
         Write_Fields_Int_Vector(fieldstodelete);
       }
+      fieldchange=1;
      break; }
      case INSERT:
       if (currentmenu==2) {
@@ -1851,9 +1878,11 @@ int Show_Record_and_Menu()
      break;
      case COPY:
       copytoclipboard();
+      fieldchange=1;
      break;
      case PASTE:
       pastefromclipboard();
+      fieldchange=1;
      break;
      // menu 3
      case 'i':
