@@ -71,9 +71,9 @@ enum { BLACKONBLACK=1, BLACKONRED, BLACKONGREEN, BLACKONYELLOW, BLACKONBLUE, BLA
       };
 enum { TOLEFT=1, CENTER, TORIGHT };
 enum { NOSCRIPT = 0, ONENTRY, ONEXIT, ONENTRYANDEXIT };
-enum { SEGMENTATIONFAULT = -4, FLOATINGPOINTEXCEPTION = -3, NOACTIVEFIELDS = -2, FILEERROR, NORMALEXIT = 0 };
+enum { SEGMENTATIONFAULT = -4, FLOATINGPOINTEXCEPTION = -3, NOACTIVEFIELDS = -2, FILEERROR, NORMALEXIT = 0, BREAKEXIT };
 enum { X = 0, Y, XY };
-const char *exittexts[]= { "SEGMENTATION FAULT", "FLOATING POINT EXCEPTION", "NO ACTIVE FIELDS", "FILE I/O ERROR", "NORMAL" };
+const char *exittexts[]= { "SEGMENTATION FAULT", "FLOATING POINT EXCEPTION", "NO ACTIVE FIELDS", "FILE I/O ERROR", "NORMAL", "BREAK" };
 const char *menukeys[]={ "eot`", "alsh`", "dckpjv+-*/.!@`", "ifru`", "yn`", "0123456789/*-+^,.()=`", "udixl`", "ir`" }; // m works in all menus
 const char *buttonkeys[]={ "0", "1", "2", "3", "4", "5", "6", "7", "8", "9", "/", "*", 
 "-", "+", "^", ",", ".", "(", ")", "=", "sin", "cos", "tan", "cotan", "sqr", "abs", "log", "AC", "DEL", "EXEC" };
@@ -113,6 +113,7 @@ const int END_OF_RECORDS=336;
 const int START_OF_RECORDS=337;
 const int PAGES_SELECTOR_KEY=23;
 const int SCRIPT_PLAYER=19;
+const int QUIT=24;
 
 // global variables
 int menubar;
@@ -255,7 +256,7 @@ vector<Annotated_Field> records, dummyrecords, externalrecords[MAXRELATIONSHIPS]
 vector<Relationship> relationships;
 vector <FindSchedule> findschedule;
 vector<Word> separatedwords;
-vector<int> multiplechoicefields;
+vector<int> multiplechoicefields, adjoiningfields;
 
 // external variables
 // rcscr.cc
@@ -390,6 +391,7 @@ int assignstringvaluestoarray(char *line, char array[MAXWORDS][MAXSTRING], int e
 int readstringentry(char *line, char *linepart);
 unsigned int isseparationchar(char t);
 int fieldsadjoiningfields(Annotated_Field *tfield, vector<int>& adjoiningfields, int possibilityoption=0, int sizex=0, int sizey=0);
+int referencedadjoiningfields(int field_id, vector<int>& adjoiningfields);
 void sortxy(vector<int>& fieldstosort, int preference=XY);
 int arefieldsneighbours(int id1, int id2, int possibilityoption=0, int sizex=0, int sizey=0);
 int findinintvector(int element, vector<int>& tv);
@@ -404,6 +406,7 @@ vector<Annotated_Field>& Records_From_Current_Record();
 void CurrentRecord_From_Vector(vector<Annotated_Field>& tv);
 void Write_Fields_Int_Vector(vector<int> tv, int recordid=-1);
 void Write_Fields_AnnotatedField_Vector(vector<Annotated_Field> tv, int recordid=-1);
+int isfieldreferencedinvector(int field_id, vector<int>& tv);
 
 // rcutil.cc
 extern int mod(double a, double b);

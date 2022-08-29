@@ -162,7 +162,7 @@ char Scan_Input(char istring[MAXSTRING], int x_pos, int y_pos, int color, int le
   int i, t=0, column, fieldreferenceflag=0, fieldreferencelist, dummyfieldreferencelist, fieldreferencerecord=currentrecord;
   char tstring[MAXSTRING], iistring[MAXSTRING];
   
-  if ( record.size() && records.size() && record[currentfield].fieldlist && editoroption == -1 ) {
+  if ( record.size() && records.size() && record[currentfield].fieldlist && adjoiningfields.size() == 1 ) {
    fieldreferenceflag=1;
    if (fieldhasdependancy==2) {
      fieldreferencerecord=0;
@@ -764,7 +764,7 @@ void INThandler(int sig)
     blockunblockgetch(QUITUNBLOCK);
     c = sgetch();
     if ( c == ESC || c == 'y' )
-     End_Program();
+     End_Program(BREAKEXIT);
      
     signal(SIGINT, INThandler);
     Show_Menu_Bar();
@@ -1285,7 +1285,7 @@ int fieldsadjoiningfields(Annotated_Field *tfield, vector<int>& adjoiningfields,
      if ( possibilityoption || ttfield->text[(int)strlen(ttfield->text)-1]=='>' ) {
       for (i1=0;i1<fieldsperrecord;i1++)
        if ( possibilityoption || records[(currentrecord*fieldsperrecord)+i1].text[0]=='<' ) {
-        if ( (findinintvector(i1, adjoiningfields)) || ((arefieldsneighbours(recordid, i1, possibilityoption, sizex, sizey)==0)) )
+        if ( findinintvector(i1, adjoiningfields) > -1 || ((arefieldsneighbours(recordid, i1, possibilityoption, sizex, sizey)==0)) )
          continue;
         else 
          if ( tfield->id != i1 )
@@ -1295,7 +1295,7 @@ int fieldsadjoiningfields(Annotated_Field *tfield, vector<int>& adjoiningfields,
      if ( possibilityoption || ttfield->text[0]== '<' ) {
       for (i1=0;i1<fieldsperrecord;i1++) {
        if ( possibilityoption || records[(currentrecord*fieldsperrecord)+i1].text[(int) strlen(records[(currentrecord*fieldsperrecord)+i1].text)-1]=='>' ) {
-        if ( (findinintvector(i1, adjoiningfields)) || ((arefieldsneighbours(i1, recordid, possibilityoption, sizex, sizey)==0)) ) {
+        if ( findinintvector(i1, adjoiningfields) > -1 || ((arefieldsneighbours(i1, recordid, possibilityoption, sizex, sizey)==0)) ) {
          continue;
         }
        else
@@ -1304,12 +1304,29 @@ int fieldsadjoiningfields(Annotated_Field *tfield, vector<int>& adjoiningfields,
        }
       }
      }
+   }
        
-    }
-    sortxy(adjoiningfields, X);
-    sortxy(adjoiningfields, Y);
-//     sortxy(adjoiningfields, XY);
+   sortxy(adjoiningfields, X);
+   sortxy(adjoiningfields, Y);
+//    sortxy(adjoiningfields, XY);
 
+ return (int)adjoiningfields.size();
+}
+
+// respectively referenced and neighbours become adjoining
+int referencedadjoiningfields(int field_id, vector<int>& adjoiningfields)
+{
+  int i;
+  vector<int> tadjoiningfields;
+  
+   fieldsadjoiningfields(&records[(currentrecord*fieldsperrecord)+field_id], tadjoiningfields, 1);
+   for (i=0;i<(int)tadjoiningfields.size();i++)
+    if ( isfieldreferencedinvector(tadjoiningfields[i], tadjoiningfields) > -1 )
+     if ( findinintvector(tadjoiningfields[i], adjoiningfields) == -1 )
+      adjoiningfields.push_back(tadjoiningfields[i]);
+    
+   sortxy(adjoiningfields, XY);
+  
  return (int)adjoiningfields.size();
 }
 
@@ -1364,8 +1381,9 @@ int arefieldsneighbours(int id1, int id2, int possibilityoption, int sizex, int 
       for (y2=record[id2].pt.y;y2<record[id2].pt.y+record[id2].size.y+1;y2++)
        if (y1==y2)
         tresult=HORIZONTALLY;
-    if ( (possibilityoption == 0 && tresult) || (possibilityoption && tresult && sizex == record[id2].size.x && sizey == record[id2].size.y) )
-     result+=tresult;
+    if ( tresult )
+     if ( possibilityoption == 0 || (possibilityoption && sizex == record[id2].size.x && sizey == record[id2].size.y) )
+      result+=tresult;
     
     // vertical neighbours
     tresult=0;
@@ -1374,8 +1392,9 @@ int arefieldsneighbours(int id1, int id2, int possibilityoption, int sizex, int 
       for (x2=record[id2].pt.x;x2<record[id2].pt.x+record[id2].size.x+1;x2++)
        if (x1==x2)
         tresult=VERTICALLY;
-    if ( (possibilityoption == 0 && tresult) || (possibilityoption && tresult && sizex == record[id2].size.x && sizey == record[id2].size.y) )
-     result+=tresult;
+    if ( tresult )
+     if ( possibilityoption == 0 || (possibilityoption && sizex == record[id2].size.x && sizey == record[id2].size.y) )
+      result+=tresult;
     
  return result;
 }
@@ -1389,7 +1408,7 @@ int findinintvector(int element, vector<int>& tv)
     if (element == tv[i])
      break;
     
- return (i==(int) tv.size()) ? 0 : i;
+ return (i==(int) tv.size()) ? -1 : i;
 } 
 
 // generate calendar
@@ -1487,14 +1506,15 @@ vector<Annotated_Field>& Records_From_Adjoining_Fields(int field_id, int possibi
 {
   vector<int> tadjoiningfields;
   int i;
-  static vector<Annotated_Field> adjoininingrecordfields;
+  static vector<Annotated_Field> adjoiningrecordfields;
   fieldsadjoiningfields(&records[(currentrecord*fieldsperrecord)+field_id], tadjoiningfields, possibilityoption);
+  referencedadjoiningfields(field_id, tadjoiningfields);
   
-   adjoininingrecordfields.clear();
+   adjoiningrecordfields.clear();
    for (i=0;i<(int)tadjoiningfields.size();i++)
-    adjoininingrecordfields.push_back(records[(currentrecord*fieldsperrecord)+tadjoiningfields[i]]);
+    adjoiningrecordfields.push_back(records[(currentrecord*fieldsperrecord)+tadjoiningfields[i]]);
   
- return adjoininingrecordfields; 
+ return adjoiningrecordfields; 
 }
 
 // current record to vector
@@ -1542,6 +1562,18 @@ void Write_Fields_AnnotatedField_Vector(vector<Annotated_Field> tv, int recordid
   
    for (i=0;i<(int)tv.size();i++)
     Read_Write_Field(records[(recordid*fieldsperrecord)+tv[i].id], fieldposition(recordid, tv[i].id), 1);
+}
+
+// do fields reference each other
+int isfieldreferencedinvector(int field_id, vector<int>& tv)
+{
+ int i;
+
+  for (i=0;i<(int)tv.size();i++) 
+   if ( record[tv[i]].fieldlist-1 == field_id ) 
+    return i;
+  
+ return -1;
 }
 
 

@@ -1,7 +1,7 @@
 // reccurse, the filemaker of ncurses
 #include "reccurse.h"
 
-const double version=0.529;
+const double version=0.535;
 
 int main(int argc, char *argv[])
 {
@@ -131,7 +131,7 @@ int End_Program(int code)
    sprintf(tmessage, "reccurse exiting in state [%s]", exittexts[code+4]);
     
    Show_Menu_Bar(1);
-   Show_Message(1, 24, YELLOW, tmessage, 1500);
+   Show_Message(1, 24, YELLOW, tmessage, ( code == NORMALEXIT ) ? 750 : 1500 );
    End_Screen();
    system("clear");
    if ( code == SEGMENTATIONFAULT )
@@ -143,7 +143,7 @@ int End_Program(int code)
    if ( code == FILEERROR )
     printf("Reccuse was forced to exit due to a file i/o error. Please see that you have write permissions in the folder where your rc/database/output file is located and that requested files for reading exist in your folder. ");
    
-   if ( code != NORMALEXIT )
+   if ( code != NORMALEXIT && code != BREAKEXIT )
     printf("If, however, you believe this was a program malfunction, please note down the circumstances and email me -> giorgossaridakis@gmail.com with the details. Have a nice day!\n");
   
  exit(code);
@@ -1111,7 +1111,6 @@ int Show_Record_and_Menu()
   FindSchedule tfindschedule;
   vector<Annotated_Field> trecords;
   vector<Annotated_Field> backupfields, currentfields;
-  vector<int> adjoiningfields;
   
    while ( true ) {
     // clear screen array
@@ -1132,6 +1131,7 @@ int Show_Record_and_Menu()
      clear();
      
     fieldsadjoiningfields(&records[(currentrecord*fieldsperrecord)+currentfield], adjoiningfields);
+    referencedadjoiningfields(currentfield, adjoiningfields);
     for (i=0;i<fieldsperrecord;i++)
      for (i1=0;i1<(int) adjoiningfields.size();i1++)
       if (adjoiningfields[i1]!=i)
@@ -1307,6 +1307,7 @@ int Show_Record_and_Menu()
       case TEXTTOAUTOMATICVALUE: {
        vector<int> texttoautomaticvaluefields;
        fieldsadjoiningfields(&records[(currentrecord*fieldsperrecord)+currentfield], texttoautomaticvaluefields);
+       referencedadjoiningfields(currentfield, texttoautomaticvaluefields);
        for (i=0;i<(int)texttoautomaticvaluefields.size();i++)
         strcpy(record[texttoautomaticvaluefields[i]].automatic_value, records[(currentrecord*fieldsperrecord)+texttoautomaticvaluefields[i]].text);
        alteredparameters=1;
@@ -1326,6 +1327,9 @@ int Show_Record_and_Menu()
        if ( backupfields.size() == 1 ) 
         backupfields=tbackupfields; // otherwise, fieldsadjoiningfields is called without possibility, will re-bring only one after delete
       }
+      break;
+      case QUIT:
+       End_Program(NORMALEXIT);
       break;
       case SCRIPT_PLAYER:
        Show_Message(1, 24, MAGENTA, "filename:", 0);
@@ -1692,11 +1696,12 @@ int Show_Record_and_Menu()
      // from menu 2
      case 'd':
       if ( currentmenu == 2 ) {
+       Flash_Field(currentfield);
        backupfields=Records_From_Adjoining_Fields(currentfield);
        if ( record[currentfield].type!=CALENDAR && record[currentfield].type!=CLOCK && record[currentfield].buttonbox==NOBUTTON && record[currentfield].editable == ON ) {
         if (record[currentfield].buttonbox==BUTTONSCREEN)
          record[currentfield].type=NUMERICAL; // trick to bring reversepolishcalculator
-        if (!record[currentfield].fieldlist) 
+        if ( record[currentfield].fieldlist == 0 || adjoiningfields.size() > 1 ) 
          for (i=0;i<fieldsperrecord;i++)
           Show_Field_ID(&records[(currentrecord*fieldsperrecord)+i]);
         else {
@@ -1726,6 +1731,7 @@ int Show_Record_and_Menu()
         pushspaceonfield();
       }
       if (currentmenu==6) {
+       Flash_Field(currentfield);
        if (recordsnumber<2)
         break;
        Show_Menu_Bar(1);
@@ -1836,6 +1842,7 @@ int Show_Record_and_Menu()
       backupfields=Records_From_Adjoining_Fields(currentfield);
       vector<int>fieldstodelete;
       fieldsadjoiningfields(&records[(currentrecord*fieldsperrecord)+currentfield], fieldstodelete);
+      referencedadjoiningfields(currentfield, fieldstodelete);
       for (i=0;i<(int) fieldstodelete.size();i++) {
        Delete_Field_Entry(fieldstodelete[i]);
        if ( autosave )
@@ -2071,8 +2078,11 @@ int negatekeysforcurrentmenu(int t)
   
   if ( t == UNDO && currentmenu == 2 )
    return t;
+  
+  if ( t == QUIT )
+   return t;
    
-  if (currentmenu==2 && t=='\n')
+  if ( currentmenu == 2 && t == '\n' )
    return 'd';
   
   if (currentmenu==5)
