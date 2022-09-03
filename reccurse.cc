@@ -1,7 +1,7 @@
 // reccurse, the filemaker of ncurses
 #include "reccurse.h"
 
-const double version=0.535;
+const double version=0.543;
 
 int main(int argc, char *argv[])
 {
@@ -131,7 +131,7 @@ int End_Program(int code)
    sprintf(tmessage, "reccurse exiting in state [%s]", exittexts[code+4]);
     
    Show_Menu_Bar(1);
-   Show_Message(1, 24, YELLOW, tmessage, ( code == NORMALEXIT ) ? 750 : 1500 );
+   Show_Message(1, 24, YELLOW, tmessage, ( code == NORMALEXIT ) ? 350 : 1500 );
    End_Screen();
    system("clear");
    if ( code == SEGMENTATIONFAULT )
@@ -1214,7 +1214,7 @@ int Show_Record_and_Menu()
      replaychar=0;
      blockunblockgetch();
      renewscreen=c=negatekeysforcurrentmenu(c);
-     if (!alteredparameters && currentmenu!=5)
+     if ( !alteredparameters && currentmenu != CALCULATOR )
       for (i=0;i<(int) strlen(alterscreenparameterskeys);i++)
        if (c==alterscreenparameterskeys[i])
         alteredparameters=1;
@@ -1349,19 +1349,19 @@ int Show_Record_and_Menu()
       break;
       // from menu 0
       case 'e':
-       currentmenu=2;
+       currentmenu=EDIT;
        Read_Write_Current_Parameters(1, 1);
       break;
       case 'o':
-       currentmenu=1;
+       currentmenu=OPTIONS;
        Read_Write_Current_Parameters(1, 1);
       break;
       case 't':
-       currentmenu=3;
+       currentmenu=EXTRA;
        Read_Write_Current_Parameters(1, 1);
       break;
       case '`': {
-       if (currentmenu==5)
+       if ( currentmenu == CALCULATOR )
         currentmenu=backupmenu;
        else {
         int buttons=0, screens=0;
@@ -1373,7 +1373,8 @@ int Show_Record_and_Menu()
         if (!(buttons+screens))
          break;
         backupmenu=currentmenu;  // keep old menu from calculator mode
-       currentmenu=5; }
+         currentmenu=CALCULATOR;
+       }
        Read_Write_Current_Parameters(1, 1);  
        Initialize_Database_Parameters(1); }
       break;
@@ -1388,20 +1389,20 @@ int Show_Record_and_Menu()
         recordsdemo=0;
         currentrecord=trecordsnumber; // restore currentrecord before find
        break; }
-       if (currentmenu==7) {
-        currentmenu=6;
+       if ( currentmenu == EXTERNALDB ) {
+        currentmenu=EDITEXTRA;
         if (autosave)
          Read_Write_Current_Parameters(1, 1);
        break; }
-       if (currentmenu==6) {
-        currentmenu=2;
+       if ( currentmenu == EDITEXTRA ) {
+        currentmenu=EDIT;
         if (autosave)
          Read_Write_Current_Parameters(1, 1);
        break; }
-       if (currentmenu==0)
+       if ( currentmenu == MAIN )
         INThandler(SIGINT);
        else
-        currentmenu=0;
+        currentmenu=MAIN;
        if (autosave)
         Read_Write_Current_Parameters(1, 1);
       break;
@@ -1596,7 +1597,7 @@ int Show_Record_and_Menu()
         i=locatefieldbymouseclick();
         if (i>-1) {
          currentfield=i;
-         if (currentmenu == 2)
+         if ( currentmenu == EDIT )
           replaychar='d';
          else
           pushspaceonfield(); // in case it's a link
@@ -1639,7 +1640,7 @@ int Show_Record_and_Menu()
        toggleautosave();
       break;
       case 'l':
-       if (currentmenu==1) {
+       if ( currentmenu == OPTIONS ) {
         Show_Menu_Bar(1);
         strcpy(input_string, dbfile);
         i=Scan_Input(input_string, 1, 24, MAGENTAONBLACK);
@@ -1656,8 +1657,8 @@ int Show_Record_and_Menu()
         Load_Database(currentpage);
         Show_Message(1, 24, YELLOW, "database loaded", 1500);
        }
-       if (currentmenu==6) {
-        currentmenu=7;
+       if ( currentmenu == EDITEXTRA ) {
+        currentmenu=EXTERNALDB;
         if (autosave)
          Read_Write_Current_Parameters(1, 1);
        }
@@ -1695,7 +1696,7 @@ int Show_Record_and_Menu()
      break;
      // from menu 2
      case 'd':
-      if ( currentmenu == 2 ) {
+      if ( currentmenu == EDIT ) {
        Flash_Field(currentfield);
        backupfields=Records_From_Adjoining_Fields(currentfield);
        if ( record[currentfield].type!=CALENDAR && record[currentfield].type!=CLOCK && record[currentfield].buttonbox==NOBUTTON && record[currentfield].editable == ON ) {
@@ -1713,7 +1714,7 @@ int Show_Record_and_Menu()
           Show_Field(&records[(currentrecord*fieldsperrecord)+record[currentfield].fieldlist-1], 1);
          attroff(A_BLINK); } }
         Screen_String_Editor(records[(currentrecord*fieldsperrecord)+currentfield]); }
-       if (isautomaticvalueformatinstruction(currentfield) && (record[currentfield].type==STRING || record[currentfield].type==MIXEDTYPE))
+       if ( isautomaticvalueformatinstruction(currentfield) && (record[currentfield].type==STRING || record[currentfield].type==MIXEDTYPE) )
         strcpy(records[(currentrecord*fieldsperrecord)+currentfield].text, formatreplacer(record[currentfield].automatic_value, currentfield));
        if (record[currentfield].type==CALENDAR) {
         strcpy(input_string, records[(currentrecord*fieldsperrecord)+currentfield].text);
@@ -1721,7 +1722,7 @@ int Show_Record_and_Menu()
         strcpy(records[(currentrecord*fieldsperrecord)+currentfield].text, input_string);
        }
        if (autosave)
-        Read_Write_Field(records[(currentrecord*fieldsperrecord)+currentfield], fieldposition(currentrecord, currentfield), 1);
+        Write_Fields_Int_Vector(adjoiningfields);
        // jump to next BUTTONCOMMAND script, if any
        if (record[currentfield].fieldlist && record[record[currentfield].fieldlist-1].buttonbox==BUTTONCOMMAND) {
         currentfield=record[currentfield].fieldlist-1;
@@ -1730,7 +1731,7 @@ int Show_Record_and_Menu()
        if (record[currentfield].buttonbox==BUTTONBOX)
         pushspaceonfield();
       }
-      if (currentmenu==6) {
+      if ( currentmenu == EDITEXTRA ) {
        Flash_Field(currentfield);
        if (recordsnumber<2)
         break;
@@ -1747,14 +1748,12 @@ int Show_Record_and_Menu()
       Read_Write_Field(records[(currentrecord*fieldsperrecord)+currentfield], fieldposition(currentrecord, currentfield), 1); }
      break;
      case 'k':
-      // calendar requires 8 consecutive fields with least x size 29, y size 1, no box
-      for (i=0;i<8;i++)
-       if (record[currentfield+i].type!=STRING || record[currentfield+i].size.x<29 || record[currentfield+i].size.y!=1 || record[currentfield+i].box == ON )
-        break;
-      for (i1=0;i1<6;i1++)
-       if ((arefieldsneighbours(currentfield+i1, currentfield+i1+1)!=VERTICALLY))
-        break;
-      if (i<8 || i1<6) {
+      n=1;
+      if ( (i1=referencedadjoiningfields(currentfield, adjoiningfields, 1, 1, 29, 1, LESSEROREQUAL)) < 7 ) { // recalculate possible size without referenced
+       n=0;
+       i1=fieldsadjoiningfields(&records[(currentrecord*fieldsperrecord)+currentfield], adjoiningfields, 1, 29, 1, LESSEROREQUAL) - findinintvector(currentfield, adjoiningfields);
+      }
+      if ( i1 < 7 ) {
        Show_Menu_Bar(1);
        Show_Message(1, 24, RED, "suitable records not found", 750);
        break;
@@ -1772,9 +1771,10 @@ int Show_Record_and_Menu()
       for (i=i1=i2=0;i1<(int) strlen(calendar);i1++) {
        records[(currentrecord*fieldsperrecord)+currentfield+i].text[i2++]=calendar[i1];
        if (calendar[i1]=='>') {
-        records[(currentrecord*fieldsperrecord)+currentfield+i].text[i2++]='\0';
-        i2=0; ++i; 
-        records[(currentrecord*fieldsperrecord)+currentfield+i].text[i2++]='<';
+        records[(currentrecord*fieldsperrecord)+currentfield+i].text[i2-n]='\0';
+        i2=0; ++i;
+        if ( n == 0 )
+         records[(currentrecord*fieldsperrecord)+currentfield+i].text[i2++]='<';
        }
       }
       records[(currentrecord*fieldsperrecord)+currentfield+i].text[i2++]='\0';
@@ -1788,37 +1788,37 @@ int Show_Record_and_Menu()
       pushspaceonfield();
      break;
      case '+':
-      if (currentmenu!=5)
+      if ( currentmenu != CALCULATOR )
        record[currentfield].attributes[6]=(record[currentfield].attributes[6]=='1') ? '0' : '1';
       alteredparameters=1;
      break;
      case '-':
-      if (currentmenu!=5)
+      if ( currentmenu != CALCULATOR )
        record[currentfield].attributes[2]=(record[currentfield].attributes[2]=='1') ? '0' : '1';
       alteredparameters=1;
      break;
      case '*':
-      if (currentmenu!=5)
+      if ( currentmenu != CALCULATOR )
        record[currentfield].attributes[1]=(record[currentfield].attributes[1]=='1') ? '0' : '1';
       alteredparameters=1;
      break;
      case '/':
-      if (currentmenu!=5)
+      if ( currentmenu != CALCULATOR )
        record[currentfield].attributes[4]=(record[currentfield].attributes[4]=='1') ? '0' : '1';
       alteredparameters=1;       
      break;
      case '.':
-      if (currentmenu!=5)
+      if ( currentmenu != CALCULATOR )
        record[currentfield].attributes[5]=(record[currentfield].attributes[5]=='1') ? '0' : '1';
       alteredparameters=1;       
      break;
      case '!':
-      if (currentmenu!=5)
+      if ( currentmenu != CALCULATOR )
        record[currentfield].color+=record[currentfield].color<58 ? 1 : -58;
       alteredparameters=1;       
      break;
      case '@':
-      if (currentmenu!=5)
+      if ( currentmenu != CALCULATOR )
        record[currentfield].color-=record[currentfield].color>2 ? 1 : -57;
       alteredparameters=1;       
      break;
@@ -1850,13 +1850,13 @@ int Show_Record_and_Menu()
       }
      break; }
      case INSERT:
-      if (currentmenu==2) {
-       currentmenu=6;
+      if ( currentmenu == EDIT ) {
+       currentmenu=EDITEXTRA;
        Read_Write_Current_Parameters(1, 1);
       }
      break;
      case 'u':
-      if (currentmenu==3) {
+      if ( currentmenu == EXTRA ) {
        Field_Editor();
        // determine button boxes
        for (i=0;i<(int) record.size();i++)
@@ -1864,7 +1864,7 @@ int Show_Record_and_Menu()
        changedrecord=1;
        currentrecord=Read_Write_Current_Parameters(0);
       }
-      if (currentmenu==6)
+      if ( currentmenu == EDITEXTRA )
        Duplicate_Record(currentrecord);
      break;
      case 'x':
@@ -1881,15 +1881,15 @@ int Show_Record_and_Menu()
      break;
      // menu 3
      case 'i':
-      if (currentmenu==3)
+      if ( currentmenu == EXTRA )
        Show_DB_Information();
-      if (currentmenu==6) {
+      if ( currentmenu == EDITEXTRA ) {
        Show_Menu_Bar(1);
        Show_Message(1, 24, MAGENTA, "filename:", 0);
        Scan_Input();
        Import_Database(input_string);
       }
-      if (currentmenu==7) {
+      if ( currentmenu == EXTERNALDB ) {
        Show_Menu_Bar(1);
        Show_Message(1, 24, BLUE, "external dbfile:", 0);
        Scan_Input();
@@ -1897,7 +1897,7 @@ int Show_Record_and_Menu()
       }
      break;
      case 'r':
-      if (currentmenu==7) {
+      if ( currentmenu == EXTERNALDB ) {
        References_Editor();
       break; }
       for (i=0;i<fieldsperrecord;i++)
@@ -1992,7 +1992,7 @@ int Show_Record_and_Menu()
     }
        
     // calculator keys
-    if (currentmenu==5 && c) {
+    if ( currentmenu == CALCULATOR && c ) {
      ttext[0]=c;
      ttext[1]='\0';
      switch (c) {
@@ -2018,17 +2018,30 @@ int Show_Record_and_Menu()
 // string editor in screen
 int Screen_String_Editor(Annotated_Field &tfield)
 {
-  char t, tstring[MAXSTRING];
-  fstream dbfileaccess(dbfile, ios::in | ios::out | ios::binary);
+  char tstring[MAXSTRING];
+  int t, pos=findinintvector(tfield.id, adjoiningfields), firstlast, i;
    
-   strcpy(tstring, tfield.text);
-    // ttext to tfield
-    Show_Menu_Bar(1);
-    t=Scan_Input(tstring, 1, 24, record[tfield.id].color);
-    if (t==ESC)
-     return -1;    
-    strcpy(tfield.text, tstring);
-    tfield.number=atof(tfield.text);
+    while ( t != ENTER ) {
+     for (i=0;i<(int) adjoiningfields.size();i++)
+      Show_Field(&records[(currentrecord*fieldsperrecord)+adjoiningfields[i]], 1);
+     strcpy(tstring, records[(currentrecord*fieldsperrecord)+adjoiningfields[pos]].text);
+     Show_Menu_Bar(1);
+     firstlast=MIDDLE;
+     if ( pos == 0 )
+      firstlast=FIRST;
+     if ( pos == (int)adjoiningfields.size() - 1 )
+      firstlast=LAST;
+     t=Scan_Input( tstring, 1, 24, record[adjoiningfields[pos]].color, 79, ( t == LEFT ) ? -1 : 0, firstlast );
+     if ( t == ESC )
+      return -1;    
+     strcpy(records[(currentrecord*fieldsperrecord)+adjoiningfields[pos]].text, tstring);
+     records[(currentrecord*fieldsperrecord)+adjoiningfields[pos]].number=atof(tstring);
+     if ( t == LEFT && pos > 0 )
+      --pos;
+     if ( t == RIGHT && pos < (int)adjoiningfields.size() - 1 )
+      ++pos;
+    }
+    currentfield=adjoiningfields[pos];
 
  return 0;
 }
@@ -2037,7 +2050,7 @@ int Screen_String_Editor(Annotated_Field &tfield)
 int negatekeysforcurrentmenu(int t)
 {
   int i;
-    
+
   if (t==SHIFT_RIGHT) t='>'; // shift+right arrow
   if (t==SHIFT_LEFT) t='<'; // shift+left arrow
   if (t==ESC || t==LEFT || t==RIGHT || t==UP || t==DOWN || t==TAB || t==SHIFT_TAB || t=='m' || t=='g' || t=='?' || t==HOME || t==END || t=='<' || t=='>' || t==']' ||  t==START_OF_RECORDS || t==END_OF_RECORDS || t==KEY_MOUSE || t=='z' || t=='q' || t=='w')
@@ -2046,15 +2059,15 @@ int negatekeysforcurrentmenu(int t)
   if (recordsdemo)
    return 0;
   
-  if (t==6) { currentmenu=3; t='f'; return t; } // enter find mode
+  if (t==6) { currentmenu=EXTRA; t='f'; return t; } // enter find mode
   if (t==5 || t==15 || t==20 || t==PAGES_SELECTOR_KEY) { // direct menu access with ctrl
    switch (t) {
-    case 5:currentmenu=2; break; case 15:currentmenu=1; break; case 20:currentmenu=3; break; case PAGES_SELECTOR_KEY: if (!printscreenmode) Pages_Selector();
+    case 5:currentmenu=EDIT; break; case 15:currentmenu=1; break; case 20:currentmenu=EXTRA; break; case PAGES_SELECTOR_KEY: if (!printscreenmode) Pages_Selector();
    break; }
    Read_Write_Current_Parameters(1, 1);
   return 1; } // 1 will set renewscreen
 
-  if (currentmenu==2 || currentmenu==6)
+  if ( currentmenu == EDIT || currentmenu == EDITEXTRA )
    if (t==INSERT || t==DELETE || t==SPACE || t==COPY || t==PASTE)
     return t;
    
@@ -2064,32 +2077,32 @@ int negatekeysforcurrentmenu(int t)
   if ( t == SCRIPT_PLAYER)
    return t;
 
-  if ( t == SCANAUTOMATICVALUE && currentmenu == 2 )
+  if ( t == SCANAUTOMATICVALUE && currentmenu == EDIT )
    return t;
   
-  if ( t == SCANTITLE && currentmenu == 2 )
+  if ( t == SCANTITLE && currentmenu == EDIT )
    return t;
 
-  if ( t == IMPORTASCII && currentmenu == 2 )
+  if ( t == IMPORTASCII && currentmenu == EDIT )
    return t;
   
-  if ( t == TEXTTOAUTOMATICVALUE && currentmenu == 2 )
+  if ( t == TEXTTOAUTOMATICVALUE && currentmenu == EDIT )
    return t;
   
-  if ( t == UNDO && currentmenu == 2 )
+  if ( t == UNDO && currentmenu == EDIT )
    return t;
   
   if ( t == QUIT )
    return t;
    
-  if ( currentmenu == 2 && t == '\n' )
+  if ( currentmenu == EDIT && t == '\n' )
    return 'd';
   
-  if (currentmenu==5)
+  if ( currentmenu == CALCULATOR )
    if (t==ENTER || t==BACKSPACE || t==DELETE || t==SPACE)
     return t;
    
-  if (currentmenu<4)
+  if ( currentmenu < EDITOR )
    for (i=0;i<(int) strlen(programkeys);i++)
     if (t==(int) programkeys[i])
      return t;
@@ -2318,7 +2331,7 @@ int Show_Field(Annotated_Field *field, int flag) // 1 highlight, 2 only in scree
    fieldhasdependancy=Generate_Dependant_Field_String(field, ttext);
    if (fieldhasdependancy!=1)
     Generate_Field_String(field, ttext);
-   if (field->number || record[field->id].type==NUMERICAL || record[field->id].type==MIXEDTYPE || record[field->id].buttonbox==BUTTONSCREEN)
+   if ( (tfield->type != STRING && field->number) || record[field->id].type==NUMERICAL || record[field->id].type==MIXEDTYPE || record[field->id].buttonbox==BUTTONSCREEN)
     addleadingzeros(ttext, field);
      
    // add attributes

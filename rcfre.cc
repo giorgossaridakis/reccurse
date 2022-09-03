@@ -81,6 +81,7 @@ enum { TOLEFT=1, CENTER, TORIGHT };
 const char *FIELDTYPES[]= { "numerical", "calendar", "string", "mixed", "variable", "program", "clock" };
 const char *BUTTONBOXES[]= { "edit field", "tick box", "button box", "button screen", "button command", "automatic script" };
 enum { OFF = 0, ON };
+enum { MAIN=0, OPTIONS, EDIT, EXTRA, EDITOR, CALCULATOR, EDITEXTRA, EXTERNALDB };
 
 struct Points {
  int x;
@@ -184,7 +185,7 @@ extern void cleanstdin();
 extern void Show_Message(int x_pos, int y_pos, int color, char *message, int sleeptime=1500);
 void Show_Message(int x_pos, int y_pos, int color, const char *message, int sleeptime=1500);
 extern int Scan_Input(int flag=0, int lim_a=0, int lim_b=1, int length=79);
-extern char Scan_Input(char istring[MAXSTRING], int x_pos, int y_pos, int color=WHITE, int length=79);
+extern char Scan_Input(char istring[MAXSTRING], int x_pos, int y_pos, int color=WHITE, int length=79, int cursor=-1, int firstlast=-1);
 extern void Scan_Date(int x_pos, int y_pos, char tdate[], int flag=0);
 extern int Add_Field(int type=NUMERICAL, char *name=NULL, char *textvalue=NULL);
 extern void Delete_Field(int field_id);
@@ -710,7 +711,7 @@ int Edit_Field(int &field_id)
 {
  int c=0, bc=0, backupmenu=currentmenu, backupbar=menubar, showallrecords=0;
  Field trecord=record[field_id], ttrecord;
- currentmenu=4; menubar=1;
+ currentmenu=EDITOR; menubar=1;
  
   while ( c != ESC && c != ENTER ) {
     

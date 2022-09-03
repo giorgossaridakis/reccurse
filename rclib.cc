@@ -157,10 +157,14 @@ int Scan_Input(int flag, int lim_a, int lim_b, int length) // 0 string, 1 intege
 }
 
 // scan input overloaded
-char Scan_Input(char istring[MAXSTRING], int x_pos, int y_pos, int color, int length)
+int Scan_Input(char istring[MAXSTRING], int x_pos, int y_pos, int color, int length, int cursor, int firstlast) // -1 none, 0 first, 1 last
 {
-  int i, t=0, column, fieldreferenceflag=0, fieldreferencelist, dummyfieldreferencelist, fieldreferencerecord=currentrecord;
+  int i, t=0, column, fieldreferenceflag=0, fieldreferencelist, dummyfieldreferencelist, fieldreferencerecord=currentrecord, exitscan=0;
   char tstring[MAXSTRING], iistring[MAXSTRING];
+  if ( cursor == -1 )
+   cursor=strlen(istring);
+  else
+   cursor=0;
   
   if ( record.size() && records.size() && record[currentfield].fieldlist && adjoiningfields.size() == 1 ) {
    fieldreferenceflag=1;
@@ -182,8 +186,8 @@ char Scan_Input(char istring[MAXSTRING], int x_pos, int y_pos, int color, int le
     color=WHITE;
    if ( color > 0 )
     Change_Color(color);
-   column=x_pos;
-   while (t!=ESC && t!='\n') {
+   column=x_pos+cursor;
+   while ( t!=ESC && t!='\n' && exitscan == 0 ) {
     gotoxy(x_pos, y_pos);
     if (fieldreferenceflag==2) {
      fieldreferenceflag=1;
@@ -209,12 +213,28 @@ char Scan_Input(char istring[MAXSTRING], int x_pos, int y_pos, int color, int le
      tstring[column-x_pos]=t;
      if (column<length)
     ++column; }
-     switch (t) {
+     if ( t == SHIFT_UP ) {
+      column=x_pos;
+      t=LEFT;
+     }
+     if ( t == SHIFT_DOWN ) {
+      column=length;
+      t=RIGHT;
+     }
+     switch ( t ) {
       case LEFT:
+       if ( column == x_pos && adjoiningfields.size() > 1 && firstlast != FIRST ) {
+        exitscan=1;
+        break;
+       }
        if (column>x_pos) {
        --column; }
       break;
       case RIGHT:
+       if ( column == length && adjoiningfields.size() > 1 && firstlast != LAST ) {
+        exitscan=1;
+        break;
+       }
        if (column<length) {
        ++column; }
       break;
@@ -273,7 +293,7 @@ char Scan_Input(char istring[MAXSTRING], int x_pos, int y_pos, int color, int le
     break; } }
     
     terminatestringatcharactersend(tstring);
-    if (t=='\n')
+    if ( t == '\n' || t == LEFT || t == RIGHT )
      strcpy(istring, tstring);
     
  return t;
@@ -1189,6 +1209,7 @@ int selectmultiplechoicefield(int field_id)
 {
   vector<int> tmultiplechoicefields;
   fieldsadjoiningfields(&records[(currentrecord*fieldsperrecord)+field_id], tmultiplechoicefields);
+  referencedadjoiningfields(field_id, tmultiplechoicefields);
   multiplechoicefields.clear();
   int i, totalinstructions=0, fieldwithinstruction;
   
@@ -1271,11 +1292,13 @@ int assignstringvaluestoarray(char *line, char array[MAXWORDS][MAXSTRING], int e
 }
 
 // fields adjoining field
-int fieldsadjoiningfields(Annotated_Field *tfield, vector<int>& adjoiningfields, int possibilityoption, int sizex, int sizey)
+int fieldsadjoiningfields(Annotated_Field *tfield, vector<int>& adjoiningfields, int possibilityoption, int sizex, int sizey, int comparisonx, int comparisony)
 {
   int i1, recordid=tfield->id, pos=0;
   adjoiningfields.clear();
   adjoiningfields.push_back(recordid);
+  if ( record[recordid].box == ON )
+   return 1;
   Annotated_Field *ttfield;
   
    while (pos<(int) adjoiningfields.size()) {
@@ -1285,7 +1308,7 @@ int fieldsadjoiningfields(Annotated_Field *tfield, vector<int>& adjoiningfields,
      if ( possibilityoption || ttfield->text[(int)strlen(ttfield->text)-1]=='>' ) {
       for (i1=0;i1<fieldsperrecord;i1++)
        if ( possibilityoption || records[(currentrecord*fieldsperrecord)+i1].text[0]=='<' ) {
-        if ( findinintvector(i1, adjoiningfields) > -1 || ((arefieldsneighbours(recordid, i1, possibilityoption, sizex, sizey)==0)) )
+        if ( findinintvector(i1, adjoiningfields) > -1 || ((arefieldsneighbours(recordid, i1, possibilityoption, sizex, sizey, comparisonx, comparisony)==0)) || record[i1].box == ON )
          continue;
         else 
          if ( tfield->id != i1 )
@@ -1295,7 +1318,7 @@ int fieldsadjoiningfields(Annotated_Field *tfield, vector<int>& adjoiningfields,
      if ( possibilityoption || ttfield->text[0]== '<' ) {
       for (i1=0;i1<fieldsperrecord;i1++) {
        if ( possibilityoption || records[(currentrecord*fieldsperrecord)+i1].text[(int) strlen(records[(currentrecord*fieldsperrecord)+i1].text)-1]=='>' ) {
-        if ( findinintvector(i1, adjoiningfields) > -1 || ((arefieldsneighbours(i1, recordid, possibilityoption, sizex, sizey)==0)) ) {
+        if ( findinintvector(i1, adjoiningfields) > -1 || ((arefieldsneighbours(i1, recordid, possibilityoption, sizex, sizey, comparisonx, comparisony)==0)) || record[i1].box == ON ) {
          continue;
         }
        else
@@ -1314,20 +1337,28 @@ int fieldsadjoiningfields(Annotated_Field *tfield, vector<int>& adjoiningfields,
 }
 
 // respectively referenced and neighbours become adjoining
-int referencedadjoiningfields(int field_id, vector<int>& adjoiningfields)
+int referencedadjoiningfields(int field_id, vector<int>& adjoiningfields, int fieldidflag, int rebuildflag, int sizex, int sizey, int comparisonx, int comparisony)
 {
   int i;
   vector<int> tadjoiningfields;
   
-   fieldsadjoiningfields(&records[(currentrecord*fieldsperrecord)+field_id], tadjoiningfields, 1);
+   fieldsadjoiningfields(&records[(currentrecord*fieldsperrecord)+field_id], tadjoiningfields, 1, sizex, sizey, comparisonx, comparisony);
+   if ( rebuildflag == 1 ) {
+    adjoiningfields.clear();
+    adjoiningfields.push_back(field_id);
+   }
+   if ( isfieldreferencedinvector(field_id, tadjoiningfields) == -1 ) 
+    return (int)adjoiningfields.size();
+  
    for (i=0;i<(int)tadjoiningfields.size();i++)
     if ( isfieldreferencedinvector(tadjoiningfields[i], tadjoiningfields) > -1 )
      if ( findinintvector(tadjoiningfields[i], adjoiningfields) == -1 )
       adjoiningfields.push_back(tadjoiningfields[i]);
     
    sortxy(adjoiningfields, XY);
-  
- return (int)adjoiningfields.size();
+   i = ( fieldidflag == 1 ) ? findinintvector(field_id, adjoiningfields) : 0;
+   
+ return (int)adjoiningfields.size() - i ;
 }
 
 // sort fields by x or y
@@ -1366,7 +1397,7 @@ void sortxy(vector<int>& fieldstosort, int preference) // 0 x, 1 y
 }
 
 // fields touch borders
-int arefieldsneighbours(int id1, int id2, int possibilityoption, int sizex, int sizey) // id1 is always to the left or above of id2, possibilityoption = equal in size
+int arefieldsneighbours(int id1, int id2, int possibilityoption, int sizex, int sizey, int comparisonx, int comparisony) // id1 is always to the left or above of id2, possibilityoption = equal in size
 {
   int x1, y1, x2, y2, tresult, result;
   tresult=result=0;
@@ -1382,7 +1413,7 @@ int arefieldsneighbours(int id1, int id2, int possibilityoption, int sizex, int 
        if (y1==y2)
         tresult=HORIZONTALLY;
     if ( tresult )
-     if ( possibilityoption == 0 || (possibilityoption && sizex == record[id2].size.x && sizey == record[id2].size.y) )
+     if ( possibilityoption == 0 || (possibilityoption && compareintegers(sizex, record[id2].size.x, comparisonx) && compareintegers(sizey, record[id2].size.y, comparisony)) )
       result+=tresult;
     
     // vertical neighbours
@@ -1393,10 +1424,42 @@ int arefieldsneighbours(int id1, int id2, int possibilityoption, int sizex, int 
        if (x1==x2)
         tresult=VERTICALLY;
     if ( tresult )
-     if ( possibilityoption == 0 || (possibilityoption && sizex == record[id2].size.x && sizey == record[id2].size.y) )
+     if ( possibilityoption == 0 || (possibilityoption && compareintegers(sizex, record[id2].size.x, comparisonx) && compareintegers(sizey, record[id2].size.y, comparisony)) )
       result+=tresult;
+//     if ( tresult )
+//      if ( possibilityoption == 0 || (possibilityoption && compareintegers(sizex, record[id2].size.x, comparisonx) && compareintegers(sizey, record[id2].size.y, comparisony)) )
+//       result+=tresult;
     
  return result;
+}
+
+// compare integers
+int compareintegers(int i1, int i2, int comparison)
+{
+  switch (comparison) {
+   case EQUAL:
+    if ( i1 == i2 )
+     return 1;
+   break;
+   case LESSER:
+    if ( i1 < i2 )
+     return 1;
+   break;
+   case LESSEROREQUAL:
+    if ( i1 <= i2 )
+     return 1;
+   break;
+   case GREATER:
+    if ( i1 > i2 )
+     return 1;
+   break;
+   case GREATEROREQUAL:
+    if ( i1 >= i2 )
+     return 1;
+   break;
+  }
+    
+ return 0;
 }
 
 // int vector contais element

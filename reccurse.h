@@ -73,6 +73,7 @@ enum { TOLEFT=1, CENTER, TORIGHT };
 enum { NOSCRIPT = 0, ONENTRY, ONEXIT, ONENTRYANDEXIT };
 enum { SEGMENTATIONFAULT = -4, FLOATINGPOINTEXCEPTION = -3, NOACTIVEFIELDS = -2, FILEERROR, NORMALEXIT = 0, BREAKEXIT };
 enum { X = 0, Y, XY };
+enum { EQUAL = 0, LESSER, LESSEROREQUAL, GREATER, GREATEROREQUAL };
 const char *exittexts[]= { "SEGMENTATION FAULT", "FLOATING POINT EXCEPTION", "NO ACTIVE FIELDS", "FILE I/O ERROR", "NORMAL", "BREAK" };
 const char *menukeys[]={ "eot`", "alsh`", "dckpjv+-*/.!@`", "ifru`", "yn`", "0123456789/*-+^,.()=`", "udixl`", "ir`" }; // m works in all menus
 const char *buttonkeys[]={ "0", "1", "2", "3", "4", "5", "6", "7", "8", "9", "/", "*", 
@@ -81,8 +82,9 @@ const char *programkeys="1234567890";
 const char *EMPTYSTRING="~";
 const int buttonkeystotal=30;
 const char *alterscreenparameterskeys="/*-+.!@";
-const char *menutexts[]={ "<tabshiftarrows|<>|homeend|<g>|<e>dit|<o>ptions|ex<t>ra|`|<m>enubar|<ESC>quit", "<a>utosave on/off|<l>oad database|<s>ave database|<h>elp page|`|<ESC>main menu", "e<d>it|<c>opy|<DEL>ete|<j>oin|di<v>ide|datestam<p>|<INS>more|`|<ESC>main menu", "database <i>nformation|<f>ind|so<r>t records|set<u>p database|`|<ESC>main menu", "<arrows><shift+arrows><1.2>title color<3.4>color<5.6>box color<b>ox<t>itle<*ESC>", "calculator: 0123456789/*-+^,.()= <enter> <backspace> <delete> <`>previous menu", "d<u>plicate, <d>elete record, <i>mport/e<x>port records, externa<l> .dbfiles", "<i>mport records, external <r>eferences editor" };  //main, options, edit, extra, quit, calculator, extra from edit, external db records; d
+const char *menutexts[]={ "<tabshiftarrows|<>|homeend|<g>|<e>dit|<o>ptions|ex<t>ra|`|<m>enubar|<ESC>quit", "<a>utosave on/off|<l>oad database|<s>ave database|<h>elp page|`|<ESC>main menu", "e<d>it|<c>opy|<DEL>ete|<j>oin|di<v>ide|datestam<p>|<INS>more|`|<ESC>main menu", "database <i>nformation|<f>ind|so<r>t records|set<u>p database|`|<ESC>main menu", "<arrows><shift+arrows><1.2>title color<3.4>color<5.6>box color<b>ox<t>itle<*ESC>", "calculator: 0123456789/*-+^,.()= <enter> <backspace> <delete> <`>previous menu", "d<u>plicate, <d>elete record, <i>mport/e<x>port records, externa<l> .dbfiles", "<i>mport records, external <r>eferences editor" };  //main, options, edit, extra, editor, calculator, extra from edit, external db records;
 const char *menubaroptions =  "0,27,31,g,0,31,38,e,0,38,48,o,0,48,56,t,0,56,58,`,0,58,68,m,0,68,78,27,1,0,18,a,1,18,34,l,1,34,50,s,1,50,62,h,1,62,64,`,1,64,79,27,2,0,7,d,2,7,14,c,2,14,23,330,2,23,30,j,2,30,39,v,2,39,51,p,2,51,61,331,2,61,63,`,2,63,78,27,3,0,23,i,3,23,30,f,3,30,45,r,3,45,62,u,3,62,64,`,3,64,79,27, 4,23,25,49, 4,25,27,50, 4,39,41,51, 4,41,43,52, 4,49,51,53,4,51,53,54,4,62,68,b, 4,67,75,t, 4,75,77,*,4,77,81,27,5,12,13,48,5,13,14,49,5,14,15,50,5,15,16,51,5,16,17,52,5,17,18,53,5,18,19,54,5,19,20,55,5,20,21,56,5,21,22,57,5,22,23,/,5,23,24,*,5,24,25,-,5,25,26,+,5,26,27,^,5,27,28,.,5,28,29,.,5,29,30,(,5,30,31,),5,31,32,=,5,33,40,10,5,41,52,263,5,53,62,330,5,62,79,`,6,0,12,u,6,13,29,d,6,30,39,i,6,39,48,x,6,57,77,l,7,0,17,i,7,18,47,r";
+enum { MAIN=0, OPTIONS, EDIT, EXTRA, EDITOR, CALCULATOR, EDITEXTRA, EXTERNALDB };
 
 // keyboard
 const int DOWN=258;
@@ -91,6 +93,8 @@ const int LEFT=260;
 const int RIGHT=261;
 const int SHIFT_LEFT=393;
 const int SHIFT_RIGHT=402;
+const int SHIFT_UP=337;
+const int SHIFT_DOWN=336;
 const int ESC=27;
 const int SPACE=32;
 const int ENTER=10;
@@ -342,7 +346,8 @@ void Show_File_Error(char *filename);
 void stringcodedecode(char *source, char *destination, int mode=0);
 void checkpoint(int id, int color=58);
 int Scan_Input(int flag=0, int lim_a=0, int lim_b=1, int length=79);
-char Scan_Input(char istring[MAXSTRING], int x_pos, int y_pos, int color=WHITE, int length=79);
+enum { MIDDLE = -1, FIRST, LAST };
+int Scan_Input(char istring[MAXSTRING], int x_pos, int y_pos, int color=WHITE, int length=79, int cursor=-1, int firstlast=-1);
 void Scan_Date(int x_pos, int y_pos, char tdate[], int flag=0);
 char *addmissingzeros(char tstring[], int zeros);
 void terminatestringatcharactersend(char *ttext);
@@ -390,10 +395,11 @@ void moveinstructioninfieldtext(int field_id);
 int assignstringvaluestoarray(char *line, char array[MAXWORDS][MAXSTRING], int entries);
 int readstringentry(char *line, char *linepart);
 unsigned int isseparationchar(char t);
-int fieldsadjoiningfields(Annotated_Field *tfield, vector<int>& adjoiningfields, int possibilityoption=0, int sizex=0, int sizey=0);
-int referencedadjoiningfields(int field_id, vector<int>& adjoiningfields);
+int fieldsadjoiningfields(Annotated_Field *tfield, vector<int>& adjoiningfields, int possibilityoption=0, int sizex=0, int sizey=0, int comparisonx=EQUAL, int comparisony=EQUAL);
+int referencedadjoiningfields(int field_id, vector<int>& adjoiningfields, int fieldidflag=0, int rebuildflag=0, int sizex=0, int sizey=0, int comparisonx=EQUAL, int comparisony=EQUAL);
 void sortxy(vector<int>& fieldstosort, int preference=XY);
-int arefieldsneighbours(int id1, int id2, int possibilityoption=0, int sizex=0, int sizey=0);
+int arefieldsneighbours(int id1, int id2, int possibilityoption=0, int sizex=0, int sizey=0, int comparisonx=EQUAL, int comparisony=EQUAL);
+int compareintegers(int i1, int i2, int comparison=EQUAL);
 int findinintvector(int element, vector<int>& tv);
 char *Generate_Calendar(int m, int y);
 void leavespaces(char *calendar, int spaces);
