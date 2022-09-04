@@ -1,7 +1,7 @@
 // reccurse, the filemaker of ncurses
 #include "reccurse.h"
 
-const double version=0.543;
+const double version=0.545;
 
 int main(int argc, char *argv[])
 {
@@ -1274,18 +1274,7 @@ int Show_Record_and_Menu()
       case TOGGLEMOUSE:
        if ( printscreenmode )
         break;
-       MOUSE=( MOUSE == ON ) ? OFF : ON;
-       Show_Menu_Bar(1);
-       sprintf(ttext, "mouse use %s", onoff[MOUSE]);
-       Show_Message(1, 24, RED, ttext, 1250);
-       switch (MOUSE) {
-        case OFF:
-         mousemask(0, NULL);
-        break;
-        case ON:
-         mousemask(ALL_MOUSE_EVENTS, NULL);
-        break;
-       }
+       togglemouse();
       break;
       case SCANAUTOMATICVALUE:
        Show_Menu_Bar(1);
@@ -2162,29 +2151,11 @@ void Show_Menu_Bar(int mode) // 0 show, 1 remove
 // show a help scren
 void Show_Help_Screen()
 {
-  ifstream helpfile("reccurse.man");
-  if (!helpfile)
-   return;
-  string helpinfo;
-  int lines=0, c;
   clear();
   Change_Color(WHITEONBLACK);
-    
-   while (helpfile) {
-    getline(helpfile, helpinfo);
-    ++lines;
-    if (lines>23) {
-     c=getch();
-     if (c==ESC)
-      return;
-     clear();
-    lines=0; }
-    printw("%s\n", helpinfo.c_str());
-   }
-   getch();
-    
-  helpfile.close();
+  printw("                         Reccurse Quick Guide Page\n /---------------------------------------------------------------------------\\\n | arrow keys move between fields     | tab shift_tab move between fields    |\n | m          toggle bottom bar       | ESC           abort/previous menu    |\n | shift+left previous record         | shift+right   next record            |\n | <          previous record         | >             next record            |\n | shift+up   to first record         | shift+down    to last record         |\n | pageup     to first field          | pagedown      to last field          |\n | ENTER      select/edit             | d             select/edit            |\n | SPACE      activate/push button    | k             generate calendar      |\n | z          enter/exit print mode   | q             (in print) save record |\n | w          demonstrate records     | `             enter/exit calculator  |\n | ctrl+e     to edit menu            | ctrl+f        find routine           |\n | ctrl+o     to options menu         | ctrl+t        to extra menu          |\n | ctrl+w     to pages menu           | ?             this help page         |\n | ctrl+k     copy field              | ctrl+v        paste in field         |\n | ctrl+l     toggle mouse capture    | ctrl+y        import ascii file      |\n | ctrl+p     scan automatic value    | ctrl+n        scan field title       |\n | ctrl+u     text to automatic value | ctrl+s        play script file       |\n | ctrl+r     undo / redo changes     | ctrl+x        quit Reccurse          |\n | alt+1..0   add/play program        | ctrl+c        break from Reccurse    |\n \\---------------------------------------------------------------------------/\n        Written by Giorgos Saridakis [giorgossaridakis@gmail.com]\n                 Distributed under the GNU Public License\n");
 
+  getch();
 }
 
 // show database information screen

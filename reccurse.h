@@ -413,6 +413,7 @@ void CurrentRecord_From_Vector(vector<Annotated_Field>& tv);
 void Write_Fields_Int_Vector(vector<int> tv, int recordid=-1);
 void Write_Fields_AnnotatedField_Vector(vector<Annotated_Field> tv, int recordid=-1);
 int isfieldreferencedinvector(int field_id, vector<int>& tv);
+int togglemouse(int showflag=ON);
 
 // rcutil.cc
 extern int mod(double a, double b);

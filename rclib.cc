@@ -182,10 +182,8 @@ int Scan_Input(char istring[MAXSTRING], int x_pos, int y_pos, int color, int len
     length+=x_pos-1;
    if ( length > 79 )
     length=79;
-   if ( color > 64 )
+   if ( color > 64 || color < 0 )
     color=WHITE;
-   if ( color > 0 )
-    Change_Color(color);
    column=x_pos+cursor;
    while ( t!=ESC && t!='\n' && exitscan == 0 ) {
     gotoxy(x_pos, y_pos);
@@ -194,7 +192,9 @@ int Scan_Input(char istring[MAXSTRING], int x_pos, int y_pos, int color, int len
      if (fieldhasdependancy!=2)
       strcpy(tstring, records[(fieldreferencerecord*fieldsperrecord)+fieldreferencelist].text); 
      else
-    strcpy(tstring, externalrecords[externalreferencedatabase][(fieldreferencerecord*dummyfieldsperrecord)+dummyfieldreferencelist].text); }
+      strcpy(tstring, externalrecords[externalreferencedatabase][(fieldreferencerecord*dummyfieldsperrecord)+dummyfieldreferencelist].text);
+    }
+    Change_Color(color);
     printw("%s", tstring);
     if ( length == 79 )
      clrtoeol();
@@ -207,7 +207,7 @@ int Scan_Input(char istring[MAXSTRING], int x_pos, int y_pos, int color, int len
     t=bgetch(SCANUNBLOCK); // give time for input char, otherwise leave 
     if (t==-1)
      t='\n';
-    if (t==PASTE && (int) strlen(clipboard))
+    if ( t == PASTE && (int)strlen(clipboard) )
      strcpy(tstring, clipboard);
     if (isprintablecharacter(t) && column<length+1) {
      tstring[column-x_pos]=t;
@@ -222,6 +222,9 @@ int Scan_Input(char istring[MAXSTRING], int x_pos, int y_pos, int color, int len
       t=RIGHT;
      }
      switch ( t ) {
+      case TOGGLEMOUSE:
+       togglemouse();
+      break;
       case LEFT:
        if ( column == x_pos && adjoiningfields.size() > 1 && firstlast != FIRST ) {
         exitscan=1;
@@ -1639,5 +1642,26 @@ int isfieldreferencedinvector(int field_id, vector<int>& tv)
  return -1;
 }
 
-
-
+// toggle mouse capture
+int togglemouse(int showflag)
+{
+  char ttext[MAXSTRING]; 
+  
+   MOUSE=( MOUSE == ON ) ? OFF : ON;
+   if ( showflag ) {
+    Show_Menu_Bar(1);
+    sprintf(ttext, "mouse use %s", onoff[MOUSE]);
+    Show_Message(1, 24, RED, ttext, 1250);
+   }
+  
+   switch (MOUSE) {
+    case OFF:
+     mousemask(0, NULL);
+    break;
+    case ON:
+     mousemask(ALL_MOUSE_EVENTS, NULL);
+    break;
+   }
+       
+ return MOUSE;
+}
