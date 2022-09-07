@@ -1,7 +1,7 @@
 // reccurse, the filemaker of ncurses
 #include "reccurse.h"
 
-const double version=0.554;
+const double version=0.555;
 
 int main(int argc, char *argv[])
 {
@@ -1160,10 +1160,14 @@ int Show_Record_and_Menu()
       
      if ( changedrecord == 0 ) {
       if ( autosave )
-       Read_Write_Field(records[(currentrecord*fieldsperrecord)+previousfield], fieldposition(currentrecord, previousfield), 1); 
+       Read_Write_Field(records[(currentrecord*fieldsperrecord)+previousfield], fieldposition(currentrecord, previousfield), WRITE); 
       if ( scriptdirection == ONEXIT || scriptdirection == ONENTRYANDEXIT )
         Execute_Script_Command(previousfield);
      }
+     
+     if ( shareddatabases[currentpage] )
+      for (i=0;i<fieldsperrecord;i++)
+       Read_Write_Field(records[(currentrecord*fieldsperrecord)+i], fieldposition(currentrecord, i), READ);
      
      scriptdirection=Determine_Script_Direction(currentfield);
      if ( scriptdirection > ONENTRYANDEXIT )
@@ -1315,6 +1319,10 @@ int Show_Record_and_Menu()
       break;
       case QUIT:
        End_Program(NORMALEXIT);
+      break;
+      case TOGGLESHAREDDATABASES:
+       toggleshareddatabases();
+       autosave=(shareddatabases[currentpage]) ? ON : bautosave;
       break;
       case SCRIPT_PLAYER:
        Show_Message(1, 24, MAGENTA, "filename:", 0);
@@ -2087,6 +2095,9 @@ int negatekeysforcurrentmenu(int t)
   
   if ( t == QUIT )
    return t;
+  
+  if ( t == TOGGLESHAREDDATABASES )
+   return t;
    
   if ( currentmenu == EDIT && t == '\n' )
    return 'd';
@@ -2157,7 +2168,7 @@ void Show_Help_Screen()
 {
   clear();
   Change_Color(WHITEONBLACK);
-  printw("                         Reccurse Quick Guide Page\n /---------------------------------------------------------------------------\\\n | arrow keys move between fields     | tab shift_tab move between fields    |\n | m          toggle bottom bar       | ESC           abort/previous menu    |\n | shift+left previous record         | shift+right   next record            |\n | <          previous record         | >             next record            |\n | shift+up   to first record         | shift+down    to last record         |\n | pageup     to first field          | pagedown      to last field          |\n | ENTER | d  select/edit             | g             goto recorord          |\n | SPACE      activate/push button    | k             generate calendar      |\n | z          enter/exit print mode   | q             (in print) save record |\n | w          demonstrate records     | `             enter/exit calculator  |\n | ctrl+e     to edit menu            | ctrl+f        find routine           |\n | ctrl+o     to options menu         | ctrl+t        to extra menu          |\n | ctrl+w     to pages menu           | ?             this help page         |\n | ctrl+k     copy field              | ctrl+v        paste in field         |\n | ctrl+l     toggle mouse capture    | ctrl+y        import ascii file      |\n | ctrl+p     scan automatic value    | ctrl+n        scan field title       |\n | ctrl+u     text to automatic value | ctrl+s        play script file       |\n | ctrl+r     undo / redo changes     | ctrl+x        quit Reccurse          |\n | alt+1..0   add/play program        | /*-+.!@       modify attributes      |\n \\---------------------------------------------------------------------------/\n        Written by Giorgos Saridakis [giorgossaridakis@gmail.com]\n                 Distributed under the GNU Public License\n");
+  printw("                         Reccurse Quick Guide Page\n /---------------------------------------------------------------------------\\\n | arrow keys move between fields     | tab shift_tab move between fields    |\n | m          toggle bottom bar       | ESC           abort/previous menu    |\n | shift+left previous record         | shift+right   next record            |\n | < | >      previous | next record  | ctrl+q        toggle shared files    |\n | shift+up   to first record         | shift+down    to last record         |\n | pageup     to first field          | pagedown      to last field          |\n | ENTER | d  select/edit             | g             goto recorord          |\n | SPACE      activate/push button    | k             generate calendar      |\n | z          enter/exit print mode   | q             (in print) save record |\n | w          demonstrate records     | `             enter/exit calculator  |\n | ctrl+e     to edit menu            | ctrl+f        find routine           |\n | ctrl+o     to options menu         | ctrl+t        to extra menu          |\n | ctrl+w     to pages menu           | ?             this help page         |\n | ctrl+k     copy field              | ctrl+v        paste in field         |\n | ctrl+l     toggle mouse capture    | ctrl+y        import ascii file      |\n | ctrl+p     scan automatic value    | ctrl+n        scan field title       |\n | ctrl+u     text to automatic value | ctrl+s        play script file       |\n | ctrl+r     undo / redo changes     | ctrl+x        quit Reccurse          |\n | alt+1..0   add/play program        | /*-+.!@       modify attributes      |\n \\---------------------------------------------------------------------------/\n        Written by Giorgos Saridakis [giorgossaridakis@gmail.com]\n                 Distributed under the GNU Public License\n");
 
   getch();
 }
@@ -2857,7 +2868,7 @@ void Initialize_Database_Parameters(int mode)
    currentrecord=Read_Write_Current_Parameters(0);
    currentmenu=Read_Write_Current_Parameters(1);
    menubar=Read_Write_Current_Parameters(2);
-   autosave=Read_Write_Current_Parameters(3);
+   autosave=bautosave=Read_Write_Current_Parameters(3);
    currentfield=Read_Write_Current_Parameters(4);
   }
 }
@@ -3131,12 +3142,13 @@ void pushspaceonfield(int field_id)
            case buttonkeystotal-1: // EXEC
             records[(currentrecord*fieldsperrecord)+field_id].number=0;
             record[record[field_id].fieldlist-1].type=NUMERICAL; // trick to bring reversepolishcalculator
+            Show_Field(&records[(currentrecord*fieldsperrecord)+record[field_id].fieldlist-1]);
            break;
           }
          }
+         if ( autosave )
+          Read_Write_Field(records[(currentrecord*fieldsperrecord)+record[field_id].fieldlist-1], fieldposition(currentrecord, record[field_id].fieldlist-1), WRITE);
        }
-       if ( autosave )
-        Read_Write_Field(records[(currentrecord*fieldsperrecord)+record[field_id].fieldlist-1], fieldposition(currentrecord, record[field_id].fieldlist-1), 1);
        return;
       }
       if (record[field_id].buttonbox==BUTTONCOMMAND) {
@@ -3196,11 +3208,25 @@ void pastefromclipboard()
 // toggle autosave on/off
 void toggleautosave()
 {
-  autosave=(autosave) ? 0 : 1;
+  if ( shareddatabases[currentpage] )
+   autosave=ON;
+  else {
+   autosave=(autosave) ? OFF : ON;
+   bautosave=autosave;
+  }
   Show_Menu_Bar(1);
   Show_Message(1, 24, GREEN, "autosave:", 0);
-  Show_Message(10, 24, GREEN, onoff[autosave], 1500);
+  Show_Message(10, 24, RED, onoff[autosave], 1500);
   Read_Write_Current_Parameters(3, 1);
+}
+
+// toggle shared database files on/off 
+void toggleshareddatabases()
+{
+  shareddatabases[currentpage]=(shareddatabases[currentpage]) ? OFF : ON;
+  Show_Menu_Bar(1);
+  Show_Message(1, 24, GREEN, "shared databases:", 0);
+  Show_Message(18, 24, RED, onoff[shareddatabases[currentpage]], 1500);
 }
 
 // add or play program

@@ -119,10 +119,12 @@ const int START_OF_RECORDS=337;
 const int PAGES_SELECTOR_KEY=23;
 const int SCRIPT_PLAYER=19;
 const int QUIT=24;
+const int TOGGLESHAREDDATABASES=17;
 
 // global variables
 int menubar;
-int autosave;
+int autosave, bautosave;
+int shareddatabases[MAXPAGES] = { 0 };
 int recordsdemo=0;
 int printscreenmode=0;
 int renewscreen=1;
@@ -333,6 +335,7 @@ void pushspaceonfield(int field_id=-1);
 void copytoclipboard();
 void pastefromclipboard();
 void toggleautosave();
+void toggleshareddatabases();
 int addorplayprogram(int programid);
 void outputscreenarraytofile();
 
@@ -348,6 +351,7 @@ void stringcodedecode(char *source, char *destination, int mode=0);
 void checkpoint(int id, int color=58);
 int Scan_Input(int flag=0, int lim_a=0, int lim_b=1, int length=79);
 enum { MIDDLE = -1, FIRST, LAST };
+enum { READ = 0, WRITE };
 int Scan_Input(char istring[MAXSTRING], int x_pos, int y_pos, int color=WHITE, int length=79, int cursor=-1, int firstlast=-1);
 void Scan_Date(int x_pos, int y_pos, char tdate[], int flag=0);
 char *addmissingzeros(char tstring[], int zeros);

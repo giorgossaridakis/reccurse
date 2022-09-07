@@ -1636,7 +1636,7 @@ void Write_Fields_Int_Vector(vector<int> tv, int recordid)
     recordid=currentrecord;
   
    for (i=0;i<(int)tv.size();i++)
-    Read_Write_Field(records[(recordid*fieldsperrecord)+tv[i]], fieldposition(recordid, tv[i]), 1);
+    Read_Write_Field(records[(recordid*fieldsperrecord)+tv[i]], fieldposition(recordid, tv[i]), WRITE);
 }
 
 
@@ -1649,7 +1649,7 @@ void Write_Fields_AnnotatedField_Vector(vector<Annotated_Field> tv, int recordid
     recordid=currentrecord;
   
    for (i=0;i<(int)tv.size();i++)
-    Read_Write_Field(records[(recordid*fieldsperrecord)+tv[i].id], fieldposition(recordid, tv[i].id), 1);
+    Read_Write_Field(records[(recordid*fieldsperrecord)+tv[i].id], fieldposition(recordid, tv[i].id), WRITE);
 }
 
 // do fields reference each other
