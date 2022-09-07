@@ -1,7 +1,7 @@
 // reccurse, the filemaker of ncurses
 #include "reccurse.h"
 
-const double version=0.545;
+const double version=0.554;
 
 int main(int argc, char *argv[])
 {
@@ -11,19 +11,12 @@ int main(int argc, char *argv[])
   signal(SIGINT, INThandler);
   signal(SIGSEGV, INThandler);
   signal(SIGFPE, INThandler);  
+  signal(SIGTSTP, SIG_IGN);
+  signal(SIGUSR1, INThandler);
   
   Init_Screen();
   Change_Color(WHITEONBLACK);
-  // wait until terminal window becomes 80x24
-  struct winsize w;
-  ioctl( STDOUT_FILENO, TIOCGWINSZ, &w );
-  while (w.ws_row != 24 || w.ws_col != 80) {
-   gotoxy(1,1);
-   printw("terminal size %dx%d, reccurse requires 80x24               ", w.ws_col, w.ws_row);
-   refresh();
-   sleep(1);
-   ioctl( STDOUT_FILENO, TIOCGWINSZ, &w );
-  }
+  checkterminalwindow("reccurse requires 80x24");
   clear();
   char tmessage[MAXSTRING*MAXPAGES], tfile[MAXSTRING];
   initiatemathematicalfunctions();
@@ -80,7 +73,7 @@ int main(int argc, char *argv[])
     Load_Database(currentpage);
     Show_Message(8, 20, GREEN, tmessage, 2250);
     Show_Record_and_Menu();
-   
+
   End_Program(NORMALEXIT);
   
  return 0;
@@ -157,6 +150,7 @@ int checkalteredparameters()
    if (!alteredparameters)
     return 0;
 
+   Show_Menu_Bar(1);
    Show_Message(1, 24, GREEN, "save altered parameters (y/n):", 0);
    c=sgetch();
    if ( c == 'y' ) {
@@ -1113,6 +1107,8 @@ int Show_Record_and_Menu()
   vector<Annotated_Field> backupfields, currentfields;
   
    while ( true ) {
+     
+    checkterminalwindow("has changed, please resize to 80x24");
     // clear screen array
     for (i=1;i<81;i++)
      for (i1=1;i1<25;i1++)
@@ -1702,7 +1698,7 @@ int Show_Record_and_Menu()
           attron(A_BLINK);
           Show_Field(&records[(currentrecord*fieldsperrecord)+record[currentfield].fieldlist-1], 1);
          attroff(A_BLINK); } }
-        Screen_String_Editor(records[(currentrecord*fieldsperrecord)+currentfield]); }
+        Screen_String_Editor(); }
        if ( isautomaticvalueformatinstruction(currentfield) && (record[currentfield].type==STRING || record[currentfield].type==MIXEDTYPE) )
         strcpy(records[(currentrecord*fieldsperrecord)+currentfield].text, formatreplacer(record[currentfield].automatic_value, currentfield));
        if (record[currentfield].type==CALENDAR) {
@@ -2005,15 +2001,21 @@ int Show_Record_and_Menu()
 }
 
 // string editor in screen
-int Screen_String_Editor(Annotated_Field &tfield)
+int Screen_String_Editor(int field_id, int record_id)
 {
   char tstring[MAXSTRING];
-  int t, pos=findinintvector(tfield.id, adjoiningfields), firstlast, i;
+  if ( record_id == -1 )
+   record_id=currentrecord;
+  if ( field_id == -1 )
+   field_id=currentfield;
+  int t=0, pos=findinintvector(field_id, adjoiningfields), firstlast, i;
+  editedrecords=Records_From_Adjoining_Fields(field_id);
    
     while ( t != ENTER ) {
      for (i=0;i<(int) adjoiningfields.size();i++)
-      Show_Field(&records[(currentrecord*fieldsperrecord)+adjoiningfields[i]], 1);
-     strcpy(tstring, records[(currentrecord*fieldsperrecord)+adjoiningfields[pos]].text);
+      Show_Field(&records[(record_id*fieldsperrecord)+adjoiningfields[i]], 1);
+     Flash_Field(adjoiningfields[pos], 150);
+     strcpy(tstring, records[(record_id*fieldsperrecord)+adjoiningfields[pos]].text);
      Show_Menu_Bar(1);
      firstlast=MIDDLE;
      if ( pos == 0 )
@@ -2021,10 +2023,12 @@ int Screen_String_Editor(Annotated_Field &tfield)
      if ( pos == (int)adjoiningfields.size() - 1 )
       firstlast=LAST;
      t=Scan_Input( tstring, 1, 24, record[adjoiningfields[pos]].color, 79, ( t == LEFT ) ? -1 : 0, firstlast );
-     if ( t == ESC )
-      return -1;    
-     strcpy(records[(currentrecord*fieldsperrecord)+adjoiningfields[pos]].text, tstring);
-     records[(currentrecord*fieldsperrecord)+adjoiningfields[pos]].number=atof(tstring);
+     if ( t == ESC ) {
+      CurrentRecord_From_Vector(editedrecords);
+      return -1;
+     }
+     strcpy(records[(record_id*fieldsperrecord)+adjoiningfields[pos]].text, tstring);
+     records[(record_id*fieldsperrecord)+adjoiningfields[pos]].number=atof(tstring);
      if ( t == LEFT && pos > 0 )
       --pos;
      if ( t == RIGHT && pos < (int)adjoiningfields.size() - 1 )
@@ -2153,7 +2157,7 @@ void Show_Help_Screen()
 {
   clear();
   Change_Color(WHITEONBLACK);
-  printw("                         Reccurse Quick Guide Page\n /---------------------------------------------------------------------------\\\n | arrow keys move between fields     | tab shift_tab move between fields    |\n | m          toggle bottom bar       | ESC           abort/previous menu    |\n | shift+left previous record         | shift+right   next record            |\n | <          previous record         | >             next record            |\n | shift+up   to first record         | shift+down    to last record         |\n | pageup     to first field          | pagedown      to last field          |\n | ENTER      select/edit             | d             select/edit            |\n | SPACE      activate/push button    | k             generate calendar      |\n | z          enter/exit print mode   | q             (in print) save record |\n | w          demonstrate records     | `             enter/exit calculator  |\n | ctrl+e     to edit menu            | ctrl+f        find routine           |\n | ctrl+o     to options menu         | ctrl+t        to extra menu          |\n | ctrl+w     to pages menu           | ?             this help page         |\n | ctrl+k     copy field              | ctrl+v        paste in field         |\n | ctrl+l     toggle mouse capture    | ctrl+y        import ascii file      |\n | ctrl+p     scan automatic value    | ctrl+n        scan field title       |\n | ctrl+u     text to automatic value | ctrl+s        play script file       |\n | ctrl+r     undo / redo changes     | ctrl+x        quit Reccurse          |\n | alt+1..0   add/play program        | ctrl+c        break from Reccurse    |\n \\---------------------------------------------------------------------------/\n        Written by Giorgos Saridakis [giorgossaridakis@gmail.com]\n                 Distributed under the GNU Public License\n");
+  printw("                         Reccurse Quick Guide Page\n /---------------------------------------------------------------------------\\\n | arrow keys move between fields     | tab shift_tab move between fields    |\n | m          toggle bottom bar       | ESC           abort/previous menu    |\n | shift+left previous record         | shift+right   next record            |\n | <          previous record         | >             next record            |\n | shift+up   to first record         | shift+down    to last record         |\n | pageup     to first field          | pagedown      to last field          |\n | ENTER | d  select/edit             | g             goto recorord          |\n | SPACE      activate/push button    | k             generate calendar      |\n | z          enter/exit print mode   | q             (in print) save record |\n | w          demonstrate records     | `             enter/exit calculator  |\n | ctrl+e     to edit menu            | ctrl+f        find routine           |\n | ctrl+o     to options menu         | ctrl+t        to extra menu          |\n | ctrl+w     to pages menu           | ?             this help page         |\n | ctrl+k     copy field              | ctrl+v        paste in field         |\n | ctrl+l     toggle mouse capture    | ctrl+y        import ascii file      |\n | ctrl+p     scan automatic value    | ctrl+n        scan field title       |\n | ctrl+u     text to automatic value | ctrl+s        play script file       |\n | ctrl+r     undo / redo changes     | ctrl+x        quit Reccurse          |\n | alt+1..0   add/play program        | /*-+.!@       modify attributes      |\n \\---------------------------------------------------------------------------/\n        Written by Giorgos Saridakis [giorgossaridakis@gmail.com]\n                 Distributed under the GNU Public License\n");
 
   getch();
 }

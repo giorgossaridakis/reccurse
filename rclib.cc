@@ -151,31 +151,33 @@ int Scan_Input(int flag, int lim_a, int lim_b, int length) // 0 string, 1 intege
     res=atoi(input_string);
     if (!flag || !res) // res==0 is a non-numerical input_string, if in limits ok to return
      return 0;
-   refresh(); } // had to do that as routine stuck in illogical loop 
-
+   }
+    
  return res;
 }
 
 // scan input overloaded
-int Scan_Input(char istring[MAXSTRING], int x_pos, int y_pos, int color, int length, int cursor, int firstlast) // -1 none, 0 first, 1 last
+int Scan_Input(char istring[MAXSTRING], int x_pos, int y_pos, int color, int length, int cursor, int firstlast)
 {
   int i, t=0, column, fieldreferenceflag=0, fieldreferencelist, dummyfieldreferencelist, fieldreferencerecord=currentrecord, exitscan=0;
   char tstring[MAXSTRING], iistring[MAXSTRING];
   if ( cursor == -1 )
-   cursor=strlen(istring);
+   cursor=(int)strlen(istring);
   else
    cursor=0;
   
   if ( record.size() && records.size() && record[currentfield].fieldlist && adjoiningfields.size() == 1 ) {
    fieldreferenceflag=1;
    if (fieldhasdependancy==2) {
-     fieldreferencerecord=0;
-  dummyfieldreferencelist=relationships[externalreferencedatabase].extFields[1]-1; }
-  else 
- fieldreferencelist=record[records[(fieldreferencerecord*fieldsperrecord)+currentfield].id].fieldlist-1; }
+    fieldreferencerecord=0;
+    dummyfieldreferencelist=relationships[externalreferencedatabase].extFields[1]-1;
+   }
+   else 
+    fieldreferencelist=record[records[(fieldreferencerecord*fieldsperrecord)+currentfield].id].fieldlist-1;
+  }
   
    strcpy(tstring, istring);
-   for (i=(int) strlen(istring);i<length+(int) strlen(istring);i++)
+   for (i=(int)strlen(istring);i<length+(int)strlen(istring) && i < MAXSTRING-1;i++)
     tstring[i]=SPACE;
    tstring[i]='\0';
    if ( length )
@@ -185,6 +187,10 @@ int Scan_Input(char istring[MAXSTRING], int x_pos, int y_pos, int color, int len
    if ( color > 64 || color < 0 )
     color=WHITE;
    column=x_pos+cursor;
+   if ( column > 79 )
+    column=79;
+   
+   // scan loop
    while ( t!=ESC && t!='\n' && exitscan == 0 ) {
     gotoxy(x_pos, y_pos);
     if (fieldreferenceflag==2) {
@@ -221,7 +227,14 @@ int Scan_Input(char istring[MAXSTRING], int x_pos, int y_pos, int color, int len
       column=length;
       t=RIGHT;
      }
+     if ( t == SHIFT_LEFT )
+      column=x_pos;
+     if ( t == SHIFT_RIGHT )
+      column=length;
      switch ( t ) {
+      case QUIT:
+       End_Program(NORMALEXIT);
+      break;
       case TOGGLEMOUSE:
        togglemouse();
       break;
@@ -230,27 +243,30 @@ int Scan_Input(char istring[MAXSTRING], int x_pos, int y_pos, int color, int len
         exitscan=1;
         break;
        }
-       if (column>x_pos) {
-       --column; }
+       if (column>x_pos)
+        --column;
       break;
       case RIGHT:
        if ( column == length && adjoiningfields.size() > 1 && firstlast != LAST ) {
         exitscan=1;
         break;
        }
-       if (column<length) {
-       ++column; }
+       if (column<length)
+        ++column;
       break;
       case UP:
        if (fieldreferenceflag && fieldreferencerecord>0) {
         --fieldreferencerecord;
-       fieldreferenceflag=2; }
+        fieldreferenceflag=2;
+       }
       break;
       case DOWN:
        if (fieldhasdependancy==2) {
         if (fieldreferenceflag && fieldreferencerecord<dummyrecordsnumber-1) {
          ++fieldreferencerecord;
-       fieldreferenceflag=2; } } 
+         fieldreferenceflag=2;
+        }
+       }
        else
        if (fieldreferenceflag && fieldreferencerecord<recordsnumber-1) {
         ++fieldreferencerecord;
@@ -268,7 +284,8 @@ int Scan_Input(char istring[MAXSTRING], int x_pos, int y_pos, int color, int len
           iistring[t++]=tstring[i]; 
         }
         iistring[MAXSTRING-1]='\0';
-        strcpy(tstring, iistring); }
+        strcpy(tstring, iistring);
+       }
       break;
       case BACKSPACE:
        if (column>x_pos) {
@@ -276,7 +293,8 @@ int Scan_Input(char istring[MAXSTRING], int x_pos, int y_pos, int color, int len
         for (i=column-2;i<length;i++)
          tstring[i]=tstring[i+1];
         tstring[i]='\0';
-       --column; }
+       --column;
+       }
       break;
       case HOME:
        column=1;
@@ -293,12 +311,14 @@ int Scan_Input(char istring[MAXSTRING], int x_pos, int y_pos, int color, int len
           tstring[i]=tstring[i+1];
         tstring[i++]=SPACE;
        tstring[i]='\0'; }
-    break; } }
+       break;
+     }
+   }
     
-    terminatestringatcharactersend(tstring);
-    if ( t == '\n' || t == LEFT || t == RIGHT )
-     strcpy(istring, tstring);
-    
+   terminatestringatcharactersend(tstring);
+   if ( t == '\n' || t == LEFT || t == RIGHT )
+    strcpy(istring, tstring);
+
  return t;
 }
 
@@ -779,6 +799,8 @@ void INThandler(int sig)
      End_Program(SEGMENTATIONFAULT);
     if ( sig == SIGFPE )
      End_Program(FLOATINGPOINTEXCEPTION);
+    if ( sig == SIGUSR1 )
+     End_Program();
     
     Show_Menu_Bar(1);
     Change_Color(RED);
@@ -1664,4 +1686,20 @@ int togglemouse(int showflag)
    }
        
  return MOUSE;
+}
+
+// terminal window size
+void checkterminalwindow(const char *message)
+{
+   ioctl( STDOUT_FILENO, TIOCGWINSZ, &w );
+   Change_Color(RED);
+   while (w.ws_row != 24 || w.ws_col != 80) {
+    gotoxy(1,1);
+    printw("terminal size %dx%d", w.ws_col, w.ws_row);
+    printw(" %s              ", message);
+    refresh();
+    sleep(1);
+    ioctl( STDOUT_FILENO, TIOCGWINSZ, &w );
+   }
+   clear();
 }

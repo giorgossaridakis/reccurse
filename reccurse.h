@@ -28,6 +28,7 @@
 
 using namespace std;
 extern WINDOW *win1;
+struct winsize w;
 
 // definitions
 typedef unsigned long ul;
@@ -256,7 +257,7 @@ class Word {
 // vectors
 vector<ButtonBarMenuEntry> buttonbarmenus;
 vector<Field> record, dummyrecord, externalrecord[MAXRELATIONSHIPS];
-vector<Annotated_Field> records, dummyrecords, externalrecords[MAXRELATIONSHIPS], copiedrecords;
+vector<Annotated_Field> records, dummyrecords, externalrecords[MAXRELATIONSHIPS], copiedrecords, editedrecords;
 vector<Relationship> relationships;
 vector <FindSchedule> findschedule;
 vector<Word> separatedwords;
@@ -302,7 +303,7 @@ int fieldparameterstoserial(int record_id, int field_id);
 void Delete_Record(int record_id);
 void Duplicate_Record(int record_id);
 int Show_Record_and_Menu();
-int Screen_String_Editor(Annotated_Field &tfield);
+int Screen_String_Editor(int field_id=-1, int record_id=-1);
 int negatekeysforcurrentmenu(int t);
 void Show_Menu_Bar(int mode=0);
 void Show_Help_Screen();
@@ -414,6 +415,7 @@ void Write_Fields_Int_Vector(vector<int> tv, int recordid=-1);
 void Write_Fields_AnnotatedField_Vector(vector<Annotated_Field> tv, int recordid=-1);
 int isfieldreferencedinvector(int field_id, vector<int>& tv);
 int togglemouse(int showflag=ON);
+void checkterminalwindow(const char *message);
 
 // rcutil.cc
 extern int mod(double a, double b);
