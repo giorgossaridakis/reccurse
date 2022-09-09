@@ -1,7 +1,7 @@
 // reccurse, the filemaker of ncurses
 #include "reccurse.h"
 
-const double version=0.555;
+const double version=0.569;
 
 int main(int argc, char *argv[])
 {
@@ -12,7 +12,15 @@ int main(int argc, char *argv[])
   signal(SIGSEGV, INThandler);
   signal(SIGFPE, INThandler);  
   signal(SIGTSTP, SIG_IGN);
-  signal(SIGUSR1, INThandler);
+  struct sigaction sa;
+  sa.sa_flags = SA_SIGINFO;
+  sa.sa_sigaction = get_pid;
+  sigaction(SIGUSR1, &sa, NULL);
+  sigaction(SIGUSR2, &sa, NULL);
+  
+  strcpy((myname=(char *)malloc(sizeof(argv[0]))), argv[0]);
+  mypid=getpid();
+  pidof=sendsignals(NOSCRIPT);
   
   Init_Screen();
   Change_Color(WHITEONBLACK);
@@ -123,8 +131,8 @@ int End_Program(int code)
 
    sprintf(tmessage, "reccurse exiting in state [%s]", exittexts[code+4]);
     
-   Show_Menu_Bar(1);
-   Show_Message(1, 24, YELLOW, tmessage, ( code == NORMALEXIT ) ? 350 : 1500 );
+   Show_Menu_Bar(ERASE);
+   Show_Message(1, bottombary, YELLOW, tmessage, ( code == NORMALEXIT ) ? 350 : 1500 );
    End_Screen();
    system("clear");
    if ( code == SEGMENTATIONFAULT )
@@ -150,13 +158,15 @@ int checkalteredparameters()
    if (!alteredparameters)
     return 0;
 
-   Show_Menu_Bar(1);
-   Show_Message(1, 24, GREEN, "save altered parameters (y/n):", 0);
+   Show_Menu_Bar(ERASE);
+   Show_Message(1, bottombary, GREEN, "save altered parameters (y/n):", 0);
    c=sgetch();
    if ( c == 'y' ) {
     alteredparameters=0;
-    Read_Write_db_File(3);
-    Read_Write_db_File(1); 
+    Read_Write_db_File(RECREATE);
+    Read_Write_db_File(WRITE);
+    if ( shareddatabases[currentpage] == ON )
+     sendsignals(SIGUSR2);
    }
 
   return 1;
@@ -221,7 +231,7 @@ int Read_rc_File()
    rcinput.close();
     
    Reccurse_File_Extension(dbfile, 2);
-   Read_Write_db_File(2);
+   Read_Write_db_File(CREATERC);
    Initialize_Record();
    
  return 0;
@@ -302,7 +312,7 @@ int Read_Write_db_File(int mode) // 0 read, 1 write, 2 create from file, 3&4 rec
     records.erase(s);
     recordsnumber=(int) records.size()/fieldsperrecord;
     if (!activefields) {
-     Show_Message(1, 24, RED, "no active fields in database");
+     Show_Message(1, bottombary, RED, "no active fields in database");
      End_Program(NOACTIVEFIELDS);
     }
     Read_Write_Relationships(); 
@@ -474,7 +484,7 @@ int Read_Write_Current_Parameters(int item, int mode) // item:0 currentrecord, 1
      i=menubar;
     break;
     case 3:
-     i=autosave;
+     i=bautosave;
     break;
     case 4:
      i=currentfield;
@@ -728,7 +738,7 @@ void Initialize_Record()
   records.push_back(tfield); }
   ++recordsnumber;
   
-  Read_Write_db_File(1);
+  Read_Write_db_File(WRITE);
   Read_Write_db_File();
 }
 
@@ -771,8 +781,8 @@ int Add_Field(int type, char *name, char *textvalue)
    ++fieldsperrecord;
    
    if ( editoroption == -1 && autosave ) {
-    Read_Write_db_File(3);
-    Read_Write_db_File(1);
+    Read_Write_db_File(RECREATE);
+    Read_Write_db_File(WRITE);
    }
    
  return fieldsperrecord;
@@ -800,8 +810,8 @@ void Delete_Field(int field_id)
    Renumber_Field_References(field_id);
    Renumber_Field_Relationships(field_id);
    Renumber_Field_Fieldlist(field_id);
-   Read_Write_db_File(3);
-   Read_Write_db_File(1);
+   Read_Write_db_File(RECREATE);
+   Read_Write_db_File(WRITE);
 }
 
 // merge logistically and physically a field with it's right next
@@ -831,8 +841,8 @@ int Join_Fields(int field_id, int mode)
   else
    trecord.size.y+=record[fieldidentities[i+1]].size.y;
   if ( trecord.size.x * trecord.size.y > MAXSTRING ) {
-   Show_Menu_Bar(1);
-   Show_Message(1, 24, RED, "joined size would exceed maximum!", 1500);
+   Show_Menu_Bar(ERASE);
+   Show_Message(1, bottombary, RED, "joined size would exceed maximum!", 1500);
    return -1;
   }
   record[fieldidentities[i]]=trecord;
@@ -840,8 +850,8 @@ int Join_Fields(int field_id, int mode)
   strcat(records[(currentrecord*fieldsperrecord)+field_id].text, records[(currentrecord*fieldsperrecord)+fieldidentities[i+1]].text);
   Delete_Field(fieldidentities[i+1]);
   
-  Read_Write_db_File(3);
-  Read_Write_db_File(1);
+  Read_Write_db_File(RECREATE);
+  Read_Write_db_File(WRITE);
   
  return fieldidentities[i];
 }
@@ -931,8 +941,8 @@ int Divide_Field(int field_id, int mode)
    record[records[(int) records.size()-1].id].size.y/=2;
   record[records[(int) records.size()-1].id].pt.y+=record[field_id].size.y; }
   
-  Read_Write_db_File(3);
-  Read_Write_db_File(1);
+  Read_Write_db_File(RECREATE);
+  Read_Write_db_File(WRITE);
     
  return records[(int) records.size()-1].id;
 }
@@ -1007,7 +1017,8 @@ int Read_Write_Field(Annotated_Field &tfield, long int field_position, int mode)
    ttfield >> tfield.text;
    ttfield >> tfield.formula; 
    replaceunderscoresandbrackets(tfield.text, 1);
-  replaceunderscoresandbrackets(tfield.formula, 1);  }
+   replaceunderscoresandbrackets(tfield.formula, 1); 
+  }
   
   dbfileaccess.flush();
   dbfileaccess.close();
@@ -1077,8 +1088,8 @@ void Delete_Record(int record_id)
   }
   
    records.erase(p, p+fieldsperrecord);
-   Read_Write_db_File(3);
-   Read_Write_db_File(1);
+   Read_Write_db_File(RECREATE);
+   Read_Write_db_File(WRITE);
 }
 
 // duplicate entire record
@@ -1092,7 +1103,7 @@ void Duplicate_Record(int record_id)
     strcpy(records[((recordsnumber-1)*fieldsperrecord)+i].text, records[(record_id*fieldsperrecord)+i].text);
    strcpy(records[((recordsnumber-1)*fieldsperrecord)+i].formula, records[(record_id*fieldsperrecord)+i].formula); }
    
-    Read_Write_db_File(1);
+    Read_Write_db_File(WRITE);
 }
 
 // show record
@@ -1119,6 +1130,8 @@ int Show_Record_and_Menu()
      lastfieldrepeated=-1;
      savedfield=-1;
      backupfields=currentfields;
+     if ( shareddatabases[currentpage] == ON )
+      Read_Entire_Record();
      for (i=0;i<fieldsperrecord;i++)
       fieldrepetitions[i]=((record[i].color) ? record[i].color : -1);
     }
@@ -1164,10 +1177,6 @@ int Show_Record_and_Menu()
       if ( scriptdirection == ONEXIT || scriptdirection == ONENTRYANDEXIT )
         Execute_Script_Command(previousfield);
      }
-     
-     if ( shareddatabases[currentpage] )
-      for (i=0;i<fieldsperrecord;i++)
-       Read_Write_Field(records[(currentrecord*fieldsperrecord)+i], fieldposition(currentrecord, i), READ);
      
      scriptdirection=Determine_Script_Direction(currentfield);
      if ( scriptdirection > ONENTRYANDEXIT )
@@ -1261,11 +1270,11 @@ int Show_Record_and_Menu()
        break; }
        else
         printscreenmode=2; // to use in flag for Show_Field
-       Show_Menu_Bar(1);
-       Show_Message(1, 24, MAGENTA, "filename:", 0);
+       Show_Menu_Bar(ERASE);
+       Show_Message(1, bottombary, MAGENTA, "filename:", 0);
        strcpy(input_string, pages[currentpage]);
        Reccurse_File_Extension(input_string, 3);
-       i=Scan_Input(input_string, 11, 24, MAGENTAONBLACK);
+       i=Scan_Input(input_string, 11, bottombary, MAGENTAONBLACK);
        if (i==ESC)
         break;
        out=fopen(input_string, "a");
@@ -1277,19 +1286,19 @@ int Show_Record_and_Menu()
        togglemouse();
       break;
       case SCANAUTOMATICVALUE:
-       Show_Menu_Bar(1);
-       Scan_Input(record[currentfield].automatic_value, 1, 24, record[currentfield].color);
+       Show_Menu_Bar(ERASE);
+       Scan_Input(record[currentfield].automatic_value, 1, bottombary, record[currentfield].color);
        alteredparameters=1;
       break;
       case SCANTITLE:
-       Show_Menu_Bar(1);
-       Scan_Input(record[currentfield].title, 1, 24, record[currentfield].color);
+       Show_Menu_Bar(ERASE);
+       Scan_Input(record[currentfield].title, 1, bottombary, record[currentfield].color);
        alteredparameters=1;
       break;
       case IMPORTASCII:
        memset(input_string, 0, MAXSTRING);
-       Show_Message(1, 24, MAGENTA, "filename:", 0);
-       i=Scan_Input(input_string, 10, 24, MAGENTAONBLACK);
+       Show_Message(1, bottombary, MAGENTA, "filename:", 0);
+       i=Scan_Input(input_string, 10, bottombary, MAGENTAONBLACK);
        backupfields=Records_From_Adjoining_Fields(currentfield, 1);
        loadasciitofields(currentfield, input_string);
       break;
@@ -1313,6 +1322,8 @@ int Show_Record_and_Menu()
         records[(currentrecord*fieldsperrecord)+backupfields[i].id]=backupfields[i];
        if ( autosave )
         Write_Fields_AnnotatedField_Vector(backupfields);
+       if ( shareddatabases[currentpage] == ON )
+        sendsignals();
        if ( backupfields.size() == 1 ) 
         backupfields=tbackupfields; // otherwise, fieldsadjoiningfields is called without possibility, will re-bring only one after delete
       }
@@ -1325,8 +1336,8 @@ int Show_Record_and_Menu()
        autosave=(shareddatabases[currentpage]) ? ON : bautosave;
       break;
       case SCRIPT_PLAYER:
-       Show_Message(1, 24, MAGENTA, "filename:", 0);
-       i=Scan_Input(input_string, 10, 24, MAGENTAONBLACK);
+       Show_Message(1, bottombary, MAGENTA, "filename:", 0);
+       i=Scan_Input(input_string, 10, bottombary, MAGENTAONBLACK);
        strcpy((scriptcommand=(char *)malloc(MAXSTRING)), "file ");
        strcat(scriptcommand, input_string);
        runscript=1;
@@ -1416,15 +1427,18 @@ int Show_Record_and_Menu()
         break; }
         if (recordsdemo) {
          --currentrecord;
-        break; }
-        Show_Menu_Bar(1);
+          break;
+        }
+        Show_Menu_Bar(ERASE);
         Change_Color(RED);
-        gotoxy(1,24);
+        gotoxy(1,bottombary);
         printw("initiate record (y/n):");
         c=sgetch();
         if (tolower(c)=='y') {
          Initialize_Record();
-        --currentrecord; }
+         --currentrecord;
+         sendsignals(SIGUSR2);
+        }
         else
        --currentrecord; }
        if (!recordsdemo && autosave) 
@@ -1455,8 +1469,8 @@ int Show_Record_and_Menu()
        Read_Write_Current_Parameters(0, 1);
       break;
       case 'j':
-       Show_Menu_Bar(1);
-       Show_Message(1, 24, MAGENTA, "join field with it's <r>ight or <b>elow field (r/b):", 0);
+       Show_Menu_Bar(ERASE);
+       Show_Message(1, bottombary, MAGENTA, "join field with it's <r>ight or <b>elow field (r/b):", 0);
        c=sgetch();
        if (c!='r' && c!='b')
         break;
@@ -1469,8 +1483,8 @@ int Show_Record_and_Menu()
        break; }
       break;
       case 'v':
-       Show_Menu_Bar(1);
-       Show_Message(1, 24, MAGENTA, "divide field <h>orizontically or <v>ertically (h/v):", 0);
+       Show_Menu_Bar(ERASE);
+       Show_Message(1, bottombary, MAGENTA, "divide field <h>orizontically or <v>ertically (h/v):", 0);
        c=sgetch();
        if (c!='h' && c!='v')
         break;
@@ -1617,9 +1631,9 @@ int Show_Record_and_Menu()
       case 'g': // from all menus
        if (recordsdemo)
         break;
-       Show_Menu_Bar(1);
+       Show_Menu_Bar(ERASE);
        Change_Color(WHITEONBLACK);
-       gotoxy(1, 24);
+       gotoxy(1, bottombary);
        printw("jump to record:");
        i=Scan_Input(1, 1, recordsnumber)-1;
        if (i>-1 && i<recordsnumber)
@@ -1634,21 +1648,21 @@ int Show_Record_and_Menu()
       break;
       case 'l':
        if ( currentmenu == OPTIONS ) {
-        Show_Menu_Bar(1);
+        Show_Menu_Bar(ERASE);
         strcpy(input_string, dbfile);
-        i=Scan_Input(input_string, 1, 24, MAGENTAONBLACK);
+        i=Scan_Input(input_string, 1, bottombary, MAGENTAONBLACK);
         if (i==ESC)
          break;
         Reccurse_File_Extension(input_string, 2);
         if (!tryfile(input_string)) {
-         Show_Message(1, 24, RED, "nonexisting file!", 1500);
+         Show_Message(1, bottombary, RED, "nonexisting file!", 1500);
         break; }
         strcpy(dbfile, input_string);
         strcpy(pages[0], dbfile);
         currentpage=0;
         pagesnumber=1;
         Load_Database(currentpage);
-        Show_Message(1, 24, YELLOW, "database loaded", 1500);
+        Show_Message(1, bottombary, YELLOW, "database loaded", 1500);
        }
        if ( currentmenu == EDITEXTRA ) {
         currentmenu=EXTERNALDB;
@@ -1658,30 +1672,30 @@ int Show_Record_and_Menu()
       break;      
      break;
      case 's':
-      Show_Menu_Bar(1);
-      Show_Message(1, 24, MAGENTA, "filename:", 0);
+      Show_Menu_Bar(ERASE);
+      Show_Message(1, bottombary, MAGENTA, "filename:", 0);
       strcpy(input_string, dbfile);
-      i=Scan_Input(input_string, 1, 24, MAGENTAONBLACK);
+      i=Scan_Input(input_string, 1, bottombary, MAGENTAONBLACK);
       if (i==ESC)
        break;
       Reccurse_File_Extension(input_string, 2);
       strcpy(dbfile, input_string);
-      Read_Write_db_File(3);
-      Read_Write_db_File(1);
+      Read_Write_db_File(RECREATE);
+      Read_Write_db_File(WRITE);
       alteredparameters=0;
-      Show_Message(1, 24, GREEN, "database saved", 1500);
-      Show_Menu_Bar(1);
-      Show_Message(1, 24, MAGENTA, "export .rc file (y/n):", 0);
+      Show_Message(1, bottombary, GREEN, "database saved", 1500);
+      Show_Menu_Bar(ERASE);
+      Show_Message(1, bottombary, MAGENTA, "export .rc file (y/n):", 0);
       c=sgetch();
       if (c=='y') {
-       Show_Menu_Bar(1);
-       Show_Message(1, 24, MAGENTA, "filename:", 0);
+       Show_Menu_Bar(ERASE);
+       Show_Message(1, bottombary, MAGENTA, "filename:", 0);
        Scan_Input();
        i=Write_rc_File(input_string);
        Reccurse_File_Extension(input_string, 1);
-       Show_Menu_Bar(1);
+       Show_Menu_Bar(ERASE);
        if (!i)
-        Show_Message(1, 24, BLUE, ".rc file recreated", 1500);
+        Show_Message(1, bottombary, BLUE, ".rc file recreated", 1500);
       Show_Menu_Bar(); }
      break;
      case 'h':
@@ -1699,23 +1713,28 @@ int Show_Record_and_Menu()
          for (i=0;i<fieldsperrecord;i++)
           Show_Field_ID(&records[(currentrecord*fieldsperrecord)+i]);
         else {
-         Show_Menu_Bar(1);
+         Show_Menu_Bar(ERASE);
          if (menubar==1)
-          Show_Message(1, 24, MAGENTA, "fieldlist entry. <up> and <down> arrows, <insert> to bring relevant data", 1750);
+          Show_Message(1, bottombary, MAGENTA, "fieldlist entry. <up> and <down> arrows, <insert> to bring relevant data", 1750);
          if (fieldhasdependancy!=2) {
           attron(A_BLINK);
           Show_Field(&records[(currentrecord*fieldsperrecord)+record[currentfield].fieldlist-1], 1);
-         attroff(A_BLINK); } }
-        Screen_String_Editor(); }
+         attroff(A_BLINK);
+         }
+        }
+        Screen_String_Editor();
+       }
        if ( isautomaticvalueformatinstruction(currentfield) && (record[currentfield].type==STRING || record[currentfield].type==MIXEDTYPE) )
         strcpy(records[(currentrecord*fieldsperrecord)+currentfield].text, formatreplacer(record[currentfield].automatic_value, currentfield));
        if (record[currentfield].type==CALENDAR) {
         strcpy(input_string, records[(currentrecord*fieldsperrecord)+currentfield].text);
-        Scan_Date(1, 24, input_string);
+        Scan_Date(1, bottombary, input_string);
         strcpy(records[(currentrecord*fieldsperrecord)+currentfield].text, input_string);
        }
        if (autosave)
         Write_Fields_Int_Vector(adjoiningfields);
+       if ( shareddatabases[currentpage] == ON )
+        sendsignals();
        // jump to next BUTTONCOMMAND script, if any
        if (record[currentfield].fieldlist && record[record[currentfield].fieldlist-1].buttonbox==BUTTONCOMMAND) {
         currentfield=record[currentfield].fieldlist-1;
@@ -1726,19 +1745,22 @@ int Show_Record_and_Menu()
       }
       if ( currentmenu == EDITEXTRA ) {
        Flash_Field(currentfield);
-       if (recordsnumber<2)
+       if ( recordsnumber<2 )
         break;
-       Show_Menu_Bar(1);
-       Show_Message(1, 24, RED, "delete entire record (y/n):", 0);
+       Show_Menu_Bar(ERASE);
+       Show_Message(1, bottombary, RED, "delete entire record (y/n):", 0);
        c=sgetch();
-       if (tolower(c)=='y')
+       if (tolower(c)=='y') {
         Delete_Record(currentrecord);
+        sendsignals(SIGUSR2);
+       }
       }
      break;
      case 'p':
       if (record[records[(currentrecord*fieldsperrecord)+currentfield].id].type==CALENDAR) {
        Bring_DateTime_Stamp(records[(currentrecord*fieldsperrecord)+currentfield].text, record[records[(currentrecord*fieldsperrecord)+currentfield].id].id);
-      Read_Write_Field(records[(currentrecord*fieldsperrecord)+currentfield], fieldposition(currentrecord, currentfield), 1); }
+       Read_Write_Field(records[(currentrecord*fieldsperrecord)+currentfield], fieldposition(currentrecord, currentfield), WRITE);
+      }
      break;
      case 'k':
       n=1;
@@ -1747,11 +1769,11 @@ int Show_Record_and_Menu()
        i1=fieldsadjoiningfields(&records[(currentrecord*fieldsperrecord)+currentfield], adjoiningfields, 1, 29, 1, LESSEROREQUAL) - findinintvector(currentfield, adjoiningfields);
       }
       if ( i1 < 7 ) {
-       Show_Menu_Bar(1);
-       Show_Message(1, 24, RED, "suitable records not found", 750);
+       Show_Menu_Bar(ERASE);
+       Show_Message(1, bottombary, RED, "suitable records not found", 750);
        break;
       }
-      Scan_Date(1, 24, input_string, 1);
+      Scan_Date(1, bottombary, input_string, 1);
       int m, y, i2; char *calendar;
       m = atoi(strtok(input_string, "/"));
       y = atoi(strtok(NULL, "/"));
@@ -1773,9 +1795,12 @@ int Show_Record_and_Menu()
       records[(currentrecord*fieldsperrecord)+currentfield+i].text[i2++]='\0';
       if (i==6) // last field may not be needed
        Delete_Field_Entry(currentfield+7);
-      if (autosave)
+      if ( autosave ) {
        for (i=0;i<8;i++)
         Read_Write_Field(records[(currentrecord*fieldsperrecord)+currentfield+i], fieldposition(currentrecord, currentfield+i), 1);
+      }
+      if ( shareddatabases[currentpage] == ON )
+       sendsignals();
      break;
      case SPACE:
       pushspaceonfield();
@@ -1818,18 +1843,21 @@ int Show_Record_and_Menu()
      case 'c':
       for (i=0;i<fieldsperrecord;i++)
        Show_Field_ID(&records[(currentrecord*fieldsperrecord)+i]);
-      Show_Menu_Bar(1);
-      Show_Message(1, 24, YELLOW, "source field:", 0);
+      Show_Menu_Bar(ERASE);
+      Show_Message(1, bottombary, YELLOW, "source field:", 0);
       Change_Color(BLUE);
       i=Scan_Input(1, 1, MAXFIELDS);
-      Show_Menu_Bar(1);
-      Show_Message(1, 24, YELLOW, "destination field:", 0);
+      Show_Menu_Bar(ERASE);
+      Show_Message(1, bottombary, YELLOW, "destination field:", 0);
       Change_Color(BLUE);
       n=Scan_Input(1, 1, MAXFIELDS);
       if (!n)
        break;
-      strcpy(records[(currentrecord*fieldsperrecord)+n-1].text, records[(currentrecord*fieldsperrecord)+i-1].text); 
-      Read_Write_Field(records[(currentrecord*fieldsperrecord)+n-1], fieldposition(currentrecord, n-1), 1);
+      strcpy(records[(currentrecord*fieldsperrecord)+n-1].text, records[(currentrecord*fieldsperrecord)+i-1].text);
+      if ( autosave )
+       Read_Write_Field(records[(currentrecord*fieldsperrecord)+n-1], fieldposition(currentrecord, n-1), WRITE);
+      if ( shareddatabases[currentpage] == ON )
+       sendsignals();
      break;
      case DELETE: {
       backupfields=Records_From_Adjoining_Fields(currentfield);
@@ -1841,6 +1869,8 @@ int Show_Record_and_Menu()
        if ( autosave )
         Write_Fields_Int_Vector(fieldstodelete);
       }
+      if ( shareddatabases[currentpage] == ON )
+       sendsignals();
      break; }
      case INSERT:
       if ( currentmenu == EDIT ) {
@@ -1859,10 +1889,11 @@ int Show_Record_and_Menu()
       }
       if ( currentmenu == EDITEXTRA )
        Duplicate_Record(currentrecord);
+      sendsignals(SIGUSR2);
      break;
      case 'x':
-      Show_Menu_Bar(1);
-      Show_Message(1, 24, MAGENTA, "filename:", 0);
+      Show_Menu_Bar(ERASE);
+      Show_Message(1, bottombary, MAGENTA, "filename:", 0);
       Scan_Input();
       Export_Database(input_string);
      break;
@@ -1877,14 +1908,14 @@ int Show_Record_and_Menu()
       if ( currentmenu == EXTRA )
        Show_DB_Information();
       if ( currentmenu == EDITEXTRA ) {
-       Show_Menu_Bar(1);
-       Show_Message(1, 24, MAGENTA, "filename:", 0);
+       Show_Menu_Bar(ERASE);
+       Show_Message(1, bottombary, MAGENTA, "filename:", 0);
        Scan_Input();
        Import_Database(input_string);
       }
       if ( currentmenu == EXTERNALDB ) {
-       Show_Menu_Bar(1);
-       Show_Message(1, 24, BLUE, "external dbfile:", 0);
+       Show_Menu_Bar(ERASE);
+       Show_Message(1, bottombary, BLUE, "external dbfile:", 0);
        Scan_Input();
        i=Import_External_db_File(input_string);
       }
@@ -1901,16 +1932,16 @@ int Show_Record_and_Menu()
       for (i=0;i<recordsnumber;i++)
        tsortresults[i]=findresults[0][i];
       while ((int) findschedule.size()<MAXSEARCHDEPTH) {
-       Show_Menu_Bar(1);
+       Show_Menu_Bar(ERASE);
        Change_Color(BLUE);
-       gotoxy(1, 24);
+       gotoxy(1, bottombary);
        tfindschedule.field_id=Scan_Input(1, 1, MAXFIELDS);
        if (!tfindschedule.field_id)
         break;
        --tfindschedule.field_id;
-       Show_Menu_Bar(1);
+       Show_Menu_Bar(ERASE);
        Change_Color(BLUE);
-       gotoxy(1, 24);
+       gotoxy(1, bottombary);
        Scan_Input();
        strcpy(tfindschedule.texttolookfor, input_string);
       findschedule.push_back(tfindschedule); }
@@ -1924,10 +1955,10 @@ int Show_Record_and_Menu()
         trecords.push_back(records[(tsortresults[i1]*fieldsperrecord)+n]);
       records.clear();
       records=trecords;
-      Read_Write_db_File(1);
+      Read_Write_db_File(WRITE);
       Read_Write_db_File();
-      Show_Menu_Bar(1);
-      Show_Message(1, 24, BLUE, "database sorted", 1500); 
+      Show_Menu_Bar(ERASE);
+      Show_Message(1, bottombary, BLUE, "database sorted", 1500); 
      break;
      case 'f':
       for (i=0;i<fieldsperrecord;i++)
@@ -1938,16 +1969,16 @@ int Show_Record_and_Menu()
        for (i=0;i<MAXRECORDS;i++)
         findresults[n][i]=-1;
       while ((int) findschedule.size()<MAXSEARCHDEPTH) {
-       Show_Menu_Bar(1);
+       Show_Menu_Bar(ERASE);
        Change_Color(BLUE);
-       gotoxy(1, 24);
+       gotoxy(1, bottombary);
        tfindschedule.field_id=Scan_Input(1, 1, MAXFIELDS);
        if (!tfindschedule.field_id) // return or non-numerical input_string
         break;
        --tfindschedule.field_id;
-       Show_Menu_Bar(1);
+       Show_Menu_Bar(ERASE);
        Change_Color(BLUE);
-       gotoxy(1, 24);
+       gotoxy(1, bottombary);
        Scan_Input();
        strcpy(tfindschedule.texttolookfor, input_string);
       findschedule.push_back(tfindschedule); }
@@ -1960,8 +1991,8 @@ int Show_Record_and_Menu()
        }
       }
       if (findresults[1][0]==-1) {
-       Show_Menu_Bar(1);
-       Show_Message(1, 24, BLUE, "no records with given criteria found", 1500);
+       Show_Menu_Bar(ERASE);
+       Show_Message(1, bottombary, BLUE, "no records with given criteria found", 1500);
        break; 
        }
       for (trecordsnumber=MAXRECORDS;trecordsnumber>-1;trecordsnumber--)
@@ -1978,7 +2009,7 @@ int Show_Record_and_Menu()
       if (trecordsnumber>1)
        strcat(input_string, "s");
       strcat(input_string, " with given criteria");
-      Show_Message(1, 24, BLUE, input_string, 1500);
+      Show_Message(1, bottombary, BLUE, input_string, 1500);
       trecordsnumber=currentrecord; // keep value of currentrecord
       currentrecord=findresults[0][0];
      break;
@@ -2024,13 +2055,13 @@ int Screen_String_Editor(int field_id, int record_id)
       Show_Field(&records[(record_id*fieldsperrecord)+adjoiningfields[i]], 1);
      Flash_Field(adjoiningfields[pos], 150);
      strcpy(tstring, records[(record_id*fieldsperrecord)+adjoiningfields[pos]].text);
-     Show_Menu_Bar(1);
+     Show_Menu_Bar(ERASE);
      firstlast=MIDDLE;
      if ( pos == 0 )
       firstlast=FIRST;
      if ( pos == (int)adjoiningfields.size() - 1 )
       firstlast=LAST;
-     t=Scan_Input( tstring, 1, 24, record[adjoiningfields[pos]].color, 79, ( t == LEFT ) ? -1 : 0, firstlast );
+     t=Scan_Input( tstring, 1, bottombary, record[adjoiningfields[pos]].color, 79, ( t == LEFT ) ? -1 : 0, firstlast );
      if ( t == ESC ) {
       CurrentRecord_From_Vector(editedrecords);
       return -1;
@@ -2205,7 +2236,7 @@ void Show_DB_Information()
    averagerecordsize=totalrecordssize/recordsnumber;
   
    extrawindowlength=(numberofdigits(totalrecordssize)<5) ? 0 : numberofdigits(totalrecordssize)-5;  
-   Draw_Box(BOXCHAR, 6, 17, 32+extrawindowlength, 5, 16, 49);
+   Draw_Box(BOXCHAR, 6, 17, 32+extrawindowlength, 5, 17, CYANONCYAN);
    Change_Color(MAGENTAONCYAN);
    gotoxy(21,6);
    printw("Database Information");
@@ -2236,7 +2267,9 @@ void Show_DB_Information()
    gotoxy(21,19);
    printw("variable fields:%d", variablefields);   
    gotoxy(21,20);
-   printw("autosave is:%s", onoff[autosave]);
+   printw("autosave is:%s", onoff[bautosave]);
+   gotoxy(21,21);
+   printw("shared database is:%s", onoff[shareddatabases[currentpage]]);
    refresh();
    getch();   
 }
@@ -2647,7 +2680,7 @@ int Export_Database(char *filename)
    if (recordsnumber>1)
     strcat(tstring, "s");
    strcat(tstring, " exported");
-   Show_Message(1, 24, BLUE, tstring, 1500);
+   Show_Message(1, bottombary, BLUE, tstring, 1500);
    Show_Menu_Bar();
    
  return 0;
@@ -2661,8 +2694,8 @@ int Import_Database(char *filename)
   vector <Annotated_Field> trecords;
   ifstream infile(filename);
   if ( filecontainsbinary(&infile) ) {
-   Show_Menu_Bar(1);
-   Show_Message(1, 24, RED, "not a comma separated values file", 1750);
+   Show_Menu_Bar(ERASE);
+   Show_Message(1, bottombary, RED, "not a comma separated values file", 1750);
    return -1;
   }
   if (!infile) {
@@ -2708,19 +2741,19 @@ int Import_Database(char *filename)
    infile.close();
    
    if (fieldsreadperline>fieldsperrecord) {
-    Show_Message(1, 24, RED, "incompatible data types file", 1750);
+    Show_Message(1, bottombary, RED, "incompatible data types file", 1750);
    return -1; }
 
    for (i1=0;i1<(int) trecords.size();i1++)
     records.push_back(trecords[i1]);
-   Read_Write_db_File(1);
+   Read_Write_db_File(WRITE);
    Read_Write_db_File();
    strcpy(tstring, itoa(trecordsnumber));
    strcat(tstring, " database record");
    if (trecordsnumber>1)
     strcat(tstring, "s");
    strcat(tstring, " imported");
-   Show_Message(1, 24, BLUE, tstring, 1500);
+   Show_Message(1, bottombary, BLUE, tstring, 1500);
    Show_Menu_Bar();
 
  return 0;
@@ -2750,16 +2783,16 @@ int Import_External_db_File(char *filename)
 
   Show_Menu_Bar(3);
   Change_Color(YELLOW);
-  gotoxy(1, 24);
+  gotoxy(1, bottombary);
   printw("external .db file has %d fields per record and a total of %d records", dummyfieldsperrecord, dummyrecordsnumber);
   refresh();
   Sleep(2000);
   
    Change_Color(BLUE);
    while (t!=ESC && t!='\n') {
-    Show_Menu_Bar(1);
+    Show_Menu_Bar(ERASE);
     Change_Color(BLUE);
-    gotoxy(1, 24);
+    gotoxy(1, bottombary);
     printw("id:%d title:%.15s type:%d formula:%d automatic value:%.10s", fieldshown+1, dummyrecord[fieldshown].title, dummyrecord[fieldshown].type, dummyrecord[fieldshown].formula, dummyrecord[fieldshown].automatic_value);
     refresh();
     t=sgetch(); 
@@ -2780,15 +2813,15 @@ int Import_External_db_File(char *filename)
      return -1;       
     for (i=0;i<fieldsperrecord;i++)
      Show_Field_ID(&records[(currentrecord*fieldsperrecord)+i]);
-    Show_Menu_Bar(1);
-    Show_Message(1, 24, BLUE, "to local field id:", 0);
+    Show_Menu_Bar(ERASE);
+    Show_Message(1, bottombary, BLUE, "to local field id:", 0);
     chosendestinationfield=Scan_Input(1, 1, fieldsperrecord);
     if (chosendestinationfield<1 || chosendestinationfield>fieldsperrecord)
      return -1;
     --chosendestinationfield;
     if (dummyrecordsnumber>recordsnumber) {
-     Show_Menu_Bar(1);
-     Show_Message(1, 24, RED, "external .db file has more records than current. append (y/n):", 0);
+     Show_Menu_Bar(ERASE);
+     Show_Message(1, bottombary, RED, "external .db file has more records than current. append (y/n):", 0);
      t=sgetch();
      if (t=='y') {
       endofappend=dummyrecordsnumber; 
@@ -2798,10 +2831,10 @@ int Import_External_db_File(char *filename)
     // now copy to endofappend
     for (i=0;i<endofappend;i++)
      strcpy(records[(i*fieldsperrecord)+chosendestinationfield].text, dummyrecords[(i*dummyfieldsperrecord)+fieldshown].text);
-    Read_Write_db_File(1);
+    Read_Write_db_File(WRITE);
 
-   Show_Menu_Bar(1);
-   Show_Message(1, 24, BLUE, "import from external .db file complete", 1500);
+   Show_Menu_Bar(ERASE);
+   Show_Message(1, bottombary, BLUE, "import from external .db file complete", 1500);
     
  return 0;
 }
@@ -2891,9 +2924,9 @@ int Pages_Selector(int pagetochange)
   if (pagetochange==-1) {
    Change_Color(BLUE);
    while (t!=ESC && t!='\n') {
-    Show_Menu_Bar(1);
+    Show_Menu_Bar(ERASE);
     Change_Color(BLUE);
-    gotoxy(1, 24);
+    gotoxy(1, bottombary);
     printw("database #%d:%s", currentpage+1, pages[currentpage]);
     refresh();
     t=sgetch(); 
@@ -2908,20 +2941,20 @@ int Pages_Selector(int pagetochange)
     switch (t) {
      case INSERT:
       memset(input_string, 0, sizeof(input_string));
-      Scan_Input(input_string, 1, 24, MAGENTAONBLACK);
+      Scan_Input(input_string, 1, bottombary, MAGENTAONBLACK);
       Reccurse_File_Extension(input_string, 2);
       for (i=0;i<pagesnumber;i++) {
        if (!strcmp(input_string, pages[i])) {
-        Show_Message(1, 24, RED, "database already exists in pages", 1500);
+        Show_Message(1, bottombary, RED, "database already exists in pages", 1500);
       break; } }
       if (i<pagesnumber)
        break;
       if (tryfile(input_string) && pagesnumber<MAXPAGES-1) {
        strcpy(pages[pagesnumber], input_string);
        ++pagesnumber;
-      Show_Message(1, 24, RED, "page added to databases list", 1500); }
+      Show_Message(1, bottombary, RED, "page added to databases list", 1500); }
       else
-       Show_Message(1, 24, RED, "nonexisting database file", 1500);
+       Show_Message(1, bottombary, RED, "nonexisting database file", 1500);
      break;
      case DELETE:
       if (pagesnumber>1) {
@@ -2931,8 +2964,8 @@ int Pages_Selector(int pagetochange)
        memset(pages[pagesnumber], 0, sizeof(pages[pagesnumber]));
        if (currentpage>0)
         --currentpage;
-       Show_Menu_Bar(1);
-      Show_Message(1, 24, RED, "page removed", 1500); }
+       Show_Menu_Bar(ERASE);
+      Show_Message(1, bottombary, RED, "page removed", 1500); }
      break;
      case HOME:
       currentpage=0;
@@ -3148,6 +3181,8 @@ void pushspaceonfield(int field_id)
          }
          if ( autosave )
           Read_Write_Field(records[(currentrecord*fieldsperrecord)+record[field_id].fieldlist-1], fieldposition(currentrecord, record[field_id].fieldlist-1), WRITE);
+         if ( shareddatabases[currentpage] == ON )
+          sendsignals();
        }
        return;
       }
@@ -3214,9 +3249,9 @@ void toggleautosave()
    autosave=(autosave) ? OFF : ON;
    bautosave=autosave;
   }
-  Show_Menu_Bar(1);
-  Show_Message(1, 24, GREEN, "autosave:", 0);
-  Show_Message(10, 24, RED, onoff[autosave], 1500);
+  Show_Menu_Bar(ERASE);
+  Show_Message(1, bottombary, GREEN, "autosave:", 0);
+  Show_Message(10, bottombary, RED, onoff[autosave], 1500);
   Read_Write_Current_Parameters(3, 1);
 }
 
@@ -3224,9 +3259,11 @@ void toggleautosave()
 void toggleshareddatabases()
 {
   shareddatabases[currentpage]=(shareddatabases[currentpage]) ? OFF : ON;
-  Show_Menu_Bar(1);
-  Show_Message(1, 24, GREEN, "shared databases:", 0);
-  Show_Message(18, 24, RED, onoff[shareddatabases[currentpage]], 1500);
+  if ( pidof == 0 )
+   shareddatabases[currentpage]=OFF;
+  Show_Menu_Bar(ERASE);
+  Show_Message(1, bottombary, GREEN, "shared databases:", 0);
+  Show_Message(18, bottombary, RED, onoff[shareddatabases[currentpage]], 1500);
 }
 
 // add or play program
@@ -3241,15 +3278,15 @@ int addorplayprogram(int programid)
    
    if (i==(int) record.size()) {
     Change_Color(MAGENTA);
-    gotoxy(1, 24);
+    gotoxy(1, bottombary);
     printw("keys:");
-    Scan_Input(input_string, 6, 24, MAGENTAONBLACK);
+    Scan_Input(input_string, 6, bottombary, MAGENTAONBLACK);
     for (i=0;i<(int) strlen(input_string);i++)
      input_string[i]=tolower(input_string[i]);
     Add_Field(PROGRAM, itoa(programid), input_string);
     strcpy(input_string, " ");
-    Show_Menu_Bar(1);
-    Show_Message(1, 24, MAGENTA, "program saved", 750);
+    Show_Menu_Bar(ERASE);
+    Show_Message(1, bottombary, MAGENTA, "program saved", 750);
    return (int) record.size(); }
     
    breaktexttokeys(records[i].text); // text from any record will do

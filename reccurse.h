@@ -13,6 +13,10 @@
 #include <sys/ioctl.h>
 #include <sys/select.h>
 #include <signal.h>
+#include <fcntl.h>
+#ifndef WEXITSTATUS
+#include <sys/wait.h>
+#endif
 // C++ 
 #include <iostream>
 #include <iomanip>
@@ -86,6 +90,7 @@ const char *alterscreenparameterskeys="/*-+.!@";
 const char *menutexts[]={ "<tabshiftarrows|<>|homeend|<g>|<e>dit|<o>ptions|ex<t>ra|`|<m>enubar|<ESC>quit", "<a>utosave on/off|<l>oad database|<s>ave database|<h>elp page|`|<ESC>main menu", "e<d>it|<c>opy|<DEL>ete|<j>oin|di<v>ide|datestam<p>|<INS>more|`|<ESC>main menu", "database <i>nformation|<f>ind|so<r>t records|set<u>p database|`|<ESC>main menu", "<arrows><shift+arrows><1.2>title color<3.4>color<5.6>box color<b>ox<t>itle<*ESC>", "calculator: 0123456789/*-+^,.()= <enter> <backspace> <delete> <`>previous menu", "d<u>plicate, <d>elete record, <i>mport/e<x>port records, externa<l> .dbfiles", "<i>mport records, external <r>eferences editor" };  //main, options, edit, extra, editor, calculator, extra from edit, external db records;
 const char *menubaroptions =  "0,27,31,g,0,31,38,e,0,38,48,o,0,48,56,t,0,56,58,`,0,58,68,m,0,68,78,27,1,0,18,a,1,18,34,l,1,34,50,s,1,50,62,h,1,62,64,`,1,64,79,27,2,0,7,d,2,7,14,c,2,14,23,330,2,23,30,j,2,30,39,v,2,39,51,p,2,51,61,331,2,61,63,`,2,63,78,27,3,0,23,i,3,23,30,f,3,30,45,r,3,45,62,u,3,62,64,`,3,64,79,27, 4,23,25,49, 4,25,27,50, 4,39,41,51, 4,41,43,52, 4,49,51,53,4,51,53,54,4,62,68,b, 4,67,75,t, 4,75,77,*,4,77,81,27,5,12,13,48,5,13,14,49,5,14,15,50,5,15,16,51,5,16,17,52,5,17,18,53,5,18,19,54,5,19,20,55,5,20,21,56,5,21,22,57,5,22,23,/,5,23,24,*,5,24,25,-,5,25,26,+,5,26,27,^,5,27,28,.,5,28,29,.,5,29,30,(,5,30,31,),5,31,32,=,5,33,40,10,5,41,52,263,5,53,62,330,5,62,79,`,6,0,12,u,6,13,29,d,6,30,39,i,6,39,48,x,6,57,77,l,7,0,17,i,7,18,47,r";
 enum { MAIN=0, OPTIONS, EDIT, EXTRA, EDITOR, CALCULATOR, EDITEXTRA, EXTERNALDB };
+const int bottombary=24;
 
 // keyboard
 const int DOWN=258;
@@ -152,7 +157,7 @@ const char *onoff[]= { "off", "on" };
 char clipboard[MAXSTRING];
 char calendarformat[MAXSTRING];
 int menucolors[8]={ MAGENTA, CYAN, BLUE, YELLOW, MAGENTAONCYAN, GREEN, BLUE, BLUE };
-int menulines[8]={ 24, 24, 24, 24, 24, 24, 24, 24 };
+int menulines[8]={ bottombary, bottombary, bottombary, bottombary, bottombary, bottombary, bottombary, bottombary };
 char infotext[MAXSTRING], *scriptcommand;
 int screen[81][25];
 FILE *out;
@@ -164,6 +169,11 @@ int MOUSE=ON;
 int savedfield=-1;
 extern int scriptsleeptime;
 extern int terminalhascolor;
+char *myname;
+int mypid;
+int pidof=1;
+static volatile int signalPid = -1;
+vector<int> instances;
 
 struct Points {
  int x;
@@ -193,7 +203,7 @@ class Field {
   char automatic_value[MAXSTRING];
   int buttonbox; // 0 none, 1 tickbox, 2 button, 3 button screen, 4 command, automatic script
   // constructors, destructor
-  Field(int i1, char s1[MAXSTRING], int i2, char s2[9], int i3, int i4, int i5, int i6, int i7, char s3[9], int i8, int i9, int i10, int i11, char s4[MAXSUFFIXCHARS], int i12, int i13, int i14, int i15, int i16, char s5[MAXSTRING]) { id=i1; strcpy(title,s1); title_position=i2; strcpy(title_attributes,s2); title_color=i3; pt.x=i4; pt.y=i5; size.x=i6; size.y=i7; strcpy(attributes, s3); color=i8; box=i9; box_color=i10; type=i11; strcpy(suffix, s4);  decimals=i12, formula=i13; fieldlist=i14; editable=i15; active=i16;  strcpy(automatic_value, s5); buttonbox=NOBUTTON; } ;
+  Field(int i1, char s1[MAXSTRING], int i2, char s2[9], int i3, int i4, int i5, int i6, int i7, char s3[9], int i8, int i9, int i10, int i11, char s4[MAXSUFFIXCHARS], int i12, int i13, int i14, int i15, int i16, char s5[MAXSTRING]) : id(i1), title_color(i3), color(i8), box(i9), box_color(i10), type(i11), decimals(i12), formula(i13), fieldlist(i14), editable(i15), active(i16), buttonbox(NOBUTTON) { pt.x=i4; pt.y=i5; size.x=i6; size.y=i7; strcpy(title,s1); title_position=i2; strcpy(title_attributes,s2); strcpy(attributes, s3); strcpy(suffix, s4); strcpy(automatic_value, s5); } ;
   Field() { } ;
 ~Field() { } ; } ;
 
@@ -205,9 +215,9 @@ class Annotated_Field {
    char text[MAXSTRING];
    char formula[MAXSTRING];
    // constructors, destructor
-   Annotated_Field(int i1, double f1, char s1[MAXSTRING], char s2[MAXSTRING]) { id=i1; number=f1; strcpy(text, s1); strcpy(formula, s2); } ;
-   Annotated_Field(int i1, double f1, const char s1[MAXSTRING], const char s2[MAXSTRING]) { id=i1; number=f1; strcpy(text, s1); strcpy(formula, s2); } ;
-   Annotated_Field(int i1, double f1, char s1[MAXSTRING], const char s2[MAXSTRING]) { id=i1; number=f1; strcpy(text, s1); strcpy(formula, s2); } ;
+   Annotated_Field(int i1, double f1, char s1[MAXSTRING], char s2[MAXSTRING]): id(i1), number(f1) { strcpy(text, s1); strcpy(formula, s2); } ;
+   Annotated_Field(int i1, double f1, const char s1[MAXSTRING], const char s2[MAXSTRING]):id(i1), number(f1) { strcpy(text, s1); strcpy(formula, s2); } ;
+   Annotated_Field(int i1, double f1, char s1[MAXSTRING], const char s2[MAXSTRING]):id(i1), number(f1) { strcpy(text, s1); strcpy(formula, s2); } ;
    Annotated_Field() { } ;
 ~Annotated_Field() { } ; } ;
 
@@ -239,7 +249,7 @@ class Drawbox {
   int paintcolor;
   struct Points pt;
   struct Points size;
-  Drawbox(int id, int color1, int color2, int ptx, int pty, int sizex, int sizey) { menuId=id; drawcolor=color1; paintcolor=color2; pt.x=ptx; pt.y=pty; size.x=sizex; size.y=sizey; };
+  Drawbox(int id, int color1, int color2, int ptx, int pty, int sizex, int sizey) :menuId(id), drawcolor(color1), paintcolor(color2) { pt.x=ptx; pt.y=pty; size.x=sizex; size.y=sizey; } ;
   Drawbox() { };
 ~Drawbox() { }; };
 
@@ -307,7 +317,8 @@ void Duplicate_Record(int record_id);
 int Show_Record_and_Menu();
 int Screen_String_Editor(int field_id=-1, int record_id=-1);
 int negatekeysforcurrentmenu(int t);
-void Show_Menu_Bar(int mode=0);
+enum { DISPLAY = 0, ERASE };
+void Show_Menu_Bar(int mode=DISPLAY);
 void Show_Help_Screen();
 void Show_DB_Information();
 int Show_Field(Annotated_Field *tfield, int flag=0);
@@ -351,7 +362,7 @@ void stringcodedecode(char *source, char *destination, int mode=0);
 void checkpoint(int id, int color=58);
 int Scan_Input(int flag=0, int lim_a=0, int lim_b=1, int length=79);
 enum { MIDDLE = -1, FIRST, LAST };
-enum { READ = 0, WRITE };
+enum { READ = 0, WRITE, CREATERC, RECREATE, RECREATERC };
 int Scan_Input(char istring[MAXSTRING], int x_pos, int y_pos, int color=WHITE, int length=79, int cursor=-1, int firstlast=-1);
 void Scan_Date(int x_pos, int y_pos, char tdate[], int flag=0);
 char *addmissingzeros(char tstring[], int zeros);
@@ -398,8 +409,6 @@ int multiplechoiceinstructions(int field_id);
 int selectmultiplechoicefield(int field_id);
 void moveinstructioninfieldtext(int field_id);
 int assignstringvaluestoarray(char *line, char array[MAXWORDS][MAXSTRING], int entries);
-int readstringentry(char *line, char *linepart);
-unsigned int isseparationchar(char t);
 int fieldsadjoiningfields(Annotated_Field *tfield, vector<int>& adjoiningfields, int possibilityoption=0, int sizex=0, int sizey=0, int comparisonx=EQUAL, int comparisony=EQUAL);
 int referencedadjoiningfields(int field_id, vector<int>& adjoiningfields, int fieldidflag=0, int rebuildflag=0, int sizex=0, int sizey=0, int comparisonx=EQUAL, int comparisony=EQUAL);
 void sortxy(vector<int>& fieldstosort, int preference=XY);
@@ -420,6 +429,12 @@ void Write_Fields_AnnotatedField_Vector(vector<Annotated_Field> tv, int recordid
 int isfieldreferencedinvector(int field_id, vector<int>& tv);
 int togglemouse(int showflag=ON);
 void checkterminalwindow(const char *message);
+int sendsignals(int sig=SIGUSR1, int sendflag=1);
+void get_pid(int sig, siginfo_t *info, void *context);
+void Read_Entire_Record(int record_id=-1);
+void Write_Entire_Record(int record_id);
+int readfileentry(int fd, char *line);
+unsigned int isseparationchar2(char t);
 
 // rcutil.cc
 extern int mod(double a, double b);

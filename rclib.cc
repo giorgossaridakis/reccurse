@@ -111,7 +111,7 @@ Word* strtok2(char *formula, char *separator)
 void Show_File_Error(char *filename)
 {
   Change_Color(RED);
-  gotoxy(1,24);
+  gotoxy(1,bottombary);
   if (!(int) strlen(filename))
    strcpy(filename, "<none>");
   printw("error: could not access file %s", filename);
@@ -799,12 +799,10 @@ void INThandler(int sig)
      End_Program(SEGMENTATIONFAULT);
     if ( sig == SIGFPE )
      End_Program(FLOATINGPOINTEXCEPTION);
-    if ( sig == SIGUSR1 )
-     End_Program();
     
     Show_Menu_Bar(1);
     Change_Color(RED);
-    gotoxy(1,24);
+    gotoxy(1,bottombary);
     printw("really quit ?");
     blockunblockgetch(QUITUNBLOCK);
     c = sgetch();
@@ -1302,6 +1300,8 @@ void moveinstructioninfieldtext(int field_id)
     
     if ( autosave ) // save all adjoining
      Write_Fields_Int_Vector(multiplechoicefields);
+    if ( shareddatabases[currentpage] == ON )
+     sendsignals();
 }
 
 // using readstringentry, assign strings to array of pointers
@@ -1637,6 +1637,8 @@ void Write_Fields_Int_Vector(vector<int> tv, int recordid)
   
    for (i=0;i<(int)tv.size();i++)
     Read_Write_Field(records[(recordid*fieldsperrecord)+tv[i]], fieldposition(recordid, tv[i]), WRITE);
+   if ( shareddatabases[currentpage] == ON )
+    Read_Write_Field(records[(recordid*fieldsperrecord)+fieldsperrecord-1], fieldposition(recordid, fieldsperrecord-1), WRITE); // move ofstream pointer
 }
 
 
@@ -1650,6 +1652,8 @@ void Write_Fields_AnnotatedField_Vector(vector<Annotated_Field> tv, int recordid
   
    for (i=0;i<(int)tv.size();i++)
     Read_Write_Field(records[(recordid*fieldsperrecord)+tv[i].id], fieldposition(recordid, tv[i].id), WRITE);
+   if ( shareddatabases[currentpage] == ON )
+    Read_Write_Field(records[(recordid*fieldsperrecord)+fieldsperrecord-1], fieldposition(recordid, fieldsperrecord-1), WRITE); // move ofstream pointer
 }
 
 // do fields reference each other
@@ -1673,7 +1677,7 @@ int togglemouse(int showflag)
    if ( showflag ) {
     Show_Menu_Bar(1);
     sprintf(ttext, "mouse use %s", onoff[MOUSE]);
-    Show_Message(1, 24, RED, ttext, 1250);
+    Show_Message(1, bottombary, RED, ttext, 1250);
    }
   
    switch (MOUSE) {
@@ -1702,4 +1706,118 @@ void checkterminalwindow(const char *message)
     ioctl( STDOUT_FILENO, TIOCGWINSZ, &w );
    }
    clear();
+}
+
+// send SIGUSR1 to all reccurse processes
+int sendsignals(int sig, int sendflag) // 0 only write in vector
+{
+  if ( pidof == 0 )
+   return 0;
+  char line[MAXSTRING*2], filename[MAXNAME];
+  int tpid;
+  instances.clear();
+  tmpnam(filename);
+  sprintf(line, "pidof %s >%s\n", myname, filename);
+  system(line);
+  if ( WEXITSTATUS(system(line)) ) {
+   pidof=0;
+   return 0;
+  }
+  
+  ifstream in(filename);
+  while ( !in.eof() ) {
+   in >> tpid;
+   if ( tpid != mypid && findinintvector(tpid, instances) == -1 ) {
+    instances.push_back(tpid);
+    if ( sendflag )
+     if ( kill(tpid, sig) > 0 ) {
+      pidof=0;
+      toggleshareddatabases();
+      break;
+     }
+   }
+  }
+  in.close();
+  unlink(filename);
+  
+ return pidof;
+}
+
+// handle SIGUSR1 SIGUSR2
+void get_pid(int sig, siginfo_t *info, void *context)
+{
+  
+   sendsignals(NOSCRIPT);
+   signalPid = info->si_pid;
+   
+   if ( shareddatabases[currentpage] == OFF || findinintvector(signalPid, instances) == -1 || pidof == 0 )
+    return;
+   
+   if ( sig == SIGUSR1 )
+    Read_Entire_Record();
+  
+   if ( sig == SIGUSR2 ) {
+    Read_Write_db_File();
+    if ( currentrecord>recordsnumber-1 ) // in case last deleted
+     currentrecord=recordsnumber-1;
+   }
+}
+
+// reload fields from record
+void Read_Entire_Record(int record_id)
+{
+  int i;
+   
+    if ( record_id == -1 )
+     record_id=currentrecord;
+  
+    for (i=0;i<fieldsperrecord;i++)
+     Read_Write_Field(records[(record_id*fieldsperrecord)+i], fieldposition(record_id, i), READ);
+}
+
+// reload fields from record
+void Write_Entire_Record(int record_id)
+{
+  int i;
+   
+    if ( record_id == -1 )
+     record_id=currentrecord;
+  
+    for (i=0;i<fieldsperrecord;i++)
+     Read_Write_Field(records[(record_id*fieldsperrecord)+i], fieldposition(record_id, i), WRITE);
+}
+
+// read entry from file
+int readfileentry(int fd, char *line)
+{
+  char buf[1];
+  int i=0, nread;
+
+    while ((nread=read(fd, buf, sizeof(buf)))) {
+     if (isseparationchar(buf[0])) {
+      if (i==0) // no characters in line, separation character skipped
+       continue;
+      break; // break read, separation character not recorded
+     }
+     line[i++]=buf[0];
+    }
+    line[i]='\0';
+
+    // file ended, close file descriptor
+    if (nread==0) 
+     return -1;
+    
+ return isseparationchar(buf[0]);
+}
+
+enum { NOSEPARATOR=0, WORD, LINE };
+// word separation characters
+unsigned int isseparationchar2(char t) 
+{
+  if (t==' ' || t=='\r')
+    return WORD;
+  if (t=='\n')
+   return LINE;
+
+ return NOSEPARATOR;
 }
