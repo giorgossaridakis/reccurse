@@ -1,7 +1,7 @@
 // reccurse, the filemaker of ncurses
 #include "reccurse.h"
 
-const double version=0.569;
+const double version=0.573;
 
 int main(int argc, char *argv[])
 {
@@ -22,6 +22,7 @@ int main(int argc, char *argv[])
   mypid=getpid();
   pidof=sendsignals(NOSCRIPT);
   
+  srand(time(NULL));
   Init_Screen();
   Change_Color(WHITEONBLACK);
   checkterminalwindow("reccurse requires 80x24");
@@ -585,11 +586,16 @@ int Read_Record_Field(ifstream &instream, Field &tfield)
 // is Record properly dictated
 int isrecordproperlydictated(Field &tfield)
 {
-   if ( tfield.title_position < 0 || tfield.title_position > 4 ||  strlen(tfield.title_attributes) != 9  || tfield.title_color < 0 || tfield.title_color > 64 || tfield.pt.x - tfield.box < 1 || tfield.pt.x > 80 || tfield.pt.y - tfield.box < 1 || tfield.pt.y > 23 || tfield.size.x < 0 || tfield.size.x > 80 || tfield.size.y < 0 || tfield.size.y > 23 || (tfield.pt.x+tfield.size.x+tfield.box) > 81 || (tfield.pt.y+tfield.size.y+tfield.box) > 24 ||  strlen(tfield.attributes) != 9 || tfield.color < 0 /*|| tfield.color > 64*/ || tfield.box < 0 || tfield.box > 1 || tfield.box_color < 0 || tfield.box_color > 64 || tfield.type < NUMERICAL || tfield.type > CLOCK || tfield.decimals < 0 || tfield.formula < 0 || tfield.formula > 1 || tfield.fieldlist < 0 || tfield.editable < 0 || tfield.editable > 1 || tfield.active < 0 || tfield.active > 1 ) 
-       return 0;
+   if ( tfield.title_position < 0 || tfield.title_position > 4 /*||  strlen(tfield.title_attributes) != 9*/  || tfield.title_color < 0 || tfield.title_color > 64 || tfield.pt.x - tfield.box < 1 || tfield.pt.x > 80 || tfield.pt.y - tfield.box < 1 || tfield.pt.y > 23 || tfield.size.x < 0 || tfield.size.x > 80 || tfield.size.y < 0 || tfield.size.y > 23 || (tfield.pt.x+tfield.size.x+tfield.box) > 81 || (tfield.pt.y+tfield.size.y+tfield.box) > 24 /*||  strlen(tfield.attributes) != 9*/ || tfield.color < 0 /*|| tfield.color > 64*/ || tfield.box < 0 || tfield.box > 1 || tfield.box_color < 0 || tfield.box_color > 64 || tfield.type < NUMERICAL || tfield.type > CLOCK || tfield.decimals < 0 || tfield.formula < 0 || tfield.formula > 1 || tfield.fieldlist < 0 || tfield.editable < 0 || tfield.editable > 1 || tfield.active < 0 || tfield.active > 1 ) 
+    return 0;
    
    if ( (tfield.size.x * tfield.size.y) > MAXSTRING )
     tfield.editable=OFF;
+  
+  if ( strlen(tfield.title_attributes) != 9 )
+   strcpy(tfield.title_attributes, STANDARDATTRIBUTES);
+  if ( strlen(tfield.attributes) != 9 )
+   strcpy(tfield.attributes, STANDARDATTRIBUTES);
 
  return 1;
 }
@@ -948,7 +954,7 @@ int Divide_Field(int field_id, int mode)
 }
 
 // bring current datetime stamp in char array
-void Bring_DateTime_Stamp(char tdatetime[MAXSTRING], int field_id) 
+char* Bring_DateTime_Stamp(char tdatetime[MAXSTRING], int field_id) 
 {
   int i;
   time_t rawtime;
@@ -957,19 +963,21 @@ void Bring_DateTime_Stamp(char tdatetime[MAXSTRING], int field_id)
   timeinfo = localtime(&rawtime);
   char calendarformat[MAXSTRING];
   
-  if (record[field_id].type==CLOCK)
+  if ( field_id > -1 && record[field_id].type == CLOCK )
    strcpy(calendarformat, "%X");
   else
    strcpy(calendarformat, "%x %X");
       
-  if (isautomaticvalueformatinstruction(field_id))
+  if ( field_id > -1 && isautomaticvalueformatinstruction(field_id))
    strcpy(calendarformat, record[field_id].automatic_value);
   
   strftime(tdatetime, MAXSTRING,const_cast <char *> (calendarformat), timeinfo);
   
   for (i=0;i<(int) strlen(tdatetime);i++)
    if (tdatetime[i]=='\n')
-    tdatetime[i]=SPACE;    
+    tdatetime[i]=SPACE;
+  
+ return &tdatetime[0];
 }
     
 // read-write record from-to dbfile
@@ -1136,14 +1144,21 @@ int Show_Record_and_Menu()
       fieldrepetitions[i]=((record[i].color) ? record[i].color : -1);
     }
     // show fields
-    if (renewscreen)
+    if (renewscreen) {
      clear();
-     
-    fieldsadjoiningfields(&records[(currentrecord*fieldsperrecord)+currentfield], adjoiningfields);
-    referencedadjoiningfields(currentfield, adjoiningfields);
+     fieldsadjoiningfields(&records[(currentrecord*fieldsperrecord)+currentfield], adjoiningfields);
+     referencedadjoiningfields(currentfield, adjoiningfields);
+    }
+//     for (i=0;i<fieldsperrecord;i++)
+//      for (i1=0;i1<(int) adjoiningfields.size();i1++)
+//       if (adjoiningfields[i1]!=i)
+//        Show_Field(&records[(currentrecord*fieldsperrecord)+i], printscreenmode);
+     for (i1=0;i1<(int) adjoiningfields.size();i1++)
+      if (adjoiningfields[i1]!=i && record[adjoiningfields[i1]].editable == OFF )
+       Show_Field(&records[(currentrecord*fieldsperrecord)+i], printscreenmode);
     for (i=0;i<fieldsperrecord;i++)
      for (i1=0;i1<(int) adjoiningfields.size();i1++)
-      if (adjoiningfields[i1]!=i)
+      if (adjoiningfields[i1]!=i && record[adjoiningfields[i1]].editable == ON )
        Show_Field(&records[(currentrecord*fieldsperrecord)+i], printscreenmode);
     if (printscreenmode) {
      clear();
@@ -1335,6 +1350,28 @@ int Show_Record_and_Menu()
        toggleshareddatabases();
        autosave=(shareddatabases[currentpage]) ? ON : bautosave;
       break;
+      case SHOWSHAREDINFO: {
+       if ( shareddatabases[currentpage] == OFF )
+        break;
+       struct Points tpt(1, 2); 
+       clear();
+       Change_Color(CYAN);
+       gotoxy(10,1);
+       printw("Reccurse active instances PID [* this one] [Connection Time]");
+       Change_Color(YELLOW);
+       for (i=0;i<(int)instancesinfo.size();i++) {
+        gotoxy(tpt.x, tpt.y);
+        printw("%d%s[%s]", instancesinfo[i].instancePid, (instancesinfo[i].instancePid==mypid) ? "*": " ", instancesinfo[i].instanceConnectionTime);
+        tpt.y++;
+        if ( tpt.y % 23 == 0 ) {
+         tpt.y=2;
+         tpt.x+=27;
+        }
+       }
+       refresh();
+       getch();
+      }
+      break;
       case SCRIPT_PLAYER:
        Show_Message(1, bottombary, MAGENTA, "filename:", 0);
        i=Scan_Input(input_string, 10, bottombary, MAGENTAONBLACK);
@@ -1437,7 +1474,8 @@ int Show_Record_and_Menu()
         if (tolower(c)=='y') {
          Initialize_Record();
          --currentrecord;
-         sendsignals(SIGUSR2);
+         if ( shareddatabases[currentpage] == ON )
+          sendsignals(SIGUSR2);
         }
         else
        --currentrecord; }
@@ -1752,7 +1790,8 @@ int Show_Record_and_Menu()
        c=sgetch();
        if (tolower(c)=='y') {
         Delete_Record(currentrecord);
-        sendsignals(SIGUSR2);
+        if ( shareddatabases[currentpage] == ON )
+         sendsignals(SIGUSR2);
        }
       }
      break;
@@ -1889,7 +1928,8 @@ int Show_Record_and_Menu()
       }
       if ( currentmenu == EDITEXTRA )
        Duplicate_Record(currentrecord);
-      sendsignals(SIGUSR2);
+      if ( shareddatabases[currentpage] == ON )
+       sendsignals(SIGUSR2);
      break;
      case 'x':
       Show_Menu_Bar(ERASE);
@@ -2129,6 +2169,9 @@ int negatekeysforcurrentmenu(int t)
   
   if ( t == TOGGLESHAREDDATABASES )
    return t;
+
+  if ( t == SHOWSHAREDINFO )
+   return t;
    
   if ( currentmenu == EDIT && t == '\n' )
    return 'd';
@@ -2199,7 +2242,7 @@ void Show_Help_Screen()
 {
   clear();
   Change_Color(WHITEONBLACK);
-  printw("                         Reccurse Quick Guide Page\n /---------------------------------------------------------------------------\\\n | arrow keys move between fields     | tab shift_tab move between fields    |\n | m          toggle bottom bar       | ESC           abort/previous menu    |\n | shift+left previous record         | shift+right   next record            |\n | < | >      previous | next record  | ctrl+q        toggle shared files    |\n | shift+up   to first record         | shift+down    to last record         |\n | pageup     to first field          | pagedown      to last field          |\n | ENTER | d  select/edit             | g             goto recorord          |\n | SPACE      activate/push button    | k             generate calendar      |\n | z          enter/exit print mode   | q             (in print) save record |\n | w          demonstrate records     | `             enter/exit calculator  |\n | ctrl+e     to edit menu            | ctrl+f        find routine           |\n | ctrl+o     to options menu         | ctrl+t        to extra menu          |\n | ctrl+w     to pages menu           | ?             this help page         |\n | ctrl+k     copy field              | ctrl+v        paste in field         |\n | ctrl+l     toggle mouse capture    | ctrl+y        import ascii file      |\n | ctrl+p     scan automatic value    | ctrl+n        scan field title       |\n | ctrl+u     text to automatic value | ctrl+s        play script file       |\n | ctrl+r     undo / redo changes     | ctrl+x        quit Reccurse          |\n | alt+1..0   add/play program        | /*-+.!@       modify attributes      |\n \\---------------------------------------------------------------------------/\n        Written by Giorgos Saridakis [giorgossaridakis@gmail.com]\n                 Distributed under the GNU Public License\n");
+  printw("                         Reccurse Quick Guide Page\n /---------------------------------------------------------------------------\\\n | arrow keys move between fields     | tab shift_tab move between fields    |\n | m          toggle bottom bar       | ESC           abort/previous menu    |\n | shift+left previous record         | shift+right   next record            |\n | < | >      previous | next record  | ctrl+q        toggle shared files    |\n | shift+up   to first record         | shift+down    to last record         |\n | pageup     to first field          | pagedown      to last field          |\n | ENTER | d  select/edit             | g             goto recorord          |\n | SPACE      activate/push button    | k             generate calendar      |\n | z          enter/exit print mode   | q             (in print) save record |\n | w          demonstrate records     | ?             this help page         |\n | ctrl+e     to edit menu            | ctrl+f        find routine           |\n | ctrl+o     to options menu         | ctrl+t        to extra menu          |\n | ctrl+w     to pages menu           | ctrl+q|ctrl+d shared toggle | info   |\n | ctrl+k     copy field              | ctrl+v        paste in field         |\n | ctrl+l     toggle mouse capture    | ctrl+y        import ascii file      |\n | ctrl+p     scan automatic value    | ctrl+n        scan field title       |\n | ctrl+u     text to automatic value | ctrl+s        play script file       |\n | ctrl+r     undo / redo changes     | ctrl+d        quit Reccurse          |\n | alt+1..0   add/play program        | /*-+.!@       modify attributes      |\n \\---------------------------------------------------------------------------/\n        Written by Giorgos Saridakis [giorgossaridakis@gmail.com]\n                 Distributed under the GNU Public License\n");
 
   getch();
 }
@@ -3261,6 +3304,8 @@ void toggleshareddatabases()
   shareddatabases[currentpage]=(shareddatabases[currentpage]) ? OFF : ON;
   if ( pidof == 0 )
    shareddatabases[currentpage]=OFF;
+  if ( shareddatabases[currentpage] == ON )
+   sendsignals(SIGUSR2);
   Show_Menu_Bar(ERASE);
   Show_Message(1, bottombary, GREEN, "shared databases:", 0);
   Show_Message(18, bottombary, RED, onoff[shareddatabases[currentpage]], 1500);

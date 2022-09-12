@@ -710,7 +710,7 @@ void clearinputline()
 int Edit_Field(int &field_id)
 {
  int c=0, bc=0, backupmenu=currentmenu, backupbar=menubar, showallrecords=0;
- Field trecord=record[field_id], ttrecord;
+ Field trecord=record[field_id], ttrecord=record[field_id];
  currentmenu=EDITOR; menubar=1;
  
   while ( c != ESC && c != ENTER ) {

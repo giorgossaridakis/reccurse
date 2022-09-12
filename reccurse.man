@@ -24,27 +24,27 @@ The pages menu is accessed with ctrl+w, navigated with cursor keys.
 <ins>ert new and <del>ete selectable database pages is an option as well.
 
                          Reccurse Quick Guide Page
- /---------------------------------------------------------------------------\
- | arrow keys move between fields     | tab shift_tab move between fields    |
- | m          toggle bottom bar       | ESC           abort/previous menu    |
- | shift+left previous record         | shift+right   next record            |
- | <          previous record         | >             next record            |
- | shift+up   to first record         | shift+down    to last record         |
- | pageup     to first field          | pagedown      to last field          |
- | ENTER | d  select/edit             | g             goto recorord          |
- | SPACE      activate/push button    | k             generate calendar      |
- | z          enter/exit print mode   | q             (in print) save record |
- | w          demonstrate records     | `             enter/exit calculator  |
- | ctrl+e     to edit menu            | ctrl+f        find routine           |
- | ctrl+o     to options menu         | ctrl+t        to extra menu          |
- | ctrl+w     to pages menu           | ?             this help page         |
- | ctrl+k     copy field              | ctrl+v        paste in field         |
- | ctrl+l     toggle mouse capture    | ctrl+y        import ascii file      |
- | ctrl+p     scan automatic value    | ctrl+n        scan field title       |
- | ctrl+u     text to automatic value | ctrl+s        play script file       |
- | ctrl+r     undo / redo changes     | ctrl+x        quit Reccurse          |
- | alt+1..0   add/play program        | /*-+.!@       modify attributes      |
- \---------------------------------------------------------------------------/
+/---------------------------------------------------------------------------\
+| arrow keys move between fields     | tab shift_tab move between fields    |
+| m          toggle bottom bar       | ESC           abort/previous menu    |
+| shift+left previous record         | shift+right   next record            |
+| < | >      previous | next record  | ctrl+q        toggle shared files    |
+| shift+up   to first record         | shift+down    to last record         |
+| pageup     to first field          | pagedown      to last field          |
+| ENTER | d  select/edit             | g             goto recorord          |
+| SPACE      activate/push button    | k             generate calendar      |
+| z          enter/exit print mode   | q             (in print) save record |
+| w          demonstrate records     | ?             this help page         |
+| ctrl+e     to edit menu            | ctrl+f        find routine           |
+| ctrl+o     to options menu         | ctrl+t        to extra menu          |
+| ctrl+w     to pages menu           | ctrl+q|ctrl+d shared toggle | info   |
+| ctrl+k     copy field              | ctrl+v        paste in field         |
+| ctrl+l     toggle mouse capture    | ctrl+y        import ascii file      |
+| ctrl+p     scan automatic value    | ctrl+n        scan field title       |
+| ctrl+u     text to automatic value | ctrl+s        play script file       |
+| ctrl+r     undo / redo changes     | ctrl+x        quit Reccurse          |
+| alt+1..0   add/play program        | /*-+.!@       modify attributes      |
+\---------------------------------------------------------------------------/
 
 clicking on a field will highlight it, double click will edit it, if in edit
 mode. if mouse is active: right mouse click acts as ESC, double click on items

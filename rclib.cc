@@ -1336,7 +1336,7 @@ int fieldsadjoiningfields(Annotated_Field *tfield, vector<int>& adjoiningfields,
         if ( findinintvector(i1, adjoiningfields) > -1 || ((arefieldsneighbours(recordid, i1, possibilityoption, sizex, sizey, comparisonx, comparisony)==0)) || record[i1].box == ON )
          continue;
         else 
-         if ( tfield->id != i1 )
+         if ( record[recordid].active && record[recordid].editable && tfield->id != i1 )
           adjoiningfields.push_back(i1); 
        }
      }
@@ -1347,7 +1347,7 @@ int fieldsadjoiningfields(Annotated_Field *tfield, vector<int>& adjoiningfields,
          continue;
         }
        else
-        if ( tfield->id != i1 )
+        if ( record[recordid].active && record[recordid].editable && tfield->id != i1 )
          adjoiningfields.push_back(i1);
        }
       }
@@ -1378,7 +1378,8 @@ int referencedadjoiningfields(int field_id, vector<int>& adjoiningfields, int fi
    for (i=0;i<(int)tadjoiningfields.size();i++)
     if ( isfieldreferencedinvector(tadjoiningfields[i], tadjoiningfields) > -1 )
      if ( findinintvector(tadjoiningfields[i], adjoiningfields) == -1 )
-      adjoiningfields.push_back(tadjoiningfields[i]);
+      if ( record[tadjoiningfields[i]].active && record[tadjoiningfields[i]].editable )
+       adjoiningfields.push_back(tadjoiningfields[i]);
     
    sortxy(adjoiningfields, XY);
    i = ( fieldidflag == 1 ) ? findinintvector(field_id, adjoiningfields) : 0;
@@ -1708,39 +1709,78 @@ void checkterminalwindow(const char *message)
    clear();
 }
 
-// send SIGUSR1 to all reccurse processes
+// send signals v2
 int sendsignals(int sig, int sendflag) // 0 only write in vector
 {
-  if ( pidof == 0 )
-   return 0;
-  char line[MAXSTRING*2], filename[MAXNAME];
-  int tpid;
+  char psoutput[L_tmpnam + 1];
+  int i1=0, nread=0;
+  char line[MAXNAME*5];
+  int process=-1; pidof=1;
+  static int ppid=-1, pname=-1;
   instances.clear();
-  tmpnam(filename);
-  sprintf(line, "pidof %s >%s\n", myname, filename);
-  system(line);
-  if ( WEXITSTATUS(system(line)) ) {
-   pidof=0;
-   return 0;
-  }
+  binstancesinfo=instancesinfo;
+  instancesinfo.clear();
   
-  ifstream in(filename);
-  while ( !in.eof() ) {
-   in >> tpid;
-   if ( tpid != mypid && findinintvector(tpid, instances) == -1 ) {
-    instances.push_back(tpid);
+    tmpnam2(psoutput); 
+    sprintf(line, "ps -x >%s\n", psoutput);
+    system(line);
+    if ( WEXITSTATUS(system(line)) ) {
+     pidof=0;
+     return 0;
+    }
+  
+     fd=open(psoutput, O_RDONLY);
+     while ((nread=readfileentry(fd, line))>-1) {
+     
+      if ( ppid == -1 && mypid == atoi(line) )
+       ppid=i1; 
+      if ( pname == -1 && findsimple2(line, myname) )
+       pname=i1;
+      if ( i1 == ppid )
+       process=atoi(line);
+      if ( i1 == pname && (findsimple2(line, myname)) && instances.size() < MAXINSTANCES ) {
+       instances.push_back(process);
+       addtoinstancesinfo(process);
+      }
+      if ( nread == LINE )
+       i1=0;
+      if ( nread == WORD )
+       ++i1;
+      
+    }
+    close(fd);
+    unlink(psoutput);
+    
     if ( sendflag )
-     if ( kill(tpid, sig) > 0 ) {
-      pidof=0;
-      toggleshareddatabases();
-      break;
-     }
-   }
-  }
-  in.close();
-  unlink(filename);
+     for (i1=0;i1<(int)instances.size() && pidof;i1++)
+      if ( instances[i1] != mypid )
+       if ( kill(instances[i1], sig) > 0 )
+        pidof=0;
+    
+    if ( pidof == 0 )
+     toggleshareddatabases();
   
  return pidof;
+}
+
+// information to instancesinfo
+int addtoinstancesinfo(int pid)
+{
+  int i;
+  char tdatetime[MAXNAME];
+  Bring_DateTime_Stamp(tdatetime);
+  InstanceInfo tinstanceinfo(pid, tdatetime);
+  
+   for (i=0;i<(int)binstancesinfo.size();i++)
+    if ( pid == binstancesinfo[i].instancePid )
+     break;
+  
+   if ( i < (int)binstancesinfo.size() )
+    strcpy( tinstanceinfo.instanceConnectionTime, binstancesinfo[i].instanceConnectionTime );
+  
+   instancesinfo.push_back(tinstanceinfo);
+  
+ return (int)instancesinfo.size();
 }
 
 // handle SIGUSR1 SIGUSR2
@@ -1757,7 +1797,10 @@ void get_pid(int sig, siginfo_t *info, void *context)
     Read_Entire_Record();
   
    if ( sig == SIGUSR2 ) {
-    Read_Write_db_File();
+    if ( findinintvector(signalPid, instances) == -1 ) 
+     addtoinstancesinfo(signalPid);
+     else
+      Read_Write_db_File();
     if ( currentrecord>recordsnumber-1 ) // in case last deleted
      currentrecord=recordsnumber-1;
    }
@@ -1794,7 +1837,7 @@ int readfileentry(int fd, char *line)
   int i=0, nread;
 
     while ((nread=read(fd, buf, sizeof(buf)))) {
-     if (isseparationchar(buf[0])) {
+     if (isseparationchar2(buf[0])) {
       if (i==0) // no characters in line, separation character skipped
        continue;
       break; // break read, separation character not recorded
@@ -1807,10 +1850,9 @@ int readfileentry(int fd, char *line)
     if (nread==0) 
      return -1;
     
- return isseparationchar(buf[0]);
+ return isseparationchar2(buf[0]);
 }
 
-enum { NOSEPARATOR=0, WORD, LINE };
 // word separation characters
 unsigned int isseparationchar2(char t) 
 {
@@ -1820,4 +1862,45 @@ unsigned int isseparationchar2(char t)
    return LINE;
 
  return NOSEPARATOR;
+}
+
+
+// find command in text
+int findsimple2(char text[MAXNAME], char token[MAXNAME])
+{ 
+  int i, n, hit=0;
+  char ttoken[MAXNAME];
+  
+   for (i=0;i<(int)strlen(text);i++, hit=0) {
+    if (text[i]==token[0]) {
+     hit=i+1;
+     for (n=0;n<(int)strlen(token);n++)
+      ttoken[n]=text[i+n];
+     ttoken[n]='\0';
+     if (!strcmp(ttoken, token)) 
+      break;
+    }
+   }
+   
+ return hit;
+}
+
+// tmpnam substitute
+char* tmpnam2(char name[L_tmpnam+1], int length)
+{
+  int i, i1, r;
+  struct stat buffer; 
+  
+   strcpy(name, "/tmp/");
+   while ( true ) {
+    for (i=0, i1=5;i<length && i1<L_tmpnam-1;i++) {
+     while ( !isalpha((r=rand() % 122 + 1)) && !isdigit(r) );
+     name[i1++]=(char) r;
+    }
+    name[i1]='\0';
+    if ( stat(name, &buffer) == -1 ) // free name
+     break;
+   }
+     
+ return &name[0];  
 }
