@@ -215,7 +215,7 @@ int Scan_Input(char istring[MAXSTRING], int x_pos, int y_pos, int color, int len
      t='\n';
     if ( t == PASTE && (int)strlen(clipboard) )
      strcpy(tstring, clipboard);
-    if (isprintablecharacter(t) && column<length+1) {
+    if ( isprintablecharacter(t) && column<length+1 ) {
      tstring[column-x_pos]=t;
      if (column<length)
     ++column; }
@@ -1336,7 +1336,7 @@ int fieldsadjoiningfields(Annotated_Field *tfield, vector<int>& adjoiningfields,
         if ( findinintvector(i1, adjoiningfields) > -1 || ((arefieldsneighbours(recordid, i1, possibilityoption, sizex, sizey, comparisonx, comparisony)==0)) || record[i1].box == ON )
          continue;
         else 
-         if ( record[recordid].active && record[recordid].editable && tfield->id != i1 )
+         if ( record[recordid].active /*&& record[recordid].editable*/ && tfield->id != i1 )
           adjoiningfields.push_back(i1); 
        }
      }
@@ -1347,7 +1347,7 @@ int fieldsadjoiningfields(Annotated_Field *tfield, vector<int>& adjoiningfields,
          continue;
         }
        else
-        if ( record[recordid].active && record[recordid].editable && tfield->id != i1 )
+        if ( record[recordid].active /*&& record[recordid].editable*/ && tfield->id != i1 )
          adjoiningfields.push_back(i1);
        }
       }
@@ -1378,7 +1378,7 @@ int referencedadjoiningfields(int field_id, vector<int>& adjoiningfields, int fi
    for (i=0;i<(int)tadjoiningfields.size();i++)
     if ( isfieldreferencedinvector(tadjoiningfields[i], tadjoiningfields) > -1 )
      if ( findinintvector(tadjoiningfields[i], adjoiningfields) == -1 )
-      if ( record[tadjoiningfields[i]].active && record[tadjoiningfields[i]].editable )
+      if ( record[tadjoiningfields[i]].active /*&& record[tadjoiningfields[i]].editable*/ )
        adjoiningfields.push_back(tadjoiningfields[i]);
     
    sortxy(adjoiningfields, XY);
@@ -1717,9 +1717,8 @@ int sendsignals(int sig, int sendflag) // 0 only write in vector
   char line[MAXNAME*5];
   int process=-1; pidof=1;
   static int ppid=-1, pname=-1;
-  instances.clear();
-  binstancesinfo=instancesinfo;
-  instancesinfo.clear();
+  binstancesinfo[currentpage]=instancesinfo[currentpage];
+  instancesinfo[currentpage].clear();
   
     tmpnam2(psoutput); 
     sprintf(line, "ps -x >%s\n", psoutput);
@@ -1738,8 +1737,7 @@ int sendsignals(int sig, int sendflag) // 0 only write in vector
        pname=i1;
       if ( i1 == ppid )
        process=atoi(line);
-      if ( i1 == pname && (findsimple2(line, myname)) && instances.size() < MAXINSTANCES ) {
-       instances.push_back(process);
+      if ( i1 == pname && (findsimple2(line, myname)) && instancesinfo[currentpage].size() < MAXINSTANCES ) {
        addtoinstancesinfo(process);
       }
       if ( nread == LINE )
@@ -1752,9 +1750,9 @@ int sendsignals(int sig, int sendflag) // 0 only write in vector
     unlink(psoutput);
     
     if ( sendflag )
-     for (i1=0;i1<(int)instances.size() && pidof;i1++)
-      if ( instances[i1] != mypid )
-       if ( kill(instances[i1], sig) > 0 )
+     for (i1=0;i1<(int)instancesinfo[currentpage].size() && pidof;i1++)
+      if ( instancesinfo[currentpage][i1].instancePid != mypid && instancesinfo[currentpage][i1].instanceOpen )
+       if ( kill(instancesinfo[currentpage][i1].instancePid, sig) > 0 )
         pidof=0;
     
     if ( pidof == 0 )
@@ -1763,7 +1761,7 @@ int sendsignals(int sig, int sendflag) // 0 only write in vector
  return pidof;
 }
 
-// information to instancesinfo
+// information to instancesinfo[currentpage]
 int addtoinstancesinfo(int pid)
 {
   int i;
@@ -1771,39 +1769,56 @@ int addtoinstancesinfo(int pid)
   Bring_DateTime_Stamp(tdatetime);
   InstanceInfo tinstanceinfo(pid, tdatetime);
   
-   for (i=0;i<(int)binstancesinfo.size();i++)
-    if ( pid == binstancesinfo[i].instancePid )
+   for (i=0;i<(int)binstancesinfo[currentpage].size();i++)
+    if ( pid == binstancesinfo[currentpage][i].instancePid )
      break;
   
-   if ( i < (int)binstancesinfo.size() )
-    strcpy( tinstanceinfo.instanceConnectionTime, binstancesinfo[i].instanceConnectionTime );
+   if ( i < (int)binstancesinfo[currentpage].size() ) {
+    strcpy( tinstanceinfo.instanceConnectionTime, binstancesinfo[currentpage][i].instanceConnectionTime );
+    tinstanceinfo.instanceOpen=binstancesinfo[currentpage][i].instanceOpen;
+   }
   
-   instancesinfo.push_back(tinstanceinfo);
+   instancesinfo[currentpage].push_back(tinstanceinfo);
   
- return (int)instancesinfo.size();
+ return (int)instancesinfo[currentpage].size();
 }
 
 // handle SIGUSR1 SIGUSR2
 void get_pid(int sig, siginfo_t *info, void *context)
 {
-  
-   sendsignals(NOSCRIPT);
    signalPid = info->si_pid;
-   
-   if ( shareddatabases[currentpage] == OFF || findinintvector(signalPid, instances) == -1 || pidof == 0 )
+
+   if ( shareddatabases[currentpage] == OFF || pidof == 0 )
     return;
+   sendsignals(NOSCRIPT);
    
-   if ( sig == SIGUSR1 )
-    Read_Entire_Record();
+   if ( sig == SIGUSR1 ) {
+    if ( findininstancesinfovector(signalPid, currentpage) > -1 ) 
+     Read_Entire_Record();
+   }
   
    if ( sig == SIGUSR2 ) {
-    if ( findinintvector(signalPid, instances) == -1 ) 
+    if ( findininstancesinfovector(signalPid, currentpage) == -1 ) 
      addtoinstancesinfo(signalPid);
      else
       Read_Write_db_File();
     if ( currentrecord>recordsnumber-1 ) // in case last deleted
      currentrecord=recordsnumber-1;
    }
+}
+
+// find in instancesinfo
+int findininstancesinfovector(int element, int page_id)
+{
+  int i;
+  
+   for (i=0;i<(int)instancesinfo[page_id].size();i++)
+    if ( instancesinfo[page_id][i].instancePid == element )
+     break;
+   if ( i < (int)instancesinfo[page_id].size() )
+    return i;
+  
+ return -1;
 }
 
 // reload fields from record

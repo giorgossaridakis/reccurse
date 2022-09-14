@@ -332,7 +332,7 @@ void Field_Editor()
    printw("*");
    Change_Color(MAGENTA);
    gotoxy(18, 18);
-   printw("<arrows><enter><space><esc><* &>");
+   printw("<arrows><enter><space><esc><$ &>");
    gotoxy(18, 19);
    printw("<j>ump <u>ndo <f>ront <ins><del>");
    sprintf(ttext, "[%s]&[%s]", FIELDTYPES[record[fieldshown].type], BUTTONBOXES[record[fieldshown].buttonbox]);
@@ -343,7 +343,7 @@ void Field_Editor()
    gotoxy(18,20);
    t=sgetch(18,20);
    cleanstdin();
-   if ( t!=SPACE && t!=LEFT && t!=RIGHT && t!=ESC && t!=INSERT && t!=DELETE && t!='j' && t!='*' && t!='&' && t!='u' && t != 'f' )
+   if ( t!=SPACE && t!=LEFT && t!=RIGHT && t!=ESC && t!=INSERT && t!=DELETE && t!='j' && t!='$' && t!='&' && t!='u' && t != 'f' )
     t='\n';
    switch (t) {
     case 'u':
@@ -361,10 +361,10 @@ void Field_Editor()
       break;
      Edit_Field(fieldshown);
     break;
-    case '*':
+    case '$':
      clear();
-     Show_All_Fields_for_Editor( currentfield, 1 );
-     Show_Field_ID( &records[(currentrecord*fieldsperrecord)+currentfield] );
+     Show_All_Fields_for_Editor( fieldshown, 1 );
+     Show_Field_ID( &records[(currentrecord*fieldsperrecord)+fieldshown] );
      getch();
     break;
     case LEFT:
@@ -721,7 +721,7 @@ int Edit_Field(int &field_id)
     Show_Menu_Bar(1);
     Change_Color(MAGENTAONYELLOW);
     gotoxy(1, 24);
-    printw("<m> toggle bar|<f>ield in front|<ENTER>store|<SPACE>revert|<ESC>discard");
+    printw("<m> toggle bar|<f>ield in front|$*/*-+.|<ENTER>store|<SPACE>revert|<ESC>discard");
     refresh();
    }
    if ( isrecordproperlydictated(record[field_id]) == 0 )
@@ -819,11 +819,26 @@ int Edit_Field(int &field_id)
      else
       record[field_id].title_position=0;
     break;
-    case '*':
+    case '$':
      showallrecords = ( showallrecords == 1 ) ? 0 : 1;
     break;
+    case '*':
+     record[field_id].attributes[1]=(record[field_id].attributes[1]=='1') ? '0' : '1';
+    break;
+    case '-':
+     record[field_id].attributes[2]=(record[field_id].attributes[2]=='1') ? '0' : '1';
+    break;
+    case '/':
+     record[field_id].attributes[4]=(record[field_id].attributes[4]=='1') ? '0' : '1';      
+    break;
+    case '.':
+     record[field_id].attributes[5]=(record[field_id].attributes[5]=='1') ? '0' : '1';      
+    break;
+    case '+':
+     record[field_id].attributes[6]=(record[field_id].attributes[6]=='1') ? '0' : '1';
+    break;
     case 'm':
-     ++menubar;
+    ++menubar;
      menubar=(menubar==3) ? 0 : menubar;
     break;
     case 'f':

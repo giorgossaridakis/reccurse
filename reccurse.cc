@@ -1,7 +1,7 @@
 // reccurse, the filemaker of ncurses
 #include "reccurse.h"
 
-const double version=0.573;
+const double version=0.579;
 
 int main(int argc, char *argv[])
 {
@@ -45,9 +45,10 @@ int main(int argc, char *argv[])
       strcpy(input_string, argv[1]);
      Scan_Input(input_string, 18, 19, MAGENTAONBLACK);
      limitspaces(input_string);
-     if (!strlen(input_string)) {
+     if ( !strcmp(input_string, " ") ) {
       Show_File_Error(input_string);
-     End_Program(FILEERROR); }
+      End_Program(FILEERROR);
+     }
      strcpy(rcfile, input_string);
      strcpy(dbfile, rcfile);
      Reccurse_File_Extension(rcfile, 1); 
@@ -168,6 +169,15 @@ int checkalteredparameters()
     Read_Write_db_File(WRITE);
     if ( shareddatabases[currentpage] == ON )
      sendsignals(SIGUSR2);
+   }
+   if ( autosave == OFF ) {
+    Show_Menu_Bar(ERASE);
+    Show_Message(1, bottombary, GREEN, "save database (y/n):", 0);
+    c=sgetch();
+    if ( c == 'y' ) {
+     Read_Write_db_File(RECREATE);
+     Read_Write_db_File(WRITE);
+    }
    }
 
   return 1;
@@ -1149,13 +1159,10 @@ int Show_Record_and_Menu()
      fieldsadjoiningfields(&records[(currentrecord*fieldsperrecord)+currentfield], adjoiningfields);
      referencedadjoiningfields(currentfield, adjoiningfields);
     }
-//     for (i=0;i<fieldsperrecord;i++)
-//      for (i1=0;i1<(int) adjoiningfields.size();i1++)
-//       if (adjoiningfields[i1]!=i)
-//        Show_Field(&records[(currentrecord*fieldsperrecord)+i], printscreenmode);
-     for (i1=0;i1<(int) adjoiningfields.size();i1++)
-      if (adjoiningfields[i1]!=i && record[adjoiningfields[i1]].editable == OFF )
-       Show_Field(&records[(currentrecord*fieldsperrecord)+i], printscreenmode);
+
+    for (i1=0;i1<(int) adjoiningfields.size();i1++)
+     if (adjoiningfields[i1]!=i && record[adjoiningfields[i1]].editable == OFF )
+      Show_Field(&records[(currentrecord*fieldsperrecord)+i], printscreenmode);
     for (i=0;i<fieldsperrecord;i++)
      for (i1=0;i1<(int) adjoiningfields.size();i1++)
       if (adjoiningfields[i1]!=i && record[adjoiningfields[i1]].editable == ON )
@@ -1353,23 +1360,7 @@ int Show_Record_and_Menu()
       case SHOWSHAREDINFO: {
        if ( shareddatabases[currentpage] == OFF )
         break;
-       struct Points tpt(1, 2); 
-       clear();
-       Change_Color(CYAN);
-       gotoxy(10,1);
-       printw("Reccurse active instances PID [* this one] [Connection Time]");
-       Change_Color(YELLOW);
-       for (i=0;i<(int)instancesinfo.size();i++) {
-        gotoxy(tpt.x, tpt.y);
-        printw("%d%s[%s]", instancesinfo[i].instancePid, (instancesinfo[i].instancePid==mypid) ? "*": " ", instancesinfo[i].instanceConnectionTime);
-        tpt.y++;
-        if ( tpt.y % 23 == 0 ) {
-         tpt.y=2;
-         tpt.x+=27;
-        }
-       }
-       refresh();
-       getch();
+       Shared_Databases_Handler();
       }
       break;
       case SCRIPT_PLAYER:
@@ -1925,6 +1916,8 @@ int Show_Record_and_Menu()
         Determine_Button_Box(i);
        changedrecord=1;
        currentrecord=Read_Write_Current_Parameters(0);
+       if ( record[currentfield].editable == OFF )
+        replaychar=DOWN;
       }
       if ( currentmenu == EDITEXTRA )
        Duplicate_Record(currentrecord);
@@ -2087,7 +2080,7 @@ int Screen_String_Editor(int field_id, int record_id)
    record_id=currentrecord;
   if ( field_id == -1 )
    field_id=currentfield;
-  int t=0, pos=findinintvector(field_id, adjoiningfields), firstlast, i;
+  int t=0, pos=findinintvector(field_id, adjoiningfields), firstlast, i, tpos;
   editedrecords=Records_From_Adjoining_Fields(field_id);
    
     while ( t != ENTER ) {
@@ -2108,10 +2101,23 @@ int Screen_String_Editor(int field_id, int record_id)
      }
      strcpy(records[(record_id*fieldsperrecord)+adjoiningfields[pos]].text, tstring);
      records[(record_id*fieldsperrecord)+adjoiningfields[pos]].number=atof(tstring);
-     if ( t == LEFT && pos > 0 )
-      --pos;
-     if ( t == RIGHT && pos < (int)adjoiningfields.size() - 1 )
-      ++pos;
+     tpos=pos;
+     if ( t == LEFT ) {
+      while ( pos > -2 ) {
+       --pos;
+       if ( pos > -1 && record[adjoiningfields[pos]].editable )
+        break;
+      }
+     }
+     if ( t == RIGHT ) {
+      while ( pos < (int)adjoiningfields.size() + 1 ) {
+       ++pos;
+      if ( pos < (int)adjoiningfields.size() && record[adjoiningfields[pos]].editable )
+       break;
+      }
+     }
+     if ( pos < 0 || pos > (int)adjoiningfields.size() - 1 )
+      pos=tpos;
     }
     currentfield=adjoiningfields[pos];
 
@@ -3350,4 +3356,85 @@ void outputscreenarraytofile()
     fputc('\n', out); }
    
    fflush(out);
+}
+
+// shared databases show, open, close
+void Shared_Databases_Handler(int page_id)
+{
+  int i, t=0, currentinstance=0;
+  if ( page_id == -1 )
+   page_id=currentpage;
+  
+    clear();
+    Change_Color(CYAN);
+    gotoxy(2,1);
+    printw("PID [* this one.green open|yellow closed.][Connection Time] <arrows space ESC>");
+    Change_Color(YELLOW);
+    while ( t != ESC ) {
+      
+     sendsignals(NOSCRIPT);
+     struct Points tpt(2, 2); 
+     for (i=0;i<MAXINSTANCES;i++) {
+      gotoxy(tpt.x, tpt.y);
+      Change_Color(YELLOW);
+      if ( instancesinfo[page_id][i].instanceOpen == true )
+       Change_Color(GREEN);
+      if ( instancesinfo[page_id][i].instancePid == mypid )
+       Change_Color(RED);
+      if ( i == currentinstance )
+       Change_Attributes(BOLD);
+      if ( i < (int)instancesinfo[page_id].size() )
+       printw("%d%s[%s]", instancesinfo[page_id][i].instancePid, (instancesinfo[page_id][i].instancePid==mypid) ? "*": " ", instancesinfo[page_id][i].instanceConnectionTime);
+      else
+       printw("                          ");
+      Change_Attributes(NORMAL);
+      tpt.y++;
+      if ( tpt.y % 23 == 0 ) {
+       tpt.y=2;
+       tpt.x+=27;
+      }
+     }
+     refresh();
+     t=getch();
+     if ( t == SHIFT_LEFT )
+      t=SHIFT_UP;
+     if ( t == SHIFT_RIGHT )
+      t=SHIFT_DOWN;
+     if ( t == ENTER )
+      t=ESC;
+     switch ( t ) {
+      case UP:
+       if ( currentinstance > 0 )
+        --currentinstance;
+      break;
+      case DOWN:
+       if ( currentinstance < (int)instancesinfo[page_id].size() - 1 )
+        ++currentinstance;
+       break;
+      case LEFT:
+       if ( currentinstance > 23 )
+         currentinstance-=23;
+      break;
+      case RIGHT:
+        if ( currentinstance + 23 < (int)instancesinfo[page_id].size() -1 )
+        currentinstance+=23;
+      break;
+      case SHIFT_UP:
+       currentinstance=0;
+      break;
+      case SHIFT_DOWN:
+       currentinstance=(int)instancesinfo[page_id].size() -1;
+      break;
+      case SPACE:
+       if ( instancesinfo[page_id][currentinstance].instancePid == mypid )
+        break;
+       instancesinfo[page_id][currentinstance].instanceOpen=(instancesinfo[page_id][currentinstance].instanceOpen == true) ?
+ false : true;
+      break;
+      case QUIT:
+       End_Program();
+      break;
+     }
+    }
+
 }
