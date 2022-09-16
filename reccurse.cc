@@ -1,7 +1,7 @@
 // reccurse, the filemaker of ncurses
 #include "reccurse.h"
 
-const double version=0.579;
+const double version=0.585;
 
 int main(int argc, char *argv[])
 {
@@ -130,6 +130,7 @@ int End_Program(int code)
    if ( code == NORMALEXIT )
     checkalteredparameters();
    Read_Write_Current_Parameters(4, 1);
+   sendsignals(-1);
 
    sprintf(tmessage, "reccurse exiting in state [%s]", exittexts[code+4]);
     
@@ -157,27 +158,28 @@ int checkalteredparameters()
 {
  char c;   
     
-   if (!alteredparameters)
+   if ( bautosave == OFF ) {
+    Show_Menu_Bar(ERASE);
+    Show_Message(1, bottombary, MAGENTA, "save database (y/n):", 0);
+    c=bgetch(1000);
+    if ( c == 'y' ) {
+     Read_Write_db_File(RECREATE);
+     Read_Write_db_File(WRITE);
+    }
+   }
+   
+   if ( alteredparameters == 0 )
     return 0;
 
    Show_Menu_Bar(ERASE);
    Show_Message(1, bottombary, GREEN, "save altered parameters (y/n):", 0);
-   c=sgetch();
+   c=bgetch(1000);
    if ( c == 'y' ) {
     alteredparameters=0;
     Read_Write_db_File(RECREATE);
     Read_Write_db_File(WRITE);
     if ( shareddatabases[currentpage] == ON )
      sendsignals(SIGUSR2);
-   }
-   if ( autosave == OFF ) {
-    Show_Menu_Bar(ERASE);
-    Show_Message(1, bottombary, GREEN, "save database (y/n):", 0);
-    c=sgetch();
-    if ( c == 'y' ) {
-     Read_Write_db_File(RECREATE);
-     Read_Write_db_File(WRITE);
-    }
    }
 
   return 1;
@@ -3310,8 +3312,7 @@ void toggleshareddatabases()
   shareddatabases[currentpage]=(shareddatabases[currentpage]) ? OFF : ON;
   if ( pidof == 0 )
    shareddatabases[currentpage]=OFF;
-  if ( shareddatabases[currentpage] == ON )
-   sendsignals(SIGUSR2);
+  sendsignals(SIGUSR2);
   Show_Menu_Bar(ERASE);
   Show_Message(1, bottombary, GREEN, "shared databases:", 0);
   Show_Message(18, bottombary, RED, onoff[shareddatabases[currentpage]], 1500);
@@ -3395,7 +3396,7 @@ void Shared_Databases_Handler(int page_id)
       }
      }
      refresh();
-     t=getch();
+     t=bgetch(UNBLOCK);
      if ( t == SHIFT_LEFT )
       t=SHIFT_UP;
      if ( t == SHIFT_RIGHT )
@@ -3430,6 +3431,9 @@ void Shared_Databases_Handler(int page_id)
         break;
        instancesinfo[page_id][currentinstance].instanceOpen=(instancesinfo[page_id][currentinstance].instanceOpen == true) ?
  false : true;
+      break;
+      case TOGGLEMOUSE:
+       togglemouse();
       break;
       case QUIT:
        End_Program();

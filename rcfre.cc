@@ -62,6 +62,7 @@ const int DELETE=330;
 const int INSERT=331;
 const int HOME=262;
 const int END=360;
+const int TOGGLEMOUSE=12;
 const int MAXFIELDS=999; // fields per record
 extern int BLACK, RED, GREEN, YELLOW, BLUE, MAGENTA, CYAN, WHITE;
 enum { BLACKONBLACK=1, BLACKONRED, BLACKONGREEN, BLACKONYELLOW, BLACKONBLUE, BLACKONMAGENTA,
@@ -198,6 +199,7 @@ extern int Read_Write_db_File(int mode=0);
 extern char* Reccurse_File_Extension(char *filename, int flag=0);
 extern int tryfile(char *file);
 extern void cropstring(char ttext[], int noofcharacters, int flag=0);
+extern int togglemouse(int showflag=ON);
 
 // field editor and setup routine
 void Field_Editor()
@@ -343,7 +345,7 @@ void Field_Editor()
    gotoxy(18,20);
    t=sgetch(18,20);
    cleanstdin();
-   if ( t!=SPACE && t!=LEFT && t!=RIGHT && t!=ESC && t!=INSERT && t!=DELETE && t!='j' && t!='$' && t!='&' && t!='u' && t != 'f' )
+   if ( t!=SPACE && t!=LEFT && t!=RIGHT && t!=ESC && t!=INSERT && t!=DELETE && t!='j' && t!='$' && t!='&' && t!='u' && t != 'f' && t != TOGGLEMOUSE )
     t='\n';
    switch (t) {
     case 'u':
@@ -415,6 +417,9 @@ void Field_Editor()
       i=Scan_Input(1, 1, fieldsperrecord, 4)-1;
       if (i>-1 && i<fieldsperrecord)
        fieldshown=i;
+     break;
+     case TOGGLEMOUSE:
+      togglemouse();
      break;
      case '\n':
       printw("selection:");
@@ -674,6 +679,9 @@ int References_Editor()
      i=Scan_Input(1, 1, MAXFIELDS, 3);
      if (i && i<MAXFIELDS+1)
       trelationships[relationshipshown].localFields[1]=i;
+     break;
+     case TOGGLEMOUSE:
+      togglemouse();
      break;
    }
   }

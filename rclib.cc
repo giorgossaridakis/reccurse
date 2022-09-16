@@ -337,7 +337,7 @@ void Scan_Date(int x_pos, int y_pos, char tdate[], int flag) // 0 entire date, 1
    if (flag)
     d=1;
    while (c!=ESC && c!='\n') {
-    Show_Menu_Bar(1);
+    Show_Menu_Bar(ERASE);
     Change_Color(YELLOW);
     strcpy(date, addmissingzeros(itoa(d), 2));
     strcat(date, " ");
@@ -800,7 +800,7 @@ void INThandler(int sig)
     if ( sig == SIGFPE )
      End_Program(FLOATINGPOINTEXCEPTION);
     
-    Show_Menu_Bar(1);
+    Show_Menu_Bar(ERASE);
     Change_Color(RED);
     gotoxy(1,bottombary);
     printw("really quit ?");
@@ -1676,7 +1676,7 @@ int togglemouse(int showflag)
   
    MOUSE=( MOUSE == ON ) ? OFF : ON;
    if ( showflag ) {
-    Show_Menu_Bar(1);
+    Show_Menu_Bar(ERASE);
     sprintf(ttext, "mouse use %s", onoff[MOUSE]);
     Show_Message(1, bottombary, RED, ttext, 1250);
    }
@@ -1709,10 +1709,11 @@ void checkterminalwindow(const char *message)
    clear();
 }
 
-// send signals v2
-int sendsignals(int sig, int sendflag) // 0 only write in vector
+// send signals v3
+int sendsignals(int sig) // 0 only write in vector, -1 erase file
 {
-  char psoutput[L_tmpnam + 1];
+  static char psoutput[L_tmpnam + 1];
+  static char *ps;
   int i1=0, nread=0;
   char line[MAXNAME*5];
   int process=-1; pidof=1;
@@ -1720,16 +1721,26 @@ int sendsignals(int sig, int sendflag) // 0 only write in vector
   binstancesinfo[currentpage]=instancesinfo[currentpage];
   instancesinfo[currentpage].clear();
   
-    tmpnam2(psoutput); 
-    sprintf(line, "ps -x >%s\n", psoutput);
-    system(line);
-    if ( WEXITSTATUS(system(line)) ) {
-     pidof=0;
-     return 0;
+    if ( sig == NOSCRIPT ) {
+     tmpnam2(psoutput); 
+     sprintf(line, "ps -x >%s\n", psoutput);
+     system(line);
+     if ( WEXITSTATUS(system(line)) ) {
+      pidof=0;
+      return pidof;
+     }
+     int fd=open(psoutput, O_RDONLY);
+     char buf[1];
+     string tps;
+     while ( (nread=read(fd, buf, sizeof(buf))) )
+      tps+=buf[0];
+     close(fd);
+     unlink(psoutput);
+     ps=strdup(tps.c_str());
     }
-  
-     fd=open(psoutput, O_RDONLY);
-     while ((nread=readfileentry(fd, line))>-1) {
+    
+
+    while ( (nread=readstringentry2(ps, line) )> -1 ) {
      
       if ( ppid == -1 && mypid == atoi(line) )
        ppid=i1; 
@@ -1746,10 +1757,8 @@ int sendsignals(int sig, int sendflag) // 0 only write in vector
        ++i1;
       
     }
-    close(fd);
-    unlink(psoutput);
-    
-    if ( sendflag )
+
+    if ( sig )
      for (i1=0;i1<(int)instancesinfo[currentpage].size() && pidof;i1++)
       if ( instancesinfo[currentpage][i1].instancePid != mypid && instancesinfo[currentpage][i1].instanceOpen )
        if ( kill(instancesinfo[currentpage][i1].instancePid, sig) > 0 )
@@ -1787,24 +1796,24 @@ int addtoinstancesinfo(int pid)
 void get_pid(int sig, siginfo_t *info, void *context)
 {
    signalPid = info->si_pid;
+   int i;
 
    if ( shareddatabases[currentpage] == OFF || pidof == 0 )
     return;
    sendsignals(NOSCRIPT);
-   
-   if ( sig == SIGUSR1 ) {
-    if ( findininstancesinfovector(signalPid, currentpage) > -1 ) 
-     Read_Entire_Record();
-   }
   
-   if ( sig == SIGUSR2 ) {
-    if ( findininstancesinfovector(signalPid, currentpage) == -1 ) 
-     addtoinstancesinfo(signalPid);
-     else
-      Read_Write_db_File();
+    if ( (i=findininstancesinfovector(signalPid, currentpage)) == -1 ) 
+     return;
+   
+    if ( sig == SIGUSR1 && instancesinfo[currentpage][i].instanceOpen )
+     Read_Entire_Record();
+  
+   if ( sig == SIGUSR2 && instancesinfo[currentpage][i].instanceOpen ) {
+    Read_Write_db_File();
     if ( currentrecord>recordsnumber-1 ) // in case last deleted
      currentrecord=recordsnumber-1;
    }
+   
 }
 
 // find in instancesinfo
@@ -1866,6 +1875,31 @@ int readfileentry(int fd, char *line)
      return -1;
     
  return isseparationchar2(buf[0]);
+}
+
+// read entry from file
+int readstringentry2(char *line, char *linepart)
+{
+  static int i=0; // source line position
+  int i1=0; // word position
+
+  // reset static
+  if ( i == strlen(line) ) {
+   i=0;
+   return -1;
+  }
+
+    while (line[i]) {
+     if (isseparationchar2(line[i++])) {
+      if (i1==0)
+       continue;
+      break;
+     }
+    linepart[i1++]=line[i-1];
+   }
+   linepart[i1]='\0';
+
+ return isseparationchar2(line[i-1]);
 }
 
 // word separation characters

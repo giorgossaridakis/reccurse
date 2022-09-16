@@ -178,7 +178,6 @@ char *myname;
 int mypid;
 int pidof=1;
 static volatile int signalPid = -1;
-int fd;
 
 struct Points {
  int x;
@@ -449,13 +448,14 @@ void Write_Fields_AnnotatedField_Vector(vector<Annotated_Field> tv, int recordid
 int isfieldreferencedinvector(int field_id, vector<int>& tv);
 int togglemouse(int showflag=ON);
 void checkterminalwindow(const char *message);
-int sendsignals(int sig=SIGUSR1, int sendflag=1);
+int sendsignals(int sig=SIGUSR1);
 int addtoinstancesinfo(int pid);
 void get_pid(int sig, siginfo_t *info, void *context);
 int findininstancesinfovector(int element, int page_id);
 void Read_Entire_Record(int record_id=-1);
 void Write_Entire_Record(int record_id);
 int readfileentry(int fd, char *line);
+int readstringentry2(char *line, char *linepart);
 unsigned int isseparationchar2(char t);
 int findsimple2(char text[MAXNAME], char token[MAXNAME]);
 char* tmpnam2(char name[L_tmpnam+1], int length=8);

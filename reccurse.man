@@ -187,7 +187,7 @@ smaller - like above, comparison is done with currrent record being smaller
  in numerical value than the clipboard
 clear - delete all variable fields from the databse
 autosave - will toggle autosave on/off
-quit - obvious, quite the program
+quit - obvious, quit the program
 stop - stop the running script
 pass - do nothing, go to the next line
 
@@ -213,6 +213,7 @@ sleep - sleep 2 will set sleep time between commands to 2 seconds
 menu - menu 3 will take you to menu 3. acceptable values: 0 1 2 3 5
 key - key l will push the l key on the current menu
 keys - keys a-b-c-d will push keys given one by one. 
+push <field> will push space on <field>
 acceptable keys are all keyboard keys and ->
 down, up, left, right, shift_left, shift_right, escape or esc, enter, 
 backspace or bs, delete or del, insert or ins, home, end, copy, paste,
