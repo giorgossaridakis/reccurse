@@ -1,7 +1,7 @@
 // reccurse, the filemaker of ncurses
 #include "reccurse.h"
 
-const double version=0.585;
+const double version=0.589;
 
 int main(int argc, char *argv[])
 {
@@ -62,7 +62,7 @@ int main(int argc, char *argv[])
       ofstream outdbfile(dbfile, ios::binary);
       outdbfile.close();
       ofstream outrcfile(rcfile);
-      outrcfile << "#date&time 0 000000000 25 10 5 10 2 000000000 43 1 9 1 2 $ 0 0 1 1 . " << endl << "#";
+      outrcfile << "#date&time 0 000000000 25 10 5 10 2 000000000 43 1 9 1 2 $ 0 0 1 1 ~" << endl << "#";
       outrcfile.close();
       strcpy(tmessage, "created file: ");
     Read_rc_File(); } }
@@ -980,8 +980,11 @@ char* Bring_DateTime_Stamp(char tdatetime[MAXSTRING], int field_id)
   else
    strcpy(calendarformat, "%x %X");
       
-  if ( field_id > -1 && isautomaticvalueformatinstruction(field_id))
+  if ( field_id > -1 && isautomaticvalueformatinstruction(field_id)) {
    strcpy(calendarformat, record[field_id].automatic_value);
+   timeinfo->tm_min+=Time_Correction_Scanner(calendarformat);
+   mktime(timeinfo);
+  }
   
   strftime(tdatetime, MAXSTRING,const_cast <char *> (calendarformat), timeinfo);
   
@@ -990,6 +993,29 @@ char* Bring_DateTime_Stamp(char tdatetime[MAXSTRING], int field_id)
     tdatetime[i]=SPACE;
   
  return &tdatetime[0];
+}
+
+// time correction interpeter for automatic value
+int Time_Correction_Scanner(char* tautomaticvalue)
+{
+  int i, i1, i2;
+  char correction[MAXSTRING], ttautomaticvalue[MAXSTRING], signs[]="-+";
+  i1=i2=0;
+  
+   for (i=0;i<(int)strlen(tautomaticvalue);i++) {
+    if ( tautomaticvalue[i] == '\\' ) {
+     ++i;
+     while ( i<(int)strlen(tautomaticvalue) && (isdigit(tautomaticvalue[i]) || tautomaticvalue[i]==signs[0] || tautomaticvalue[i]== signs[1]) )
+      correction[i1++]=tautomaticvalue[i++];
+     correction[i1]='\0';
+    }
+    ttautomaticvalue[i2++]=tautomaticvalue[i];
+   }
+   ttautomaticvalue[i2]='\0';
+   strcpy(tautomaticvalue, ttautomaticvalue);
+   
+  return (i1) ? atoi(correction) : 0 ;
+  
 }
     
 // read-write record from-to dbfile
@@ -1235,17 +1261,26 @@ int Show_Record_and_Menu()
     runscript=commandparser(scriptcommand);
     }
     
-    if (!runscript || (keyonnextloop.size() && keyonnextloop[keyonnextloop.size()-1]!=SPACE)) { // also process keyonnextloop from scripts, but not space
-     if (recordsdemoall && printscreenmode)
+    if ( !runscript || (keyonnextloop.size() && keyonnextloop[keyonnextloop.size()-1]!=SPACE) ) { // also process keyonnextloop from scripts, but not space
+     if ( recordsdemoall && printscreenmode )
       blockunblockgetch(PRINTUNBLOCK);
      else
-     blockunblockgetch(pagehasclockfields() ? UNBLOCK : UNBLOCK/3); // necessary to give live clock operational status
+      blockunblockgetch(pagehasclockfields() ? UNBLOCK : UNBLOCK/3); // necessary to give live clock operational status
      if (mousemenucommands.size())
       c=fetchmousemenucommand();
      else
       c=(replaychar) ? replaychar : sgetch();
      replaychar=0;
      blockunblockgetch();
+     if (recordsdemoall) {
+      if ( c == ESC )
+       c='w';
+      if (c!='w') {
+       c='>';
+       if (!printscreenmode) // a little extra time to view record
+        uSleep(750);
+      }
+     }
      renewscreen=c=negatekeysforcurrentmenu(c);
      if ( !alteredparameters && currentmenu != CALCULATOR )
       for (i=0;i<(int) strlen(alterscreenparameterskeys);i++)
@@ -1259,16 +1294,6 @@ int Show_Record_and_Menu()
        }
       }
       altpressed=0;
-     }
-       
-     if (recordsdemoall) {
-      if (c==ESC)
-       c='w';
-      if (c!='w') {
-       c='>';
-       renewscreen=1;
-       if (!printscreenmode) // a little extra time to view record
-      uSleep(750); }
      }
      
      // execute automatic record scripts
@@ -1376,7 +1401,8 @@ int Show_Record_and_Menu()
       case 'w': // demonstrate all records
        if (recordsdemoall) {
         recordsdemoall=0;
-       break; }
+        break;
+       }
        if (recordsnumber>1)
         recordsdemoall=1;
        currentrecord=findresults[0][0];
@@ -1448,13 +1474,14 @@ int Show_Record_and_Menu()
        break; }
        if (recordsdemoall && printscreenmode) // output to file in print mode
         outputscreenarraytofile();
-       if (recordsdemoall && i==recordsnumber+1)
+       if ( recordsdemoall && i == recordsnumber+1 )
         recordsdemoall=0;
        if ((currentrecord>recordsnumber-1 && currentrecord+1<MAXRECORDS)) {
-        if (recordsdemoall) {
+        if ( recordsdemoall ) {
          recordsdemoall=0;
          --currentrecord;
-        break; }
+         break;
+        }
         if (recordsdemo) {
          --currentrecord;
           break;
@@ -2396,7 +2423,7 @@ int Show_Field(Annotated_Field *field, int flag) // 1 highlight, 2 only in scree
    }
    
   }
-
+  
    // field string to field size and lines
    fieldhasdependancy=Generate_Dependant_Field_String(field, ttext);
    if (fieldhasdependancy!=1)
