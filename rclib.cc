@@ -1800,7 +1800,8 @@ void get_pid(int sig, siginfo_t *info, void *context)
 
    if ( shareddatabases[currentpage] == OFF || pidof == 0 )
     return;
-   sendsignals(NOSCRIPT);
+   if ( sig == SIGUSR2 || findininstancesinfovector(signalPid, currentpage) == -1 )
+    sendsignals(NOSCRIPT);
   
     if ( (i=findininstancesinfovector(signalPid, currentpage)) == -1 ) 
      return;

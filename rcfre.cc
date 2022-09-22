@@ -83,6 +83,7 @@ const char *FIELDTYPES[]= { "numerical", "calendar", "string", "mixed", "variabl
 const char *BUTTONBOXES[]= { "edit field", "tick box", "button box", "button screen", "button command", "automatic script" };
 enum { OFF = 0, ON };
 enum { MAIN=0, OPTIONS, EDIT, EXTRA, EDITOR, CALCULATOR, EDITEXTRA, EXTERNALDB };
+enum { READ = 0, WRITE, CREATERC, RECREATE, RECREATERC };
 
 struct Points {
  int x;
@@ -200,13 +201,14 @@ extern char* Reccurse_File_Extension(char *filename, int flag=0);
 extern int tryfile(char *file);
 extern void cropstring(char ttext[], int noofcharacters, int flag=0);
 extern int togglemouse(int showflag=ON);
+extern void Flash_Field(int field_id, int sleeptime=250);
 
 // field editor and setup routine
 void Field_Editor()
 {
   int i, selection, fieldshown=currentfield, previousrecord=-1, t=0, x, y;
   char ttext[MAXSTRING];
-  editoroption=alteredparameters=1;; // reserved to point to fieldshown, if needed
+  editoroption=alteredparameters=1; // reserved to point to fieldshown, if needed
   mousemask(ALL_MOUSE_EVENTS, NULL);
   
   while ( t != ESC ) {
@@ -217,6 +219,7 @@ void Field_Editor()
    }
       
    Determine_Button_Box(fieldshown);
+   Flash_Field(fieldshown);
    Draw_Box(BOXCHAR, 6, 17, 33, 5, 17, 25);
    Show_Menu_Bar(1);
    clearinputline();
@@ -408,7 +411,7 @@ void Field_Editor()
       t=sgetch();
       t = (t=='y') ? 2 : 0;
       Duplicate_Field(fieldshown, t);
-      strcpy(ttext, "duplicate to field ");
+      strcpy(ttext, "duplicated to field ");
       strcat(ttext, itoa(fieldsperrecord));
       Show_Message(18, 20, RED, ttext, 1500);
      break;
@@ -540,8 +543,8 @@ void Field_Editor()
   t=sgetch();
   if (tolower(t)=='y') {
    alteredparameters=0;
-   Read_Write_db_File(3);
-   Read_Write_db_File(1); 
+   Read_Write_db_File(RECREATE);
+   Read_Write_db_File(WRITE); 
   }
   editoroption=-1;
   
@@ -601,6 +604,7 @@ int References_Editor()
    printw("<arrow keys|HOME|END>");
    gotoxy(25,19);
    printw("<INS|DEL|ESC>");
+   refresh();
    Change_Color(YELLOW);
    gotoxy(18,20);
    t=tolower(sgetch(18,20));
@@ -717,7 +721,7 @@ void clearinputline()
 
 int Edit_Field(int &field_id)
 {
- int c=0, bc=0, backupmenu=currentmenu, backupbar=menubar, showallrecords=0;
+ int c=0, bc=0, backupmenu=currentmenu, backupbar=menubar, showallrecords=ON;
  Field trecord=record[field_id], ttrecord=record[field_id];
  currentmenu=EDITOR; menubar=1;
  

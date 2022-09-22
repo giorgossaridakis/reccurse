@@ -1,7 +1,7 @@
 // reccurse, the filemaker of ncurses
 #include "reccurse.h"
 
-const double version=0.589;
+const double version=0.597;
 
 int main(int argc, char *argv[])
 {
@@ -18,7 +18,7 @@ int main(int argc, char *argv[])
   sigaction(SIGUSR1, &sa, NULL);
   sigaction(SIGUSR2, &sa, NULL);
   
-  strcpy((myname=(char *)malloc(sizeof(argv[0]))), argv[0]);
+  myname=strdup(argv[0]);
   mypid=getpid();
   pidof=sendsignals(NOSCRIPT);
   
@@ -62,10 +62,12 @@ int main(int argc, char *argv[])
       ofstream outdbfile(dbfile, ios::binary);
       outdbfile.close();
       ofstream outrcfile(rcfile);
-      outrcfile << "#date&time 0 000000000 25 10 5 10 2 000000000 43 1 9 1 2 $ 0 0 1 1 ~" << endl << "#";
+      outrcfile << "#today 0 000000000 25 69 2 10 2 000000000 43 1 33 1 2 ~ 0 0 1 1 ~" << endl << "#";
       outrcfile.close();
       strcpy(tmessage, "created file: ");
-    Read_rc_File(); } }
+      Read_rc_File();
+     }
+    }
     // setup pages workgroup
     strcpy(pages[pagesnumber++], dbfile);
     strcat(tmessage, dbfile);
@@ -129,8 +131,7 @@ int End_Program(int code)
   
    if ( code == NORMALEXIT )
     checkalteredparameters();
-   Read_Write_Current_Parameters(4, 1);
-   sendsignals(-1);
+   Read_Write_Current_Parameters(4, WRITE);
 
    sprintf(tmessage, "reccurse exiting in state [%s]", exittexts[code+4]);
     
@@ -244,7 +245,7 @@ int Read_rc_File()
    rcinput.close();
     
    Reccurse_File_Extension(dbfile, 2);
-   Read_Write_db_File(CREATERC);
+   Read_Write_db_File(CREATEDB);
    Initialize_Record();
    
  return 0;
@@ -305,9 +306,10 @@ int Read_Write_db_File(int mode) // 0 read, 1 write, 2 create from file, 3&4 rec
      tfield2.id=fieldsperrecord;
      Read_Record_Field(ttext2, tfield2);
      record.push_back(tfield2);
-    ++fieldsperrecord; }
-    --fieldsperrecord;
-    p=record.end(); // delete last read
+     ++fieldsperrecord;
+    }
+    --fieldsperrecord; // delete last read
+    p=record.end();
     --p;
     record.erase(p);
     // now read records
@@ -323,11 +325,10 @@ int Read_Write_db_File(int mode) // 0 read, 1 write, 2 create from file, 3&4 rec
     s=records.end(); // delete last read
     --s;
     records.erase(s);
-    recordsnumber=(int) records.size()/fieldsperrecord;
-    if (!activefields) {
-     Show_Message(1, bottombary, RED, "no active fields in database");
+    recordsnumber=(int)records.size()/fieldsperrecord;
+    if (!activefields)
      End_Program(NOACTIVEFIELDS);
-    }
+
     Read_Write_Relationships(); 
     for (i=0;i<fieldsperrecord;i++)
      Determine_Button_Box(i);
@@ -367,12 +368,12 @@ int Read_Write_db_File(int mode) // 0 read, 1 write, 2 create from file, 3&4 rec
    
    switch (mode) {
     case 1:
-     for (i=0;i<(int) records.size();i++)
-      Read_Write_Field(records[i], fieldserialtofieldposition(i), 1);
+     for (i=0;i<(int)records.size();i++)
+      Read_Write_Field(records[i], fieldserialtofieldposition(i), WRITE);
      if (currentfield<findfieldege() && currentfield<findfieldege(1))
       currentfield=findfieldege();
      for (i=0;i<5;i++)
-      Read_Write_Current_Parameters(i, 1);
+      Read_Write_Current_Parameters(i, WRITE);
     break;
     case 2:
     // create dbfile from source file
@@ -477,7 +478,7 @@ int Read_Write_Current_Parameters(int item, int mode) // item:0 currentrecord, 1
   int parametersize=(!item || item==4) ? 4 : 1;
   fstream dbfileaccess(dbfile, ios::in | ios::out | ios::binary);
 
-  if ( mode == 0 ) {
+  if ( mode == READ ) {
    dbfileaccess.seekg(RELATIONSHIPSLENGTH+startofrecords+parameterpositions[item], ios::beg);
    for (i=0;i<parametersize;i++)
     dbfileaccess.get(ttext[i]);
@@ -608,6 +609,9 @@ int isrecordproperlydictated(Field &tfield)
    strcpy(tfield.title_attributes, STANDARDATTRIBUTES);
   if ( strlen(tfield.attributes) != 9 )
    strcpy(tfield.attributes, STANDARDATTRIBUTES);
+  
+  if ( tfield.type == CLOCK && strcmp(tfield.automatic_value, EMPTYSTRING) )
+   strcpy(tfield.automatic_value, EMPTYSTRING);
 
  return 1;
 }
@@ -750,10 +754,12 @@ void Initialize_Record()
   
   for (i=0;i<fieldsperrecord;i++) {
    Annotated_Field tfield(i, 0, " ", " ");
-  Bring_DateTime_Stamp(tdatetime, tfield.id);
-  if (record[tfield.id].type==CALENDAR)
+  if ( record[tfield.id].type == CALENDAR ) {
+   Bring_DateTime_Stamp(tdatetime, tfield.id);
    strcpy(tfield.text, tdatetime);
-  records.push_back(tfield); }
+  }
+  records.push_back(tfield);
+  }
   ++recordsnumber;
   
   Read_Write_db_File(WRITE);
@@ -774,18 +780,14 @@ int Add_Field(int type, char *name, char *textvalue)
     return -1;
    }
    
-    if ( name == NULL ) {
-     name=(char *) malloc(MAXSTRING);
-     strcpy(name, EMPTYSTRING); 
-    }
-    if ( textvalue == NULL ) {
-     textvalue=(char *) malloc(MAXSTRING);
-     strcpy(textvalue, " "); 
-    }
-    if (type==VARIABLE) {
-     tx=99; ty=99; 
-    }
-    Field tfield(fieldsperrecord, name, 0, const_cast <char *> ("000000000"), WHITEONBLACK, tx, ty, 1, 1, const_cast <char *> ("000000000"), WHITEONBLACK, 0, WHITEONBLACK, type, const_cast <char *> (EMPTYSTRING), 2, 0, 0, 1, (type==VARIABLE || type==PROGRAM) ? 0 : 1, (type==VARIABLE) ? textvalue : const_cast <char *> (EMPTYSTRING));
+    if ( name == NULL )
+     name=strdup(EMPTYSTRING);
+    if ( textvalue == NULL )
+     textvalue=strdup(" ");
+    if (type==VARIABLE)
+     tx=ty=99;
+    
+    Field tfield(fieldsperrecord, name, 0, const_cast<char *>(STANDARDATTRIBUTES), WHITEONBLACK, tx, ty, 1, 1, const_cast<char *>(STANDARDATTRIBUTES), WHITEONBLACK, 0, WHITEONBLACK, type, const_cast <char *> (EMPTYSTRING), 2, 0, 0, 1, (type==VARIABLE || type==PROGRAM) ? 0 : 1, (type==VARIABLE) ? textvalue : const_cast <char *> (EMPTYSTRING));
     record.push_back(tfield);
     Annotated_Field ttfield(fieldsperrecord, atof(textvalue), textvalue, " ");
     for (i=0;i<recordsnumber-1;i++) {
@@ -1017,6 +1019,23 @@ int Time_Correction_Scanner(char* tautomaticvalue)
   return (i1) ? atoi(correction) : 0 ;
   
 }
+
+// time correction adjuster for automatic values
+char* Time_Correction_Adjuster(int adjustment, int field_id)
+{
+  int c1;
+  static char tautomaticvalue[MAXSTRING];
+  char tcorrection[10];
+  if ( field_id == -1 )
+   field_id=currentfield;
+  
+   strcpy(tautomaticvalue, record[field_id].automatic_value);
+   c1=Time_Correction_Scanner(tautomaticvalue) + adjustment;
+   sprintf(tcorrection, "\\%d", c1);
+   strcat(tautomaticvalue, tcorrection);
+  
+ return &tautomaticvalue[0];
+}
     
 // read-write record from-to dbfile
 int Read_Write_Field(Annotated_Field &tfield, long int field_position, int mode) // 0 read, 1 write
@@ -1028,9 +1047,6 @@ int Read_Write_Field(Annotated_Field &tfield, long int field_position, int mode)
   if (!mode)
    dbfileaccess.seekg(field_position, ios::beg);
   else {
-   if ( savedfield == tfield.id )
-    return -1; // already saved
-   savedfield=tfield.id;
    dbfileaccess.seekp(field_position, ios::beg);
    replaceunderscoresandbrackets(tfield.text, 0);
    replaceunderscoresandbrackets(tfield.formula, 0);
@@ -1155,7 +1171,7 @@ void Duplicate_Record(int record_id)
 // show record
 int Show_Record_and_Menu()
 {
-  int i, i1, n, trecordsnumber, c, backupmenu=0, replaychar=0;
+  int i, i1, n, trecordsnumber, c, backupmenu=0, replaychar=0, savedonedit=-1;
   int previousfield=0, scriptdirection=NOSCRIPT;
   int findresults[MAXSEARCHDEPTH+1][MAXRECORDS], tsortresults[MAXRECORDS];
   char ttext[MAXSTRING];
@@ -1174,7 +1190,6 @@ int Show_Record_and_Menu()
     // handle field repetitions
     if (changedrecord) {
      lastfieldrepeated=-1;
-     savedfield=-1;
      backupfields=currentfields;
      if ( shareddatabases[currentpage] == ON )
       Read_Entire_Record();
@@ -1222,8 +1237,12 @@ int Show_Record_and_Menu()
     if ( previousfield != currentfield || changedrecord ) {
       
      if ( changedrecord == 0 ) {
-      if ( autosave )
-       Read_Write_Field(records[(currentrecord*fieldsperrecord)+previousfield], fieldposition(currentrecord, previousfield), WRITE); 
+      if ( autosave ) {
+       if ( savedonedit != previousfield ) {
+        Read_Write_Field(records[(currentrecord*fieldsperrecord)+previousfield], fieldposition(currentrecord, previousfield), WRITE);
+         savedonedit=-1;
+       }
+      }
       if ( scriptdirection == ONEXIT || scriptdirection == ONENTRYANDEXIT )
         Execute_Script_Command(previousfield);
      }
@@ -1335,6 +1354,8 @@ int Show_Record_and_Menu()
        togglemouse();
       break;
       case SCANAUTOMATICVALUE:
+       if ( record[currentfield].type == CLOCK )
+        break;
        Show_Menu_Bar(ERASE);
        Scan_Input(record[currentfield].automatic_value, 1, bottombary, record[currentfield].color);
        alteredparameters=1;
@@ -1344,14 +1365,9 @@ int Show_Record_and_Menu()
        Scan_Input(record[currentfield].title, 1, bottombary, record[currentfield].color);
        alteredparameters=1;
       break;
-      case IMPORTASCII:
-       memset(input_string, 0, MAXSTRING);
-       Show_Message(1, bottombary, MAGENTA, "filename:", 0);
-       i=Scan_Input(input_string, 10, bottombary, MAGENTAONBLACK);
-       backupfields=Records_From_Adjoining_Fields(currentfield, 1);
-       loadasciitofields(currentfield, input_string);
-      break;
       case TEXTTOAUTOMATICVALUE: {
+       if ( record[currentfield].type == CLOCK )
+        break;
        vector<int> texttoautomaticvaluefields;
        fieldsadjoiningfields(&records[(currentrecord*fieldsperrecord)+currentfield], texttoautomaticvaluefields);
        referencedadjoiningfields(currentfield, texttoautomaticvaluefields);
@@ -1359,6 +1375,13 @@ int Show_Record_and_Menu()
         strcpy(record[texttoautomaticvaluefields[i]].automatic_value, records[(currentrecord*fieldsperrecord)+texttoautomaticvaluefields[i]].text);
        alteredparameters=1;
       }
+      break;
+      case IMPORTASCII:
+       memset(input_string, 0, MAXSTRING);
+       Show_Message(1, bottombary, MAGENTA, "filename:", 0);
+       i=Scan_Input(input_string, 10, bottombary, MAGENTAONBLACK);
+       backupfields=Records_From_Adjoining_Fields(currentfield, 1);
+       loadasciitofields(currentfield, input_string);
       break;
       case 'q':
        if (!printscreenmode)
@@ -1410,15 +1433,15 @@ int Show_Record_and_Menu()
       // from menu 0
       case 'e':
        currentmenu=EDIT;
-       Read_Write_Current_Parameters(1, 1);
+       Read_Write_Current_Parameters(1, WRITE);
       break;
       case 'o':
        currentmenu=OPTIONS;
-       Read_Write_Current_Parameters(1, 1);
+       Read_Write_Current_Parameters(1, WRITE);
       break;
       case 't':
        currentmenu=EXTRA;
-       Read_Write_Current_Parameters(1, 1);
+       Read_Write_Current_Parameters(1, WRITE);
       break;
       case '`': {
        if ( currentmenu == CALCULATOR )
@@ -1435,14 +1458,14 @@ int Show_Record_and_Menu()
         backupmenu=currentmenu;  // keep old menu from calculator mode
          currentmenu=CALCULATOR;
        }
-       Read_Write_Current_Parameters(1, 1);  
+       Read_Write_Current_Parameters(1, WRITE);  
        Initialize_Database_Parameters(1); }
       break;
       case 'm': // from all menus
        ++menubar;
        menubar=(menubar==4) ? 0 : menubar;
        if (autosave)
-        Read_Write_Current_Parameters(2, 1);
+        Read_Write_Current_Parameters(2, WRITE);
       break;
       case ESC: // from all menus
        if (recordsdemo) {
@@ -1452,19 +1475,19 @@ int Show_Record_and_Menu()
        if ( currentmenu == EXTERNALDB ) {
         currentmenu=EDITEXTRA;
         if (autosave)
-         Read_Write_Current_Parameters(1, 1);
+         Read_Write_Current_Parameters(1, WRITE);
        break; }
        if ( currentmenu == EDITEXTRA ) {
         currentmenu=EDIT;
         if (autosave)
-         Read_Write_Current_Parameters(1, 1);
+         Read_Write_Current_Parameters(1, WRITE);
        break; }
        if ( currentmenu == MAIN )
         INThandler(SIGINT);
        else
         currentmenu=MAIN;
        if (autosave)
-        Read_Write_Current_Parameters(1, 1);
+        Read_Write_Current_Parameters(1, WRITE);
       break;
       case '>': // from all menus
        for (i=0;i<recordsnumber+1;i++) 
@@ -1500,7 +1523,7 @@ int Show_Record_and_Menu()
         else
        --currentrecord; }
        if (!recordsdemo && autosave) 
-        Read_Write_Current_Parameters(0, 1);
+        Read_Write_Current_Parameters(0, WRITE);
        Show_Menu_Bar();
       break;
       case '<': // from all menus
@@ -1510,7 +1533,7 @@ int Show_Record_and_Menu()
          changedrecord=1;
        break; }
        if (!recordsdemo && autosave) 
-        Read_Write_Current_Parameters(0, 1);
+        Read_Write_Current_Parameters(0, WRITE);
       break;
       case HOME:
        currentfield=findfieldege();
@@ -1520,11 +1543,11 @@ int Show_Record_and_Menu()
       break;
       case START_OF_RECORDS: // from all menus
        currentrecord=findresults[0][0];
-       Read_Write_Current_Parameters(0, 1);
+       Read_Write_Current_Parameters(0, WRITE);
       break;
       case END_OF_RECORDS: // from all menus
        currentrecord=findresults[0][recordsnumber-1];
-       Read_Write_Current_Parameters(0, 1);
+       Read_Write_Current_Parameters(0, WRITE);
       break;
       case 'j':
        Show_Menu_Bar(ERASE);
@@ -1725,7 +1748,7 @@ int Show_Record_and_Menu()
        if ( currentmenu == EDITEXTRA ) {
         currentmenu=EXTERNALDB;
         if (autosave)
-         Read_Write_Current_Parameters(1, 1);
+         Read_Write_Current_Parameters(1, WRITE);
        }
       break;      
      break;
@@ -1800,6 +1823,7 @@ int Show_Record_and_Menu()
        }
        if (record[currentfield].buttonbox==BUTTONBOX)
         pushspaceonfield();
+       savedonedit=currentfield;
       }
       if ( currentmenu == EDITEXTRA ) {
        Flash_Field(currentfield);
@@ -1865,39 +1889,40 @@ int Show_Record_and_Menu()
       pushspaceonfield();
      break;
      case '+':
+      if ( record[currentfield].type == CLOCK ) {
+       strcpy( record[currentfield].automatic_value, Time_Correction_Adjuster(30) );
+       break;
+      }
       if ( currentmenu != CALCULATOR )
        record[currentfield].attributes[6]=(record[currentfield].attributes[6]=='1') ? '0' : '1';
-      alteredparameters=1;
      break;
      case '-':
+      if ( record[currentfield].type == CLOCK ) {
+       strcpy( record[currentfield].automatic_value, Time_Correction_Adjuster(-30) );
+       break;
+      }
       if ( currentmenu != CALCULATOR )
        record[currentfield].attributes[2]=(record[currentfield].attributes[2]=='1') ? '0' : '1';
-      alteredparameters=1;
      break;
      case '*':
       if ( currentmenu != CALCULATOR )
        record[currentfield].attributes[1]=(record[currentfield].attributes[1]=='1') ? '0' : '1';
-      alteredparameters=1;
      break;
      case '/':
       if ( currentmenu != CALCULATOR )
        record[currentfield].attributes[4]=(record[currentfield].attributes[4]=='1') ? '0' : '1';
-      alteredparameters=1;       
      break;
      case '.':
       if ( currentmenu != CALCULATOR )
        record[currentfield].attributes[5]=(record[currentfield].attributes[5]=='1') ? '0' : '1';
-      alteredparameters=1;       
      break;
      case '!':
       if ( currentmenu != CALCULATOR )
        record[currentfield].color+=record[currentfield].color<58 ? 1 : -58;
-      alteredparameters=1;       
      break;
      case '@':
       if ( currentmenu != CALCULATOR )
        record[currentfield].color-=record[currentfield].color>2 ? 1 : -57;
-      alteredparameters=1;       
      break;
      case 'c':
       for (i=0;i<fieldsperrecord;i++)
@@ -1934,7 +1959,7 @@ int Show_Record_and_Menu()
      case INSERT:
       if ( currentmenu == EDIT ) {
        currentmenu=EDITEXTRA;
-       Read_Write_Current_Parameters(1, 1);
+       Read_Write_Current_Parameters(1, WRITE);
       }
      break;
      case 'u':
@@ -2171,7 +2196,7 @@ int negatekeysforcurrentmenu(int t)
    switch (t) {
     case 5:currentmenu=EDIT; break; case 15:currentmenu=1; break; case 20:currentmenu=EXTRA; break; case PAGES_SELECTOR_KEY: if (!printscreenmode) Pages_Selector();
    break; }
-   Read_Write_Current_Parameters(1, 1);
+   Read_Write_Current_Parameters(1, WRITE);
   return 1; } // 1 will set renewscreen
 
   if ( currentmenu == EDIT || currentmenu == EDITEXTRA )
@@ -2561,7 +2586,7 @@ void Flash_Field(int field_id, int sleeptime)
 // show field id and highlight
 int Show_Field_ID(Annotated_Field *tfield)
 {
-  int trecord=tfield->id;
+  int trecord=tfield->id,x, y;
   int highlightcolor=(record[trecord].color==highlightcolors[1]) ? highlightcolors[0] : highlightcolors[1];
   
   if (!record[trecord].active) {
@@ -2572,7 +2597,10 @@ int Show_Field_ID(Annotated_Field *tfield)
    if ( terminalhascolor == 0 )
     Change_Attributes(REVERSE);
    attron(A_BLINK);
-   gotoxy(record[trecord].pt.x, record[trecord].pt.y);
+   x=record[trecord].pt.x; y=record[trecord].pt.y;
+   if ( editoroption > -1 && record[trecord].box == ON)
+    --y;
+   gotoxy(x,y);
    printw("%d", tfield->id+1);
    refresh();
    Change_Attributes(NORMAL);
@@ -3069,7 +3097,7 @@ int Pages_Selector(int pagetochange)
    alteredparameters=0; // anyways
   }
   if ( autosave )
-   Read_Write_Current_Parameters(4, 1); // write out currentfield in case of change
+   Read_Write_Current_Parameters(4, WRITE); // write out currentfield in case of change
   Load_Database(currentpage);
   
  return currentpage;
@@ -3330,7 +3358,7 @@ void toggleautosave()
   Show_Menu_Bar(ERASE);
   Show_Message(1, bottombary, GREEN, "autosave:", 0);
   Show_Message(10, bottombary, RED, onoff[autosave], 1500);
-  Read_Write_Current_Parameters(3, 1);
+  Read_Write_Current_Parameters(3, WRITE);
 }
 
 // toggle shared database files on/off 
