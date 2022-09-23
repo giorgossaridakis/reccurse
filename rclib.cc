@@ -1507,7 +1507,7 @@ char *Generate_Calendar(int m, int y)
   int i, day, d=1, spaces, daysinmonth;
   static char calendar[256], ttext[MAXSTRING];
     
-    sprintf(calendar, "          %s %d>", months[m], y);
+    sprintf(calendar, "       %s %d>", months[m], y);
     for (i=4;i<7;i++) {
      leavespaces(calendar, SPACES-3);
     sprintf(ttext, "%.3s", daysofweek[i]); 

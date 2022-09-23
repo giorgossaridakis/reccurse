@@ -325,7 +325,7 @@ void Renumber_Field_Fieldlist(int startingfield);
 int Divide_Field(int field_id, int mode);
 char* Bring_DateTime_Stamp(char tdatetime[MAXSTRING], int field_id=-1);
 int Time_Correction_Scanner(char* tautomaticvalue);
-char* Time_Correction_Adjuster(int adjustment, int field_id=-1);
+char* Time_Correction_Adjuster(int adjustment=0, int field_id=-1);
 int Read_Write_Field(Annotated_Field &tfield, long int field_position, int mode=0);
 long int fieldposition(int record_id, int field_id);
 long int fieldserialtofieldposition(int position);

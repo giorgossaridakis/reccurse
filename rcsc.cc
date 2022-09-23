@@ -40,9 +40,9 @@ enum { TOLEFT=1, CENTER, TORIGHT };
 enum { SAME=0, LOWER, UPPER };
 
 int nextletterssize;
-const char *commands[]={ "mid$(", "left$(", "right$(", "toupper$(", "tolower$(" };
-enum { MID = 0, LEFT, RIGHT, TOUPPER, TOLOWER };
-const int commandssize=5;
+const char *commands[]={ "mid$(", "left$(", "right$(", "toupper$(", "tolower$(", "datetime$(", "date$(", "time$("  };
+enum { MID = 0, LEFT, RIGHT, TOUPPER, TOLOWER, DATETIME, DATE, TIME };
+const int commandssize=8;
 extern int fieldsperrecord;
 extern int changedrecord, editoroption;
 extern int currentrecord;
@@ -76,6 +76,7 @@ int commandparser(int reference, char tcommand[MAXSTRING]);
 char* formatreplacer(char source[MAXSTRING], int field_id);
 char *performinstruction(char instruction[MAXSTRING], int field_id);
 extern int findsimple(char text[], char token[]);
+extern char* Bring_DateTime_Stamp(char tdatetime[MAXSTRING], int field_id=-1);
 
 int stringformulacalculator(char formula[MAXSTRING], int record_id)
 {
@@ -191,12 +192,10 @@ int commandparser(int reference, char tcommand[MAXSTRING])
   char tparameter[MAXPARAMETER], ttext[MAXSTRING], tttext[MAXSTRING];
 
   // how many parameters to read  
-  if ( reference == LEFT || reference == RIGHT ) { // 0 for toupper,tolower, 1 for left$,right$
+  if ( reference == LEFT || reference == RIGHT /*|| reference == DATETIME*/ ) // 0 for toupper,tolower, 1 for left$,right$, datetime$
    requiredparameters=1;
-  }
-  if ( reference == MID ) {
+  if ( reference == MID )
    requiredparameters=2; // 2 parameters for mid$
-  }
    
    // go back from end of tcommand
    pos=(int)strlen(tcommand);
@@ -253,7 +252,18 @@ int commandparser(int reference, char tcommand[MAXSTRING])
      for (i=0;i<(int)strlen(ttext);i++)
       tttext[n++]=tolower(ttext[i]);
      tttext[n]='\0';
-   break; }
+    break;
+    case DATETIME: // formatted datetime
+     Bring_DateTime_Stamp(ttext);
+     strcpy(tttext, ttext);
+    break;
+    case DATE: // date stamp
+     Bring_DateTime_Stamp(tttext, -2);
+    break;
+    case TIME: // time stamp
+     Bring_DateTime_Stamp(tttext, -3);
+    break;
+   }
    // available char string to transfer to calling routine is tcommand
    strcpy(tcommand, tttext);
 

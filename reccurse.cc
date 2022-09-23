@@ -1,7 +1,7 @@
 // reccurse, the filemaker of ncurses
 #include "reccurse.h"
 
-const double version=0.597;
+const double version=0.561;
 
 int main(int argc, char *argv[])
 {
@@ -976,16 +976,30 @@ char* Bring_DateTime_Stamp(char tdatetime[MAXSTRING], int field_id)
   time (&rawtime);
   timeinfo = localtime(&rawtime);
   char calendarformat[MAXSTRING];
-  
-  if ( field_id > -1 && record[field_id].type == CLOCK )
-   strcpy(calendarformat, "%X");
-  else
-   strcpy(calendarformat, "%x %X");
+  Field tfield;
+  if ( field_id < 0 ) { // date/time sample
+   if ( field_id == -1 )
+    strcpy(calendarformat, tdatetime);
+   if ( field_id == -2 )
+    strcpy(calendarformat, "%a %d %b %Y");
+   if ( field_id == -3 )
+    strcpy(calendarformat, "%X");
+  }
+  else {
+   if ( record[field_id].type == CLOCK ) {
+    if ( record[field_id].decimals )
+     strcpy(calendarformat, "%X");
+    else
+     strcpy(calendarformat, "%r");
+   }
+   else
+    strcpy(calendarformat, "%x %X");
       
-  if ( field_id > -1 && isautomaticvalueformatinstruction(field_id)) {
-   strcpy(calendarformat, record[field_id].automatic_value);
-   timeinfo->tm_min+=Time_Correction_Scanner(calendarformat);
-   mktime(timeinfo);
+   if ( isautomaticvalueformatinstruction(field_id)) {
+    strcpy(calendarformat, record[field_id].automatic_value);
+    timeinfo->tm_min+=Time_Correction_Scanner(calendarformat);
+    mktime(timeinfo);
+   }
   }
   
   strftime(tdatetime, MAXSTRING,const_cast <char *> (calendarformat), timeinfo);
@@ -1031,7 +1045,8 @@ char* Time_Correction_Adjuster(int adjustment, int field_id)
   
    strcpy(tautomaticvalue, record[field_id].automatic_value);
    c1=Time_Correction_Scanner(tautomaticvalue) + adjustment;
-   sprintf(tcorrection, "\\%d", c1);
+   if ( adjustment )
+    sprintf(tcorrection, "\\%d", c1);
    strcat(tautomaticvalue, tcorrection);
   
  return &tautomaticvalue[0];
@@ -1171,7 +1186,7 @@ void Duplicate_Record(int record_id)
 // show record
 int Show_Record_and_Menu()
 {
-  int i, i1, n, trecordsnumber, c, backupmenu=0, replaychar=0, savedonedit=-1;
+  int i, i1, n, trecordsnumber, c, backupmenu=0, replaychar=0, savedonedit=-1, alteredparametersshown=0;
   int previousfield=0, scriptdirection=NOSCRIPT;
   int findresults[MAXSEARCHDEPTH+1][MAXRECORDS], tsortresults[MAXRECORDS];
   char ttext[MAXSTRING];
@@ -1203,14 +1218,13 @@ int Show_Record_and_Menu()
      referencedadjoiningfields(currentfield, adjoiningfields);
     }
 
-    for (i1=0;i1<(int) adjoiningfields.size();i1++)
-     if (adjoiningfields[i1]!=i && record[adjoiningfields[i1]].editable == OFF )
+    for (i=0;i<fieldsperrecord;i++)
+     if ( record[i].editable == OFF )
       Show_Field(&records[(currentrecord*fieldsperrecord)+i], printscreenmode);
     for (i=0;i<fieldsperrecord;i++)
-     for (i1=0;i1<(int) adjoiningfields.size();i1++)
-      if (adjoiningfields[i1]!=i && record[adjoiningfields[i1]].editable == ON )
-       Show_Field(&records[(currentrecord*fieldsperrecord)+i], printscreenmode);
-    if (printscreenmode) {
+     if ( record[i].editable == ON )
+      Show_Field(&records[(currentrecord*fieldsperrecord)+i], printscreenmode);
+    if ( printscreenmode ) {
      clear();
      for (i1=1;i1<25;i1++) {
       for (i=1;i<81;i++) {
@@ -1220,6 +1234,13 @@ int Show_Record_and_Menu()
       }
     }
     // highlight current field(s)
+    for (i=0;i<(int) strlen(alterscreenparameterskeys);i++)
+     if (c==alterscreenparameterskeys[i])
+      alteredparametersshown=1;
+    if ( alteredparametersshown ) {
+     Sleep(250); // time to show changes before highlight
+     alteredparametersshown=0;
+    }
     for (i=0;i<(int) adjoiningfields.size();i++)
      Show_Field(&records[(currentrecord*fieldsperrecord)+adjoiningfields[i]], 1);
     if ( adjoiningfields.size() > 1 && (previousfield != currentfield || changedrecord) )
@@ -1258,7 +1279,7 @@ int Show_Record_and_Menu()
     changedrecord=0;
        
     Show_Menu_Bar();
-    cleanstdin();
+//     cleanstdin();
     i=strlen(menutexts[currentmenu])+1;
     if (!menubar)
      i=1;
@@ -1894,7 +1915,8 @@ int Show_Record_and_Menu()
        break;
       }
       if ( currentmenu != CALCULATOR )
-       record[currentfield].attributes[6]=(record[currentfield].attributes[6]=='1') ? '0' : '1';
+       for (i=0;i<(int)adjoiningfields.size();i++)
+        record[adjoiningfields[i]].attributes[6]=(record[currentfield].attributes[6]=='1') ? '0' : '1';
      break;
      case '-':
       if ( record[currentfield].type == CLOCK ) {
@@ -1902,27 +1924,37 @@ int Show_Record_and_Menu()
        break;
       }
       if ( currentmenu != CALCULATOR )
-       record[currentfield].attributes[2]=(record[currentfield].attributes[2]=='1') ? '0' : '1';
+       for (i=0;i<(int)adjoiningfields.size();i++)
+        record[adjoiningfields[i]].attributes[2]=(record[currentfield].attributes[2]=='1') ? '0' : '1';
+     break;
+     case '/':
+      if ( record[currentfield].type == CLOCK ) {
+       strcpy( record[currentfield].automatic_value, Time_Correction_Adjuster() );
+       break;
+      }
+      if ( currentmenu != CALCULATOR )
+       for (i=0;i<(int)adjoiningfields.size();i++)
+        record[adjoiningfields[i]].attributes[4]=(record[currentfield].attributes[4]=='1') ? '0' : '1';
      break;
      case '*':
       if ( currentmenu != CALCULATOR )
-       record[currentfield].attributes[1]=(record[currentfield].attributes[1]=='1') ? '0' : '1';
-     break;
-     case '/':
-      if ( currentmenu != CALCULATOR )
-       record[currentfield].attributes[4]=(record[currentfield].attributes[4]=='1') ? '0' : '1';
+       for (i=0;i<(int)adjoiningfields.size();i++)
+        record[adjoiningfields[i]].attributes[1]=(record[currentfield].attributes[1]=='1') ? '0' : '1';
      break;
      case '.':
       if ( currentmenu != CALCULATOR )
-       record[currentfield].attributes[5]=(record[currentfield].attributes[5]=='1') ? '0' : '1';
+       for (i=0;i<(int)adjoiningfields.size();i++)
+        record[adjoiningfields[i]].attributes[5]=(record[currentfield].attributes[5]=='1') ? '0' : '1';
      break;
      case '!':
       if ( currentmenu != CALCULATOR )
-       record[currentfield].color+=record[currentfield].color<58 ? 1 : -58;
+       for (i=0;i<(int)adjoiningfields.size();i++)
+        record[adjoiningfields[i]].color+=(record[currentfield].color < 64) ? 1 : -63;
      break;
      case '@':
       if ( currentmenu != CALCULATOR )
-       record[currentfield].color-=record[currentfield].color>2 ? 1 : -57;
+       for (i=0;i<(int)adjoiningfields.size();i++)
+        record[adjoiningfields[i]].color-=(record[currentfield].color > 2) ? 1 : -63;
      break;
      case 'c':
       for (i=0;i<fieldsperrecord;i++)

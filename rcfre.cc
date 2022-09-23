@@ -62,6 +62,7 @@ const int DELETE=330;
 const int INSERT=331;
 const int HOME=262;
 const int END=360;
+const int QUIT=24;
 const int TOGGLEMOUSE=12;
 const int MAXFIELDS=999; // fields per record
 extern int BLACK, RED, GREEN, YELLOW, BLUE, MAGENTA, CYAN, WHITE;
@@ -219,7 +220,7 @@ void Field_Editor()
    }
       
    Determine_Button_Box(fieldshown);
-   Flash_Field(fieldshown);
+   Flash_Field(fieldshown, 150);
    Draw_Box(BOXCHAR, 6, 17, 33, 5, 17, 25);
    Show_Menu_Bar(1);
    clearinputline();
@@ -347,6 +348,8 @@ void Field_Editor()
    Change_Color(YELLOW);
    gotoxy(18,20);
    t=sgetch(18,20);
+   if ( t == QUIT )
+    break;
    cleanstdin();
    if ( t!=SPACE && t!=LEFT && t!=RIGHT && t!=ESC && t!=INSERT && t!=DELETE && t!='j' && t!='$' && t!='&' && t!='u' && t != 'f' && t != TOGGLEMOUSE )
     t='\n';
@@ -539,12 +542,14 @@ void Field_Editor()
   Change_Color(RED);
   gotoxy(18,20);
   cleanstdin();
-  printw("save changes (y/n):");
-  t=sgetch();
-  if (tolower(t)=='y') {
-   alteredparameters=0;
-   Read_Write_db_File(RECREATE);
-   Read_Write_db_File(WRITE); 
+  if ( t != QUIT ) {
+   printw("save changes (y/n):");
+   t=sgetch();
+   if (tolower(t)=='y') {
+    alteredparameters=0;
+    Read_Write_db_File(RECREATE);
+    Read_Write_db_File(WRITE); 
+   }
   }
   editoroption=-1;
   
