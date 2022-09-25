@@ -30,6 +30,7 @@ using namespace std;
 extern WINDOW* win1;
 
 // constants
+typedef unsigned long ul;
 const int MAXSTRING=80; // characters in a regular string
 const int MAXTITLE=20; // characters in a a title string
 const int MAXSUFFIXCHARS=3; // max string for number suffixes
@@ -45,6 +46,9 @@ extern int recordsnumber;
 extern int alteredparameters;
 extern int currentmenu;
 extern int menubar;
+const int bottombary=24;
+extern int alteredparameterstarget, alteredparametersshown;
+extern const char *alterscreenparameterskeys;
 
 // keyboard
 const int DOWN=258;
@@ -85,6 +89,8 @@ const char *BUTTONBOXES[]= { "edit field", "tick box", "button box", "button scr
 enum { OFF = 0, ON };
 enum { MAIN=0, OPTIONS, EDIT, EXTRA, EDITOR, CALCULATOR, EDITEXTRA, EXTERNALDB };
 enum { READ = 0, WRITE, CREATERC, RECREATE, RECREATERC };
+enum { DISPLAY = 0, ERASE };
+const char *FIELDHINTS[] = { "~ [ no text ]", "0up 1right 2down 3left 4inside", "see manual", "colors vary from 1..64", "horizonal screen position", "vertical screen position", "horizontal size", "vertical size", "see manual", "colors vary from 1..64 | used for repetitions in automatic scripts", "contained in box", "colors vary from 1..64", "[0 numerical 1 calendar 2 string 3 mixed type 4 variable 5 program 6 clock]", "decimal positions | direction for script commands | 0 AM designation for clocks", "~ [ no text ] | ~ 3 chars", "~", "[fieldlist is a corresponding value field, refer to the manual for more]", "can be edited/accessed", "is active/shown", "~ [ no text ]" };
 
 struct Points {
  int x;
@@ -168,6 +174,7 @@ void clearinputline();
 int Edit_Field(int &field_id);
 void Duplicate_Field(int field_id, int flag=0); // 0 only record, 1 copy records, 2 both
 void Show_All_Fields_for_Editor(int field_id, int flag=0);
+void showfieldhint(char *text, int color1=CYAN, int sleeptime=0, int color2=YELLOW);
 extern void Change_Color(int choice=WHITE);
 extern void Draw_Box(int color, int x_pos, int x_size, int y_pos, int y_size, int paintcolor=BLACK);
 extern void Draw_Box(char t, int color, int x_pos, int x_size, int y_pos, int y_size, int paintcolor=0);
@@ -203,6 +210,9 @@ extern int tryfile(char *file);
 extern void cropstring(char ttext[], int noofcharacters, int flag=0);
 extern int togglemouse(int showflag=ON);
 extern void Flash_Field(int field_id, int sleeptime=250);
+extern int togglealteredparameterstarget();
+extern void Hanle_AlteredScreenParameter(int c, int field_id=-1);
+extern void Sleep(ul sleepMs);
 
 // field editor and setup routine
 void Field_Editor()
@@ -342,9 +352,7 @@ void Field_Editor()
    gotoxy(18, 19);
    printw("<j>ump <u>ndo <f>ront <ins><del>");
    sprintf(ttext, "[%s]&[%s]", FIELDTYPES[record[fieldshown].type], BUTTONBOXES[record[fieldshown].buttonbox]);
-   Change_Color(CYAN);
-   gotoxy(18 + (32 - (int) strlen(ttext))/2, 21);
-   printw("%s", ttext);
+   showfieldhint(ttext);
    Change_Color(YELLOW);
    gotoxy(18,20);
    t=sgetch(18,20);
@@ -432,7 +440,12 @@ void Field_Editor()
       selection=Scan_Input(1, 1, 20, 2);
       getyx(win1, y, x);
       gotoxy(x+2, y+1);
-      printw("->");
+      i=1500;
+      if ( selection != 11 && selection != 16 && selection != 18 && selection != 19 ) {
+       printw("->");
+       i=0;
+      }
+      showfieldhint(const_cast<char *>(FIELDHINTS[selection-1]), GREEN, i);
       switch (selection) {
        case 1:
         strcpy(ttext, record[fieldshown].title);
@@ -481,9 +494,7 @@ void Field_Editor()
          record[fieldshown].color=i;
        break;
        case 11:
-        i=Scan_Input(1, 0, 1, 1);
-        if (!i || i==1)
-         record[fieldshown].box=i;
+        record[fieldshown].box=( record[fieldshown].box == ON ) ? OFF : ON;
        break;
        case 12:
         i=Scan_Input(1, 1, 64, 2);
@@ -510,9 +521,7 @@ void Field_Editor()
         strcpy(record[fieldshown].suffix, ttext); 
        break;
        case 16:
-        i=Scan_Input(1, 0, 1, 1);
-        if (!i || i==1)
-         record[fieldshown].formula=i;
+        record[fieldshown].formula=( record[fieldshown].formula == ON ) ? OFF : ON;
        break;
        case 17:
         i=Scan_Input(1, 1, fieldsperrecord, 4);
@@ -520,14 +529,10 @@ void Field_Editor()
          record[fieldshown].fieldlist=i;
        break;
        case 18:
-        i=Scan_Input(1, 0, 1, 1);
-        if (!i || i==1)
-         record[fieldshown].editable=i;
+        record[fieldshown].editable=( record[fieldshown].editable == ON ) ? OFF : ON;
        break;
        case 19:
-        i=Scan_Input(1, 0, 1, 1);
-        if (!i || i==1)
-         record[fieldshown].active=i;
+        record[fieldshown].active=( record[fieldshown].active == ON ) ? OFF : ON;
        break;
        case 20:
         Scan_Input(record[fieldshown].automatic_value, 1, 24, record[fieldshown].color);
@@ -726,161 +731,156 @@ void clearinputline()
 
 int Edit_Field(int &field_id)
 {
- int c=0, bc=0, backupmenu=currentmenu, backupbar=menubar, showallrecords=ON;
+ int c=0, bc=0, backupmenu=currentmenu, backupbar=menubar, showallrecords=ON, i;
  Field trecord=record[field_id], ttrecord=record[field_id];
  currentmenu=EDITOR; menubar=1;
  
-  while ( c != ESC && c != ENTER ) {
+   while ( c != ESC && c != ENTER ) {
     
-   clear();
-   Show_Menu_Bar();
-   if ( menubar == 2 ) { // add new menu
-    Show_Menu_Bar(1);
-    Change_Color(MAGENTAONYELLOW);
-    gotoxy(1, 24);
-    printw("<m> toggle bar|<f>ield in front|$*/*-+.|<ENTER>store|<SPACE>revert|<ESC>discard");
-    refresh();
-   }
-   if ( isrecordproperlydictated(record[field_id]) == 0 )
-    record[field_id]=ttrecord;
-   if ( (record[field_id].size.x * record[field_id].size.y) > MAXSTRING )
-    record[field_id].editable=OFF;
-   ttrecord=record[field_id];
-   Determine_Button_Box(field_id);
-   if ( showallrecords ) 
-    Show_All_Fields_for_Editor( field_id );
-   else
-    Show_Field( &records[(currentrecord*fieldsperrecord)+field_id], 1 );
-   gotoxy(80, 24);
-   if ( bc == 0 )
-    c=sgetch();
-   else
-    c=bc;
-   bc=0;
-   switch ( c ) {
-    case KEY_MOUSE:   
-     if (leftmousebuttondoubleclicked())
-      if ( mouse.y+1 == 24  && menubar==1 )
-       bc=Activate_Menubar_Choice(mouse.x);
-     if (rightmousebuttonclicked())
-      bc=ENTER;
-    break;
-    case UP:
-     --record[field_id].pt.y;
-    break;
-    case DOWN:
-     ++record[field_id].pt.y;
-    break;
-    case LEFT:
-     --record[field_id].pt.x;
-    break;
-    case RIGHT:
-     ++record[field_id].pt.x;
-    break;
-    case SHIFT_UP:
-     if ( record[field_id].size.y > 1 ) 
-      --record[field_id].size.y;
-    break;
-    case SHIFT_DOWN:
-      ++record[field_id].size.y;
-    break;
-    case SHIFT_LEFT:
-     if ( record[field_id].size.x > 1 )
-      --record[field_id].size.x;
-    break;
-    case SHIFT_RIGHT:
-     ++record[field_id].size.x;
-    break;
-    case '1':
-     if ( record[field_id].title_color )
-      --record[field_id].title_color;
-     else
-      record[field_id].title_color=64;
-    break;
-    case '2':
-     if ( record[field_id].title_color < 65 )
-      ++record[field_id].title_color;
-     else
-      record[field_id].title_color=0;
-    break;
-    case '3':
-     if ( record[field_id].color )
-      --record[field_id].color;
-     else
-      record[field_id].color=64;
-    break;
-    case '4':
-     if ( record[field_id].color < 65 )
-      ++record[field_id].color;
-     else
-      record[field_id].color=0;
-    break;
-    case 'b': // box
-     record[field_id].box = ( record[field_id].box == 1 ) ? 0 : 1;
-    break;
-    case '5':
-     if ( record[field_id].box_color )
-      --record[field_id].box_color;
-     else
-      record[field_id].box_color=64;
-    break;
-    case '6':
-     if ( record[field_id].box_color < 65 )
-      ++record[field_id].box_color;
-     else
-      record[field_id].box_color=0;
-    break;
-    case 't':
-     if ( record[field_id].title_position < 4 )
-      ++record[field_id].title_position;
-     else
-      record[field_id].title_position=0;
-    break;
-    case '$':
-     showallrecords = ( showallrecords == 1 ) ? 0 : 1;
-    break;
-    case '*':
-     record[field_id].attributes[1]=(record[field_id].attributes[1]=='1') ? '0' : '1';
-    break;
-    case '-':
-     record[field_id].attributes[2]=(record[field_id].attributes[2]=='1') ? '0' : '1';
-    break;
-    case '/':
-     record[field_id].attributes[4]=(record[field_id].attributes[4]=='1') ? '0' : '1';      
-    break;
-    case '.':
-     record[field_id].attributes[5]=(record[field_id].attributes[5]=='1') ? '0' : '1';      
-    break;
-    case '+':
-     record[field_id].attributes[6]=(record[field_id].attributes[6]=='1') ? '0' : '1';
-    break;
-    case 'm':
-    ++menubar;
-     menubar=(menubar==3) ? 0 : menubar;
-    break;
-    case 'f':
-     if ( isfielddisplayable(field_id) == 0 )
+    clear();
+    Show_Menu_Bar();
+    if ( menubar == 2 ) { // add new menu
+     Show_Menu_Bar(1);
+     Change_Color(MAGENTAONYELLOW);
+     gotoxy(1, 24);
+     printw("<m>toggle bar|<f>ield in front|$*/*-+.,#|<ENTER>store|<SPACE>revert|<ESC>discard");
+     refresh();
+    }
+    if ( isrecordproperlydictated(record[field_id]) == 0 )
+     record[field_id]=ttrecord;
+    if ( (record[field_id].size.x * record[field_id].size.y) > MAXSTRING )
+     record[field_id].editable=OFF;
+    ttrecord=record[field_id];
+    Determine_Button_Box(field_id);
+    if ( showallrecords ) 
+     Show_All_Fields_for_Editor( field_id );
+    else
+     Show_Field( &records[(currentrecord*fieldsperrecord)+field_id], 1 );
+    gotoxy(80, 24);
+    if ( bc == 0 )
+     c=sgetch();
+    else
+     c=bc;
+    bc=0;
+   
+     // handle attribute/color change keys and target selection
+     if ( currentmenu != CALCULATOR ) {
+      for (i=0;i<(int)strlen(alterscreenparameterskeys);i++)
+       if ( c == alterscreenparameterskeys[i] )
+        break;
+      if ( i < (int)strlen(alterscreenparameterskeys) )
+       Hanle_AlteredScreenParameter(c, field_id);
+     }
+   
+     // handle key
+     switch ( c ) {
+      case KEY_MOUSE:   
+       if (leftmousebuttondoubleclicked())
+        if ( mouse.y+1 == 24  && menubar==1 )
+         bc=Activate_Menubar_Choice(mouse.x);
+       if (rightmousebuttonclicked())
+        bc=ENTER;
       break;
-     Duplicate_Field(field_id, 2);
-     Delete_Field(field_id);
-//      record[field_id].active=0;
-     field_id=record.size()-1;
-     trecord=ttrecord=record[field_id];
-    break;
-    case SPACE:
-     record[field_id]=trecord;
-    break;
+      case UP:
+       --record[field_id].pt.y;
+      break;
+      case DOWN:
+       ++record[field_id].pt.y;
+      break;
+      case LEFT:
+       --record[field_id].pt.x;
+      break;
+      case RIGHT:
+       ++record[field_id].pt.x;
+      break;
+      case SHIFT_UP:
+       if ( record[field_id].size.y > 1 ) 
+        --record[field_id].size.y;
+      break;
+      case SHIFT_DOWN:
+       ++record[field_id].size.y;
+      break;
+      case SHIFT_LEFT:
+       if ( record[field_id].size.x > 1 )
+        --record[field_id].size.x;
+      break;
+      case SHIFT_RIGHT:
+       ++record[field_id].size.x;
+      break;
+      case '1':
+       if ( record[field_id].title_color )
+        --record[field_id].title_color;
+       else
+        record[field_id].title_color=64;
+      break;
+      case '2':
+       if ( record[field_id].title_color < 65 )
+        ++record[field_id].title_color;
+       else
+        record[field_id].title_color=0;
+      break;
+      case '3':
+       if ( record[field_id].color )
+        --record[field_id].color;
+       else
+        record[field_id].color=64;
+      break;
+      case '4':
+       if ( record[field_id].color < 65 )
+        ++record[field_id].color;
+       else
+        record[field_id].color=0;
+      break;
+      case 'b': // box
+       record[field_id].box = ( record[field_id].box == 1 ) ? 0 : 1;
+      break;
+      case '5':
+       if ( record[field_id].box_color )
+        --record[field_id].box_color;
+       else
+        record[field_id].box_color=64;
+      break;
+      case '6':
+       if ( record[field_id].box_color < 65 )
+        ++record[field_id].box_color;
+       else
+        record[field_id].box_color=0;
+      break;
+      case 't':
+       if ( record[field_id].title_position < 4 )
+        ++record[field_id].title_position;
+       else
+        record[field_id].title_position=0;
+      break;
+      case '$':
+       showallrecords = ( showallrecords == 1 ) ? 0 : 1;
+      break;
+      case 'm':
+       ++menubar;
+       menubar=(menubar==3) ? 0 : menubar;
+      break;
+      case 'f':
+       if ( isfielddisplayable(field_id) == 0 )
+        break;
+       Duplicate_Field(field_id, 2);
+       Delete_Field(field_id);
+       field_id=record.size()-1;
+       trecord=ttrecord=record[field_id];
+      break;
+      case SPACE:
+       record[field_id]=trecord;
+      break;
+     }
    }
-  }    
-  currentmenu=backupmenu;
-  menubar=backupbar;
-  addch(SPACE); // remove char printed at 80,24
   
-  if ( c == ESC )
-   record[field_id]=trecord;
+   currentmenu=backupmenu;
+   menubar=backupbar;
+   addch(SPACE); // remove char printed at 80,24
+  
+   if ( c == ESC )
+    record[field_id]=trecord;
  
  return ( c == ESC ) ? 1 : 0;
- 
 }
 
 // display all fields dimmed, except field_id
@@ -917,4 +917,27 @@ void Duplicate_Field(int field_id, int flag)
    Duplicate_Field(field_id, 1);
   }
     
+}
+
+// show messages in edit box
+void showfieldhint(char *text, int color1, int sleeptime, int color2)
+{
+  int x, y, i;
+  getyx(win1, y, x);
+  
+   Change_Color(color1);
+   if ( strlen(text) > 32 )
+    gotoxy(1 + (80 - (int) strlen(text))/2, bottombary);
+   else {
+    gotoxy(18, 21);
+    for (i=0;i<32;i++)
+     addch(SPACE);
+    gotoxy(18 + (32 - (int) strlen(text))/2, 21);
+   }
+   printw("%s", text);
+   gotoxy(x+1,y+1);
+   Change_Color(color2);
+   refresh();
+   if ( sleeptime )
+    Sleep(500);
 }

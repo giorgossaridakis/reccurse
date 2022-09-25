@@ -1333,7 +1333,7 @@ int fieldsadjoiningfields(Annotated_Field *tfield, vector<int>& adjoiningfields,
      if ( possibilityoption || ttfield->text[(int)strlen(ttfield->text)-1]=='>' ) {
       for (i1=0;i1<fieldsperrecord;i1++)
        if ( possibilityoption || records[(currentrecord*fieldsperrecord)+i1].text[0]=='<' ) {
-        if ( findinintvector(i1, adjoiningfields) > -1 || ((arefieldsneighbours(recordid, i1, possibilityoption, sizex, sizey, comparisonx, comparisony)==0)) || record[i1].box == ON )
+        if ( findinintvector(i1, adjoiningfields) > -1 || ((arefieldsneighbours(recordid, i1, possibilityoption, sizex, sizey, comparisonx, comparisony)==0)) || record[i1].box == ON || record[i1].type > MIXEDTYPE )
          continue;
         else 
          if ( record[recordid].active /*&& record[recordid].editable*/ && tfield->id != i1 )
@@ -1343,7 +1343,7 @@ int fieldsadjoiningfields(Annotated_Field *tfield, vector<int>& adjoiningfields,
      if ( possibilityoption || ttfield->text[0]== '<' ) {
       for (i1=0;i1<fieldsperrecord;i1++) {
        if ( possibilityoption || records[(currentrecord*fieldsperrecord)+i1].text[(int) strlen(records[(currentrecord*fieldsperrecord)+i1].text)-1]=='>' ) {
-        if ( findinintvector(i1, adjoiningfields) > -1 || ((arefieldsneighbours(i1, recordid, possibilityoption, sizex, sizey, comparisonx, comparisony)==0)) || record[i1].box == ON ) {
+        if ( findinintvector(i1, adjoiningfields) > -1 || ((arefieldsneighbours(i1, recordid, possibilityoption, sizex, sizey, comparisonx, comparisony)==0)) || record[i1].box == ON || record[i1].type > MIXEDTYPE ) {
          continue;
         }
        else

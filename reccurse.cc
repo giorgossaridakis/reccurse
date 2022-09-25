@@ -1,7 +1,7 @@
 // reccurse, the filemaker of ncurses
 #include "reccurse.h"
 
-const double version=0.561;
+const double version=0.568;
 
 int main(int argc, char *argv[])
 {
@@ -174,7 +174,7 @@ int checkalteredparameters()
 
    Show_Menu_Bar(ERASE);
    Show_Message(1, bottombary, GREEN, "save altered parameters (y/n):", 0);
-   c=bgetch(1000);
+   c=bgetch(1500);
    if ( c == 'y' ) {
     alteredparameters=0;
     Read_Write_db_File(RECREATE);
@@ -609,9 +609,6 @@ int isrecordproperlydictated(Field &tfield)
    strcpy(tfield.title_attributes, STANDARDATTRIBUTES);
   if ( strlen(tfield.attributes) != 9 )
    strcpy(tfield.attributes, STANDARDATTRIBUTES);
-  
-  if ( tfield.type == CLOCK && strcmp(tfield.automatic_value, EMPTYSTRING) )
-   strcpy(tfield.automatic_value, EMPTYSTRING);
 
  return 1;
 }
@@ -1186,7 +1183,7 @@ void Duplicate_Record(int record_id)
 // show record
 int Show_Record_and_Menu()
 {
-  int i, i1, n, trecordsnumber, c, backupmenu=0, replaychar=0, savedonedit=-1, alteredparametersshown=0;
+  int i, i1, n, trecordsnumber, c, backupmenu=0, replaychar=0, savedonedit=-1;
   int previousfield=0, scriptdirection=NOSCRIPT;
   int findresults[MAXSEARCHDEPTH+1][MAXRECORDS], tsortresults[MAXRECORDS];
   char ttext[MAXSTRING];
@@ -1212,7 +1209,7 @@ int Show_Record_and_Menu()
       fieldrepetitions[i]=((record[i].color) ? record[i].color : -1);
     }
     // show fields
-    if (renewscreen) {
+    if ( renewscreen || runscript ) {
      clear();
      fieldsadjoiningfields(&records[(currentrecord*fieldsperrecord)+currentfield], adjoiningfields);
      referencedadjoiningfields(currentfield, adjoiningfields);
@@ -1233,21 +1230,23 @@ int Show_Record_and_Menu()
        }
       }
     }
-    // highlight current field(s)
-    for (i=0;i<(int) strlen(alterscreenparameterskeys);i++)
-     if (c==alterscreenparameterskeys[i])
-      alteredparametersshown=1;
-    if ( alteredparametersshown ) {
-     Sleep(250); // time to show changes before highlight
-     alteredparametersshown=0;
+    // highlight current field(s), delay for updated
+    if ( currentmenu != CALCULATOR && alteredparametersshown != - 1 ) {
+     for (i=0;i<(int)strlen(alterscreenparameterskeys);i++)
+      if (c==alterscreenparameterskeys[i])
+       alteredparametersshown=1;
+     if ( alteredparametersshown ) {
+      Sleep(250); // time to show changes before highlight
+     }
     }
+    alteredparametersshown=0;
     for (i=0;i<(int) adjoiningfields.size();i++)
      Show_Field(&records[(currentrecord*fieldsperrecord)+adjoiningfields[i]], 1);
     if ( adjoiningfields.size() > 1 && (previousfield != currentfield || changedrecord) )
      Flash_Field(currentfield);
     refresh();
 
-    if (!recordsdemo) {
+    if ( !recordsdemo ) {
      for (i=0;i<=recordsnumber;i++)
       findresults[0][i]=i;
      for (;i<MAXRECORDS;i++)
@@ -1279,7 +1278,6 @@ int Show_Record_and_Menu()
     changedrecord=0;
        
     Show_Menu_Bar();
-//     cleanstdin();
     i=strlen(menutexts[currentmenu])+1;
     if (!menubar)
      i=1;
@@ -1306,29 +1304,29 @@ int Show_Record_and_Menu()
       blockunblockgetch(PRINTUNBLOCK);
      else
       blockunblockgetch(pagehasclockfields() ? UNBLOCK : UNBLOCK/3); // necessary to give live clock operational status
-     if (mousemenucommands.size())
+     if ( mousemenucommands.size() )
       c=fetchmousemenucommand();
      else
       c=(replaychar) ? replaychar : sgetch();
      replaychar=0;
      blockunblockgetch();
-     if (recordsdemoall) {
+     if ( recordsdemoall ) {
       if ( c == ESC )
        c='w';
-      if (c!='w') {
+      if ( c != 'w' ) {
        c='>';
-       if (!printscreenmode) // a little extra time to view record
+       if ( !printscreenmode ) // a little extra time to view record
         uSleep(750);
       }
      }
      renewscreen=c=negatekeysforcurrentmenu(c);
      if ( !alteredparameters && currentmenu != CALCULATOR )
-      for (i=0;i<(int) strlen(alterscreenparameterskeys);i++)
-       if (c==alterscreenparameterskeys[i])
+      for (i=0;i<(int)strlen(alterscreenparameterskeys);i++)
+       if (c == alterscreenparameterskeys[i] )
         alteredparameters=1;
      if ( altpressed ) {
-      for (i=0;i<(int) strlen(programkeys);i++) {
-       if (c==programkeys[i]) {
+      for (i=0;i<(int)strlen(programkeys);i++) {
+       if ( c == programkeys[i] ) {
         addorplayprogram(c);
         c=0;
        }
@@ -1348,7 +1346,16 @@ int Show_Record_and_Menu()
        lastfieldrepeated=-1;
      }
 
-      
+     // handle attribute/color change keys and target selection
+     if ( currentmenu != CALCULATOR ) {
+      for (i=0;i<(int)strlen(alterscreenparameterskeys);i++)
+       if ( c == alterscreenparameterskeys[i] )
+        break;
+      if ( i < (int)strlen(alterscreenparameterskeys) )
+       Hanle_AlteredScreenParameter(c);
+     }
+           
+     // handle key
      switch (c) {
       // print screen
       case 'z':
@@ -1375,8 +1382,6 @@ int Show_Record_and_Menu()
        togglemouse();
       break;
       case SCANAUTOMATICVALUE:
-       if ( record[currentfield].type == CLOCK )
-        break;
        Show_Menu_Bar(ERASE);
        Scan_Input(record[currentfield].automatic_value, 1, bottombary, record[currentfield].color);
        alteredparameters=1;
@@ -1914,47 +1919,18 @@ int Show_Record_and_Menu()
        strcpy( record[currentfield].automatic_value, Time_Correction_Adjuster(30) );
        break;
       }
-      if ( currentmenu != CALCULATOR )
-       for (i=0;i<(int)adjoiningfields.size();i++)
-        record[adjoiningfields[i]].attributes[6]=(record[currentfield].attributes[6]=='1') ? '0' : '1';
      break;
      case '-':
       if ( record[currentfield].type == CLOCK ) {
        strcpy( record[currentfield].automatic_value, Time_Correction_Adjuster(-30) );
        break;
       }
-      if ( currentmenu != CALCULATOR )
-       for (i=0;i<(int)adjoiningfields.size();i++)
-        record[adjoiningfields[i]].attributes[2]=(record[currentfield].attributes[2]=='1') ? '0' : '1';
      break;
      case '/':
       if ( record[currentfield].type == CLOCK ) {
        strcpy( record[currentfield].automatic_value, Time_Correction_Adjuster() );
        break;
       }
-      if ( currentmenu != CALCULATOR )
-       for (i=0;i<(int)adjoiningfields.size();i++)
-        record[adjoiningfields[i]].attributes[4]=(record[currentfield].attributes[4]=='1') ? '0' : '1';
-     break;
-     case '*':
-      if ( currentmenu != CALCULATOR )
-       for (i=0;i<(int)adjoiningfields.size();i++)
-        record[adjoiningfields[i]].attributes[1]=(record[currentfield].attributes[1]=='1') ? '0' : '1';
-     break;
-     case '.':
-      if ( currentmenu != CALCULATOR )
-       for (i=0;i<(int)adjoiningfields.size();i++)
-        record[adjoiningfields[i]].attributes[5]=(record[currentfield].attributes[5]=='1') ? '0' : '1';
-     break;
-     case '!':
-      if ( currentmenu != CALCULATOR )
-       for (i=0;i<(int)adjoiningfields.size();i++)
-        record[adjoiningfields[i]].color+=(record[currentfield].color < 64) ? 1 : -63;
-     break;
-     case '@':
-      if ( currentmenu != CALCULATOR )
-       for (i=0;i<(int)adjoiningfields.size();i++)
-        record[adjoiningfields[i]].color-=(record[currentfield].color > 2) ? 1 : -63;
      break;
      case 'c':
       for (i=0;i<fieldsperrecord;i++)
@@ -2220,8 +2196,13 @@ int negatekeysforcurrentmenu(int t)
   if (t==ESC || t==LEFT || t==RIGHT || t==UP || t==DOWN || t==TAB || t==SHIFT_TAB || t=='m' || t=='g' || t=='?' || t==HOME || t==END || t=='<' || t=='>' || t==']' ||  t==START_OF_RECORDS || t==END_OF_RECORDS || t==KEY_MOUSE || t=='z' || t=='q' || t=='w')
    return t;
 
-  if (recordsdemo)
+  if ( recordsdemo )
    return 0;
+  
+  if ( currentmenu != CALCULATOR )
+   for (i=0;i<(int)strlen(alterscreenparameterskeys);i++)
+    if ( t == alterscreenparameterskeys[i] )
+     return t;
   
   if (t==6) { currentmenu=EXTRA; t='f'; return t; } // enter find mode
   if (t==5 || t==15 || t==20 || t==PAGES_SELECTOR_KEY) { // direct menu access with ctrl
@@ -2273,11 +2254,11 @@ int negatekeysforcurrentmenu(int t)
     return t;
    
   if ( currentmenu < EDITOR )
-   for (i=0;i<(int) strlen(programkeys);i++)
+   for (i=0;i<(int)strlen(programkeys);i++)
     if (t==(int) programkeys[i])
      return t;
     
-  for (i=0;i<(int) strlen(menukeys[currentmenu]);i++)
+  for (i=0;i<(int)strlen(menukeys[currentmenu]);i++)
    if (t==menukeys[currentmenu][i])
     return t;
       
@@ -3529,3 +3510,91 @@ void Shared_Databases_Handler(int page_id)
     }
 
 }
+
+// toggle alteredparameterstarget
+int togglealteredparameterstarget()
+{
+  char ttext[MAXSTRING];
+  
+    alteredparameterstarget++;
+    if ( alteredparameterstarget > BOX )
+     alteredparameterstarget=TEXT;
+     Show_Menu_Bar(ERASE);
+     Show_Message(1, bottombary, GREEN, "key alteration target:", 0);
+     sprintf(ttext, "%s", alteredparameterstargets[alteredparameterstarget]);
+     Show_Message(23, bottombary, RED, ttext);
+    
+ return alteredparameterstarget;
+}
+
+// apply changes on parameter target
+void Hanle_AlteredScreenParameter(int c, int field_id)
+{
+  int i, key;
+  vector<int> tadjoiningfields;
+  if ( field_id == -1 )
+   tadjoiningfields=adjoiningfields;
+  else
+   tadjoiningfields.push_back(field_id);
+  
+       switch ( c ) {
+        case '#':
+         togglealteredparameterstarget();
+         alteredparametersshown=-1;
+        break;
+        case '!':
+         switch ( alteredparameterstarget ) {
+          case TEXT:
+           for (i=0;i<(int)tadjoiningfields.size();i++)
+            record[tadjoiningfields[i]].color+=(record[tadjoiningfields[i]].color < 64) ? 1 : -63;
+          break;
+          case TITLE:
+           for (i=0;i<(int)tadjoiningfields.size();i++)
+            record[tadjoiningfields[i]].title_color+=(record[tadjoiningfields[i]].title_color < 64) ? 1 : -63;
+          break;
+          case BOX:
+           for (i=0;i<(int)tadjoiningfields.size();i++)
+            record[tadjoiningfields[i]].box_color+=(record[tadjoiningfields[i]].box_color < 64) ? 1 : -63;
+          break;
+         }
+        break;
+        case '@':
+         switch ( alteredparameterstarget ) {
+          case TEXT:
+           for (i=0;i<(int)tadjoiningfields.size();i++)
+            record[tadjoiningfields[i]].color-=(record[tadjoiningfields[i]].color > 2) ? 1 : -63;
+          break;
+          case TITLE:
+           for (i=0;i<(int)tadjoiningfields.size();i++)
+            record[tadjoiningfields[i]].title_color-=(record[tadjoiningfields[i]].title_color > 2) ? 1 : -63;
+          break;
+          case BOX:
+           for (i=0;i<(int)tadjoiningfields.size();i++)
+            record[tadjoiningfields[i]].box_color-=(record[tadjoiningfields[i]].box_color > 2) ? 1 : -63;
+          break;
+         }
+        break;
+       }
+       key=c-41;
+       if ( record[currentfield].type == CLOCK && (key == 2 || key == 4) ) {
+        key=0;
+        alteredparametersshown=-1; // disregard + - for screen update
+       }
+       if ( key > 0 && key < 7 ) {
+        switch ( alteredparameterstarget ) {
+         case TEXT:
+          for (i=0;i<(int)tadjoiningfields.size();i++)
+           record[tadjoiningfields[i]].attributes[key]=(record[tadjoiningfields[i]].attributes[key]=='1') ? '0' : '1';
+         break;
+         case TITLE:
+          for (i=0;i<(int)tadjoiningfields.size();i++)
+           record[tadjoiningfields[i]].title_attributes[key]=(record[tadjoiningfields[i]].title_attributes[key]=='1') ? '0' : '1';
+         break;
+         case BOX: // do nothing
+         break;
+        }
+       }
+       
+}
+
+
