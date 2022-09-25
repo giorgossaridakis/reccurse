@@ -90,7 +90,7 @@ enum { OFF = 0, ON };
 enum { MAIN=0, OPTIONS, EDIT, EXTRA, EDITOR, CALCULATOR, EDITEXTRA, EXTERNALDB };
 enum { READ = 0, WRITE, CREATERC, RECREATE, RECREATERC };
 enum { DISPLAY = 0, ERASE };
-const char *FIELDHINTS[] = { "~ [ no text ]", "0up 1right 2down 3left 4inside", "see manual", "colors vary from 1..64", "horizonal screen position", "vertical screen position", "horizontal size", "vertical size", "see manual", "colors vary from 1..64 | used for repetitions in automatic scripts", "contained in box", "colors vary from 1..64", "[0 numerical 1 calendar 2 string 3 mixed type 4 variable 5 program 6 clock]", "decimal positions | direction for script commands | 0 AM designation for clocks", "~ [ no text ] | ~ 3 chars", "~", "[fieldlist is a corresponding value field, refer to the manual for more]", "can be edited/accessed", "is active/shown", "~ [ no text ]" };
+const char *FIELDHINTS[] = { "~ [ no text ]", "0up 1right 2down 3left 4inside", "see manual", "colors vary from 1..64", "horizonal screen position", "vertical screen position", "horizontal size", "vertical size", "see manual", "colors vary from 1..64 | used for repetitions in automatic scripts", "contained in box", "colors vary from 1..64", "[0 numerical 1 calendar 2 string 3 mixed type 4 variable 5 program 6 clock]", "decimal positions | direction for script commands | 0 AM designation for clocks", "~ [ no text ] | ~ 3 chars", "[perform numerical or alphanumerical calculations]", "[obtain values from field listed]", "can be edited/accessed", "is active/shown", "~ [ no text ]" };
 
 struct Points {
  int x;
@@ -445,6 +445,8 @@ void Field_Editor()
        printw("->");
        i=0;
       }
+      if ( selection < 1 || selection > 20 )
+       continue;
       showfieldhint(const_cast<char *>(FIELDHINTS[selection-1]), GREEN, i);
       switch (selection) {
        case 1:
