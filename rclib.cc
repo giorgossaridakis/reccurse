@@ -235,6 +235,11 @@ int Scan_Input(char istring[MAXSTRING], int x_pos, int y_pos, int color, int len
       case QUIT:
        End_Program(NORMALEXIT);
       break;
+      case SHOWSHAREDINFO:
+       for (i=0;i<(int)strlen(tstring);i++)
+        tstring[i]=SPACE;
+       column=1;
+      break;
       case TOGGLEMOUSE:
        togglemouse();
       break;
@@ -1775,6 +1780,7 @@ int addtoinstancesinfo(int pid)
 {
   int i;
   char tdatetime[MAXNAME];
+  strcpy(tdatetime, "%x %X");
   Bring_DateTime_Stamp(tdatetime);
   InstanceInfo tinstanceinfo(pid, tdatetime);
   
