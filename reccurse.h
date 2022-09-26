@@ -236,7 +236,7 @@ class Relationship {
   // will be declared equal, local will reflect external if ext[0]=local[0]. if local field is fieldreference active, relationship will occur anyway
   int extFields[2]; 
   int localFields[2];
-  Relationship(char name[MAXNAME], int e1, int e2, int l1, int l2) { strcpy(extDbname, name); extFields[0]=e1; extFields[1]=e2; localFields[0]=l1; localFields[1]=l2; } ;
+  Relationship(char name[MAXNAME], int e1, int e2, int l1, int l2): extFields{e1,e2}, localFields{l1,l2} { strcpy(extDbname, name); } ;
   Relationship() { };
 ~Relationship() { } ; } ;
 

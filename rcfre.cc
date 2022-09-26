@@ -90,7 +90,8 @@ enum { OFF = 0, ON };
 enum { MAIN=0, OPTIONS, EDIT, EXTRA, EDITOR, CALCULATOR, EDITEXTRA, EXTERNALDB };
 enum { READ = 0, WRITE, CREATERC, RECREATE, RECREATERC };
 enum { DISPLAY = 0, ERASE };
-const char *FIELDHINTS[] = { "~ [ no text ]", "0up 1right 2down 3left 4inside", "see manual", "colors vary from 1..64", "horizonal screen position", "vertical screen position", "horizontal size", "vertical size", "see manual", "colors vary from 1..64 | used for repetitions in automatic scripts", "contained in box", "colors vary from 1..64", "[0 numerical 1 calendar 2 string 3 mixed type 4 variable 5 program 6 clock]", "decimal positions | direction for script commands | 0 AM designation for clocks", "~ [ no text ] | ~ 3 chars", "[perform numerical or alphanumerical calculations]", "[obtain values from field listed]", "can be edited/accessed", "is active/shown", "~ [ no text ]" };
+const char *FIELDEDITORHINTS[] = { "~ [ no text ]", "0up 1right 2down 3left 4inside", "see manual", "colors vary from 1..64", "horizonal screen position", "vertical screen position", "horizontal size", "vertical size", "see manual", "colors vary from 1..64 | used for repetitions in automatic scripts", "contained in box", "colors vary from 1..64", "[0 numerical 1 calendar 2 string 3 mixed type 4 variable 5 program 6 clock]", "decimal positions | direction for script commands | 0 AM designation for clocks", "~ [ no text ] | ~ 3 chars", "[perform numerical or alphanumerical calculations]", "[obtain values from field listed | self reference for adjoining fields]", "can be edited/accessed", "is active/shown", "~ [ no text ]" };
+const char *REFERENCEEDITORHINTS[] = { "~", "[external field for value evaluation to equal with local]", "[local field for value evaluation to equal with external]", "[external field to collect data for local field]", "[local field to store data from external field]" };
 
 struct Points {
  int x;
@@ -167,6 +168,9 @@ extern vector<Annotated_Field> records, dummyrecords, externalrecords[MAXRELATIO
 extern vector<Relationship> relationships;
 extern MEVENT mouse;
 
+struct Points editorposition, editorsize;
+int showallrecords=ON;
+
 // function declarations
 int References_Editor();
 void Field_Editor();
@@ -175,6 +179,7 @@ int Edit_Field(int &field_id);
 void Duplicate_Field(int field_id, int flag=0); // 0 only record, 1 copy records, 2 both
 void Show_All_Fields_for_Editor(int field_id, int flag=0);
 void showfieldhint(char *text, int color1=CYAN, int sleeptime=0, int color2=YELLOW);
+void resetwindow();
 extern void Change_Color(int choice=WHITE);
 extern void Draw_Box(int color, int x_pos, int x_size, int y_pos, int y_size, int paintcolor=BLACK);
 extern void Draw_Box(char t, int color, int x_pos, int x_size, int y_pos, int y_size, int paintcolor=0);
@@ -221,6 +226,7 @@ void Field_Editor()
   char ttext[MAXSTRING];
   editoroption=alteredparameters=1; // reserved to point to fieldshown, if needed
   mousemask(ALL_MOUSE_EVENTS, NULL);
+  resetwindow();
   
   while ( t != ESC ) {
    
@@ -230,136 +236,193 @@ void Field_Editor()
    }
       
    Determine_Button_Box(fieldshown);
+   clear();
+   if ( showallrecords )
+    Show_All_Fields_for_Editor( fieldshown, 1 );
    Flash_Field(fieldshown, 150);
-   Draw_Box(BOXCHAR, 6, 17, 33, 5, 17, 25);
+//    Show_Field_ID(&records[(currentrecord*fieldsperrecord)+fieldshown]);
+   Draw_Box(BOXCHAR, 6, editorposition.x, editorsize.x, editorposition.y, editorsize.y, MAGENTAONBLACK);
    Show_Menu_Bar(1);
    clearinputline();
    Change_Color(BLUE);
-   gotoxy(25, 6);
+   gotoxy(editorposition.x+8, editorposition.y+1);
    printw("Reccurse Database");
    Change_Color(YELLOW);
-   for (i=8;i<18;i++) {
-    gotoxy(34, i);
+   for (i=editorposition.y+3;i<editorposition.y+14;i++) {
+    gotoxy(editorposition.x + (editorsize.x/2) + 1, i);
    printw("|"); }
    attron(A_BOLD);
    sprintf(ttext, "field %d/%d", fieldshown+1, fieldsperrecord);
-   gotoxy(18 + (32 - (int) strlen(ttext))/2, 7);
+   gotoxy(editorposition.x+1 + (32 - (int) strlen(ttext))/2, editorposition.y+2);
    printw("%s", ttext);
    attroff(A_BOLD);
    Change_Color(YELLOW);
-   gotoxy(18, 8);
+   gotoxy(editorposition.x+1, editorposition.y+3);
    printw("1.title:");
    Change_Color(RED);
    printw("%.8s", record[fieldshown].title);
    Change_Color(YELLOW);
-   gotoxy(18, 9);
+   gotoxy(editorposition.x+1, editorposition.y+4);
    printw("2.title pos:");
    Change_Color(RED);
    printw("%d", record[fieldshown].title_position);
    Change_Color(YELLOW);
-   gotoxy(18, 10);
+   gotoxy(editorposition.x+1, editorposition.y+5);
    printw("3.title attrs:");
    Change_Color(RED);
    printw("*");
    Change_Color(YELLOW);
-   gotoxy(18, 11);
+   gotoxy(editorposition.x+1, editorposition.y+6);
    printw("4.title color:");
    Change_Color(RED);
    printw("%2d", record[fieldshown].title_color);
    Change_Color(YELLOW);
-   gotoxy(18,12);
+   gotoxy(editorposition.x+1,editorposition.y+7);
    printw("5.pos.x:");
    Change_Color(RED);
    printw("%d", record[fieldshown].pt.x);
    Change_Color(YELLOW);
-   gotoxy(18,13);
+   gotoxy(editorposition.x+1, editorposition.y+8);
    printw("6.pos.y:");
    Change_Color(RED);
    printw("%d", record[fieldshown].pt.y);
    Change_Color(YELLOW);
-   gotoxy(18,14);
+   gotoxy(editorposition.x+1, editorposition.y+9);
    printw("7.size.x:");
    Change_Color(RED);
    printw("%d", record[fieldshown].size.x);
    Change_Color(YELLOW);
-   gotoxy(18,15);
+   gotoxy(editorposition.x+1, editorposition.y+10);
    printw("8.size.y:");
    Change_Color(RED);
    printw("%d", record[fieldshown].size.y);
    Change_Color(YELLOW);
-   gotoxy(18,16);
+   gotoxy(editorposition.x+1, editorposition.y+11);
    printw("9.attributes:");
    Change_Color(RED);
    printw("*");
    Change_Color(YELLOW);
-   gotoxy(18,17);
+   gotoxy(editorposition.x+1, editorposition.y+12);
    printw("10.color:");
    Change_Color(RED);
    printw("%2d", record[fieldshown].color);
    Change_Color(YELLOW);
-   gotoxy(35,8);
+   gotoxy(editorposition.x + (editorsize.x/2) + 2, editorposition.y+3);
    printw("11.box:");
    Change_Color(RED);
    printw("%s", onoff[record[fieldshown].box]);
    Change_Color(YELLOW);
-   gotoxy(35,9);
+   gotoxy(editorposition.x + (editorsize.x/2) + 2,editorposition.y+4);
    printw("12.box color:");
    Change_Color(RED);
    printw("%2d", record[fieldshown].box_color);
    Change_Color(YELLOW);
-   gotoxy(35,10);
+   gotoxy(editorposition.x + (editorsize.x/2) + 2,editorposition.y+5);
    printw("13.field type:");
    Change_Color(RED);
    printw("%d", record[fieldshown].type);
    Change_Color(YELLOW);
-   gotoxy(35,11);
+   gotoxy(editorposition.x + (editorsize.x/2) + 2, editorposition.y+6);
    printw("14.decimals:");
    Change_Color(RED);
    printw("%d", record[fieldshown].decimals);
    Change_Color(YELLOW);
-   gotoxy(35,12);
+   gotoxy(editorposition.x + (editorsize.x/2) + 2, editorposition.y+7);
    printw("15.suffix:");
    Change_Color(RED);
    printw("*");
    Change_Color(YELLOW);
-   gotoxy(35,13);
+   gotoxy(editorposition.x + (editorsize.x/2) + 2, editorposition.y+8);
    printw("16.formula:");
    Change_Color(RED);
    printw("%s", onoff[record[fieldshown].formula]);
    Change_Color(YELLOW);
-   gotoxy(35,14);
+   gotoxy(editorposition.x + (editorsize.x/2) + 2, editorposition.y+9);
    printw("17.list:");
    Change_Color(RED);
    printw("%d", record[fieldshown].fieldlist);
    Change_Color(YELLOW);
-   gotoxy(35,15);
+   gotoxy(editorposition.x + (editorsize.x/2) + 2, editorposition.y+10);
    printw("18.editable:");
    Change_Color(RED);
    printw("%s", onoff[record[fieldshown].editable]);
    Change_Color(YELLOW);
-   gotoxy(35,16);
+   gotoxy(editorposition.x + (editorsize.x/2) + 2, editorposition.y+11);
    printw("19.active:");
    Change_Color(RED);
    printw("%s", onoff[record[fieldshown].active]);
    Change_Color(YELLOW);
-   gotoxy(35,17);
+   gotoxy(editorposition.x + (editorsize.x/2) + 2, editorposition.y+12);
    printw("20.autovalue:");
    Change_Color(RED);
    printw("*");
    Change_Color(MAGENTA);
-   gotoxy(18, 18);
+   gotoxy(editorposition.x+1, editorposition.y+13);
    printw("<arrows><enter><space><esc><$ &>");
-   gotoxy(18, 19);
+   gotoxy(editorposition.x+1, editorposition.y+14);
    printw("<j>ump <u>ndo <f>ront <ins><del>");
    sprintf(ttext, "[%s]&[%s]", FIELDTYPES[record[fieldshown].type], BUTTONBOXES[record[fieldshown].buttonbox]);
    showfieldhint(ttext);
    Change_Color(YELLOW);
-   gotoxy(18,20);
-   t=sgetch(18,20);
+   gotoxy(editorposition.x+1,editorposition.y+15);
+   t=sgetch();
+   gotoxy(editorposition.x+1, editorposition.y+15);
    if ( t == QUIT )
     break;
    cleanstdin();
-   if ( t!=SPACE && t!=LEFT && t!=RIGHT && t!=ESC && t!=INSERT && t!=DELETE && t!='j' && t!='$' && t!='&' && t!='u' && t != 'f' && t != TOGGLEMOUSE )
+   if ( t > 48 && t < 58 ) { // window move
+    while ( t ) {
+     switch ( t ) {
+      case '4':
+       if ( editorposition.x > 1 )
+        --editorposition.x;
+       t=0;
+      break;
+      case '8':
+       if ( editorposition.y > 1 )
+        --editorposition.y;
+       t=0;
+      break;
+      case '6':
+       if ( editorposition.x + editorsize.x < 80 )
+        ++editorposition.x;
+       t=0;
+      break;
+      case '2':
+       if ( editorposition.y + editorsize.y < 23 )
+        ++editorposition.y;
+       t=0;
+      break;
+      case '5':
+       editorposition.x=17; editorposition.y=5;
+       editorsize.x=33; editorsize.y=17;
+       t=0;
+      break;
+      case '1':
+       if ( editorposition.y + editorsize.y < 23 )
+        ++editorposition.y;
+       t=52;
+      break;
+      case '7':
+       if ( editorposition.y > 1 )
+        --editorposition.x;
+       t=52;
+      break;
+      case '9':
+       if ( editorposition.y > 1 )
+        --editorposition.y;
+       t=54;
+      break;
+      case '3':
+       if ( editorposition.y + editorsize.y < 23 )
+        ++editorposition.y;
+       t=54;
+      break;
+     }
+    }
+   }
+   // more keys
+   if ( t!=SPACE && t!=LEFT && t!=RIGHT && t!=ESC && t!=INSERT && t!=DELETE && t!='j' && t!='$' && t!='&' && t!='u' && t != 'f' && t != TOGGLEMOUSE && t != 0 )
     t='\n';
    switch (t) {
     case 'u':
@@ -379,6 +442,9 @@ void Field_Editor()
     break;
     case '$':
      clear();
+     showallrecords = ( showallrecords == 1 ) ? 0 : 1;
+     if ( showallrecords == OFF )
+      break;
      Show_All_Fields_for_Editor( fieldshown, 1 );
      Show_Field_ID( &records[(currentrecord*fieldsperrecord)+fieldshown] );
      getch();
@@ -395,7 +461,7 @@ void Field_Editor()
       Add_Field();
       strcpy(ttext, "added field ");
       strcat(ttext, itoa(fieldsperrecord));
-      Show_Message(18, 20, RED, ttext, 1500);
+      Show_Message(editorposition.x+1, editorposition.y+15, RED, ttext, 1500);
      break;
      case DELETE:
       if (fieldsperrecord<2)
@@ -405,7 +471,7 @@ void Field_Editor()
       if (tolower(t)=='y') {
        Delete_Field(fieldshown);
        clearinputline();
-       Show_Message(18, 20, RED, "field deleted", 1500);
+       Show_Message(editorposition.x+1, editorposition.y+15, RED, "field deleted", 1500);
        if ( fieldshown )
         --fieldshown; 
       }
@@ -416,7 +482,7 @@ void Field_Editor()
       if (t!='y')
        break;
       clearinputline();
-      gotoxy(18,20);
+      gotoxy(editorposition.x+1,20);
       Change_Color(GREEN);
       printw("copy records (y/n):");
       t=sgetch();
@@ -424,7 +490,7 @@ void Field_Editor()
       Duplicate_Field(fieldshown, t);
       strcpy(ttext, "duplicated to field ");
       strcat(ttext, itoa(fieldsperrecord));
-      Show_Message(18, 20, RED, ttext, 1500);
+      Show_Message(editorposition.x+1, editorposition.y+15, RED, ttext, 1500);
      break;
      case 'j':
       printw("to field:");
@@ -447,7 +513,7 @@ void Field_Editor()
       }
       if ( selection < 1 || selection > 20 )
        continue;
-      showfieldhint(const_cast<char *>(FIELDHINTS[selection-1]), GREEN, i);
+      showfieldhint(const_cast<char *>(FIELDEDITORHINTS[selection-1]), GREEN, i);
       switch (selection) {
        case 1:
         strcpy(ttext, record[fieldshown].title);
@@ -547,7 +613,7 @@ void Field_Editor()
   }
   clearinputline();
   Change_Color(RED);
-  gotoxy(18,20);
+  gotoxy(editorposition.x+1,editorposition.y+15);
   cleanstdin();
   if ( t != QUIT ) {
    printw("save changes (y/n):");
@@ -571,43 +637,45 @@ int References_Editor()
   Relationship trelationship(const_cast <char *> ("dummydatabase"), 0, 1, 2, 3);
   vector<Relationship>::iterator p;
   alteredparameters=1;
+  resetwindow();
+  editorsize.y--;
   
   if ( trelationships.size() == 0 )
    trelationships.push_back(trelationship);
   
   while ( t != ESC && trelationships.size() ) {
-   Draw_Box(BOXCHAR, 6, 17, 33, 5, 16, 25);
-   Show_Menu_Bar(1);
-   for (i=18;i<40;i++) {
+   Draw_Box(BOXCHAR, 6, editorposition.x, editorsize.x, editorposition.y, editorsize.y, MAGENTAONBLACK);
+   Show_Menu_Bar(ERASE);
+   for (i=editorposition.x+1;i<editorposition.y+13;i++) {
     gotoxy(i, 20);
    addch(SPACE); }
    Change_Color(GREEN);
-   gotoxy(20, 6);
+   gotoxy(editorposition.x+3, editorposition.y+1);
    printw("reccurse relationship tables");
    Change_Color(MAGENTA);
-   gotoxy(18,8);
+   gotoxy(editorposition.x+1,editorposition.y+3);
    printw("external database name");
    Change_Color(YELLOW);
-   gotoxy(18,9);
+   gotoxy(editorposition.x+1, editorposition.y+4);
    printw("1.filename:%.22s", trelationships[relationshipshown].extDbname);
    Change_Color(MAGENTA);
-   gotoxy(18,11);
+   gotoxy(editorposition.x+1, editorposition.y+6);
    printw("equalized fields");
    Change_Color(YELLOW);
-   gotoxy(18,12);
+   gotoxy(editorposition.x+1, editorposition.y+7);
    printw("2.external:%d", trelationships[relationshipshown].extFields[0]);
    gotoxy(35,12);
    printw("3.local:%d", trelationships[relationshipshown].localFields[0]);
-   gotoxy(18,14);
+   gotoxy(editorposition.x+1, editorposition.y+9);
    Change_Color(MAGENTA);
    printw("references fields");
    Change_Color(YELLOW);
-   gotoxy(18,15);
+   gotoxy(editorposition.x+1, editorposition.y+10);
    printw("4.external:%d", trelationships[relationshipshown].extFields[1]);
    gotoxy(35,15); 
    printw("5.local:%d", trelationships[relationshipshown].localFields[1]);
    Change_Color(MAGENTA);
-   gotoxy(18,17);
+   gotoxy(editorposition.x+1, editorposition.y+12);
    printw("relatioship id:");
    Change_Color(YELLOW);
    printw("%d", relationshipshown+1);
@@ -618,10 +686,15 @@ int References_Editor()
    printw("<INS|DEL|ESC>");
    refresh();
    Change_Color(YELLOW);
-   gotoxy(18,20);
-   t=tolower(sgetch(18,20));
+   gotoxy(editorposition.x+1, editorposition.y+15);
+   t=tolower(sgetch(editorposition.x+1, editorposition.y+15));
+   if ( t == QUIT )
+    break;
    cleanstdin(); 
+   if ( t > 49 && t < 54 )
+    showfieldhint(const_cast<char *> (REFERENCEEDITORHINTS[t-49]));
    switch (t) {
+     
     case LEFT:
      if (relationshipshown)
       --relationshipshown;
@@ -639,16 +712,16 @@ int References_Editor()
     case INSERT:
      if ( (int) trelationships.size()<MAXRELATIONSHIPS) {
       trelationships.push_back(trelationship);
-     Show_Message(22, 20, RED, "relationship inserted", 1500); }
+     Show_Message(editorposition.x+5, editorposition.y+15, RED, "relationship inserted", 1500); }
      else
-      Show_Message(20,20, RED, "relationships storage full", 1500);
+      Show_Message(editorposition.x+3, editorposition.y+15, RED, "relationships storage full", 1500);
     break;
     case DELETE:
      p=trelationships.begin();
      p+=relationshipshown;
      trelationships.erase(p);
      relationshipshown+=(!relationshipshown) ? 1 : -1;
-     Show_Message(22, 20, RED, "relationship deleted", 1500);
+     Show_Message(editorposition.x+5, editorposition.y+15, RED, "relationship deleted", 1500);
     break;
     case '1':
      Show_Menu_Bar(1);
@@ -660,13 +733,13 @@ int References_Editor()
      cropstring(ttext, MAXNAME-3);
      Reccurse_File_Extension(ttext, 2);
      if (!tryfile(ttext)) {
-      Show_Message(22, 20, RED, "nonexistant database", 1500);
+      Show_Message(editorposition.x+5, editorposition.y+15, RED, "nonexistant database", 1500);
      break; }
      strcpy(trelationships[relationshipshown].extDbname, ttext);
     break;
     case '2':
      Change_Color(CYAN);
-     gotoxy(18, 20);
+     gotoxy(editorposition.x+1, editorposition.y+15);
      printw("field->");
      i=Scan_Input(1, 1, MAXFIELDS, 3);
      if (i && i<MAXFIELDS+1)
@@ -674,7 +747,7 @@ int References_Editor()
     break;
     case '3':
      Change_Color(CYAN);
-     gotoxy(18, 20);
+     gotoxy(editorposition.x+1, editorposition.y+15);
      printw("field->");
      i=Scan_Input(1, 1, MAXFIELDS, 3);
      if (i && i<MAXFIELDS+1)
@@ -682,7 +755,7 @@ int References_Editor()
     break;
     case '4':
      Change_Color(CYAN);
-     gotoxy(18, 20);
+     gotoxy(editorposition.x+1, editorposition.y+15);
      printw("field->");
      i=Scan_Input(1, 1, MAXFIELDS, 3);
      if (i && i<MAXFIELDS+1)
@@ -690,7 +763,7 @@ int References_Editor()
     break;
     case '5':
      Change_Color(CYAN);
-     gotoxy(18, 20);
+     gotoxy(editorposition.x+1, editorposition.y+15);
      printw("field->");
      i=Scan_Input(1, 1, MAXFIELDS, 3);
      if (i && i<MAXFIELDS+1)
@@ -700,6 +773,7 @@ int References_Editor()
       togglemouse();
      break;
    }
+   
   }
   clearinputline();
   gotoxy(18,20);
@@ -733,7 +807,7 @@ void clearinputline()
 
 int Edit_Field(int &field_id)
 {
- int c=0, bc=0, backupmenu=currentmenu, backupbar=menubar, showallrecords=ON, i;
+ int c=0, bc=0, backupmenu=currentmenu, backupbar=menubar, i;
  Field trecord=record[field_id], ttrecord=record[field_id];
  currentmenu=EDITOR; menubar=1;
  
@@ -931,10 +1005,10 @@ void showfieldhint(char *text, int color1, int sleeptime, int color2)
    if ( strlen(text) > 32 )
     gotoxy(1 + (80 - (int) strlen(text))/2, bottombary);
    else {
-    gotoxy(18, 21);
-    for (i=0;i<32;i++)
+    gotoxy(editorposition.x+1, editorposition.y+16);
+    for (i=0;i<editorsize.x - 1;i++)
      addch(SPACE);
-    gotoxy(18 + (32 - (int) strlen(text))/2, 21);
+    gotoxy(editorposition.x+1 + (32 - (int) strlen(text))/2, editorposition.y+16);
    }
    printw("%s", text);
    gotoxy(x+1,y+1);
@@ -942,4 +1016,11 @@ void showfieldhint(char *text, int color1, int sleeptime, int color2)
    refresh();
    if ( sleeptime )
     Sleep(500);
+}
+
+// reset window position & size
+void resetwindow()
+{
+  editorposition.x=17; editorposition.y=5;
+  editorsize.x=33; editorsize.y=17;
 }

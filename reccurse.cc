@@ -1,7 +1,7 @@
 // reccurse, the filemaker of ncurses
 #include "reccurse.h"
 
-const double version=0.568;
+const double version=0.571;
 
 int main(int argc, char *argv[])
 {
@@ -1209,7 +1209,7 @@ int Show_Record_and_Menu()
       fieldrepetitions[i]=((record[i].color) ? record[i].color : -1);
     }
     // show fields
-    if ( renewscreen || runscript ) {
+    if ( renewscreen || ( runscript && fieldrepetitions[currentfield]) ) {
      clear();
      fieldsadjoiningfields(&records[(currentrecord*fieldsperrecord)+currentfield], adjoiningfields);
      referencedadjoiningfields(currentfield, adjoiningfields);
@@ -2999,6 +2999,8 @@ int Read_Write_Relationships(int mode) // 0 read all, 1 write/add
      strcat(ttext, " ");
      strcat(ttext, itoa(relationships[i].localFields[0]));
      strcat(ttext, " ");
+     if ( record[relationships[i].localFields[1]].fieldlist )
+      record[relationships[i].localFields[1]].fieldlist=relationships[i].extFields[1]-1;
      strcat(ttext, itoa(relationships[i].localFields[1]));
     strcat(ttext, " "); }
     for (i=strlen(ttext);i<RELATIONSHIPSLENGTH;i++)
