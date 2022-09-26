@@ -41,14 +41,14 @@ enum { NORMAL=0, STANDOUT, UNDERLINE, REVERSE, BLINK, DIM, BOLD, PROTECT, INVISI
 enum { TOLEFT=1, CENTER, TORIGHT };
 enum { SAME=0, LOWER, UPPER };
 enum { NOCOMMAND=0, NONEXECUTABLE, COMMAND }; // return results
-const char *noparametercommands[]= { "push", "copy", "paste", "end", "compare", "greater", "smaller", "clear", "autosave", "quit", "stop", "pass" };
-int noparametercommandskeys=12;
-enum { PUSHSPACE=0, COPYTEXT, PASTETEXT, ENDLOOP, COMPAREWITHCLIPBOARD, COMPAREWITHCLIPBOARDGREATER, COMPAREWITHCLIPBOARDSMALLER, CLEARVARIABLES, AUTOSAVERECCURSE,  QUITPROGRAM, STOPSCRIPT, PASS };
-const char *parametercommands[]= { "file", "record", "field", "enter", "append", "variable", "variabletoclipboard", "delete", "loop", "wait", "goto", "page", "attributes", "color", "sleep", "menu", "key", "keys" };
-enum { FILEOPEN=0, GOTORECORD, GOTOFIELD, ENTERTEXT, APPENDTEXT, VARIABLESET, VARIABLETOCLIPBOARD, CLEARVARIABLE, LOOPFOR, WAITSECS, GOTOLABEL, GOTOPAGE, SETATTRIBUTES, SETCOLOR, SETSLEEPTIME, CHANGEMENU, PUSHKEY, PUSHKEYS };
+const char *noparametercommands[]= { "push", "copy", "paste", "end", "compare", "greater", "smaller", "clear", "autosave", "quit", "stop", "pass", "flash", "id", "pause" };
+enum { PUSHSPACE=0, COPYTEXT, PASTETEXT, ENDLOOP, COMPAREWITHCLIPBOARD, COMPAREWITHCLIPBOARDGREATER, COMPAREWITHCLIPBOARDSMALLER, CLEARVARIABLES, AUTOSAVERECCURSE,  QUITPROGRAM, STOPSCRIPT, PASS, FLASH, SHOWID, PAUSE };
+int noparametercommandskeys=15;
+const char *parametercommands[]= { "file", "record", "field", "enter", "append", "variable", "variabletoclipboard", "delete", "loop", "wait", "goto", "page", "attributes", "color", "sleep", "menu", "key", "keys", "push", "move" };
+enum { FILEOPEN=0, GOTORECORD, GOTOFIELD, ENTERTEXT, APPENDTEXT, VARIABLESET, VARIABLETOCLIPBOARD, CLEARVARIABLE, LOOPFOR, WAITSECS, GOTOLABEL, GOTOPAGE, SETATTRIBUTES, SETCOLOR, SETSLEEPTIME, CHANGEMENU, PUSHKEY, PUSHKEYS, PUSHSPACEFIELD, MOVEFIELD };
 enum { SEGMENTATIONFAULT = -4, FLOATINGPOINTEXCEPTION = -3, NOACTIVEFIELDS, FILEERROR, NORMALEXIT = 0 };
+int parametercommandskeys=20;
 
-int parametercommandskeys=18;
 int scriptrunning=0, scriptsleeptime=250;
 char scriptfile[MAXSTRING];
 
@@ -149,6 +149,9 @@ extern int Read_Write_Field(Annotated_Field &tfield, long int field_position, in
 extern int Pages_Selector(int pagetochange=-1);
 extern int decimatestringtokey(char *text);
 extern int breaktexttokeys(char *text);
+extern void Flash_Field(int field_id, int sleeptime=250);
+extern int isrecordproperlydictated(Field &tfield);
+extern int Show_Field_ID(Annotated_Field *tfield);
 
 // parse by line
 int commandparser(char scriptcommand[MAXSTRING])
@@ -183,7 +186,7 @@ int commandparser(char scriptcommand[MAXSTRING])
    thisfield=(currentrecord*fieldsperrecord)+currentfield; // commands only work on currentfield
    
    // split line to scriptcommand and parameter
-   i1=noparameters=scantextforcommand(scriptcommand, parameter, SPACE);
+   noparameters=scantextforcommand(scriptcommand, parameter, SPACE);
    
    // handle labels
    if (islinelabel(scriptcommand)) {
@@ -265,7 +268,7 @@ int commandparser(char scriptcommand[MAXSTRING])
       toggleautosave();
      break;
      case CLEARVARIABLES:
-      for (i1=0;i1<(int) record.size();i1++)
+      for (i1=0;i1<(int)record.size();i1++)
        if (record[i1].type==VARIABLE)
         Delete_Field(i1);
      break;
@@ -277,6 +280,17 @@ int commandparser(char scriptcommand[MAXSTRING])
      break;
      case PASS:
       // do nothing
+     break;
+     case FLASH:
+      Flash_Field(currentfield);
+     break;
+     case SHOWID:
+      editoroption=-2; // let id be seen for 1 sec
+      Show_Field_ID(&records[thisfield]);
+      editoroption=0;
+     break;
+     case PAUSE:
+      getch();
      break;
      default:
       if (scriptcommand[strlen(scriptcommand)-1]==':') // label
@@ -438,6 +452,60 @@ int commandparser(char scriptcommand[MAXSTRING])
      break;
      case PUSHKEYS:
       breaktexttokeys(parameter);
+     break;
+     case PUSHSPACEFIELD:
+      i1=atoi(parameter);
+      if ( i1 )
+       pushspaceonfield(atoi(parameter)-1);
+     break;
+     case MOVEFIELD: {
+      const char *MOVEPARAMETERS[] = { "up", "down", "left", "right", "upleft", "upright", "downleft", "downright" };
+      enum { FU, FD, FL, FR, FUL, FUR, FDL, FDR };
+      Field tfield=record[currentfield];
+      for (i=0;i<(int)strlen(parameter);i++)
+       parameter[i]=tolower(parameter[i]);
+      for (i=FU;i<=FDR;i++)
+       if ( !strcmp(MOVEPARAMETERS[i], parameter) )
+        break;
+      if ( i == FDR+1 ) {
+       returnvalue=FAIL;
+       break;
+      }
+      switch ( i ) {
+       case FU:
+        tfield.pt.y--;
+       break;
+       case FD:
+        tfield.pt.y++;
+       break;
+       case FL:
+        tfield.pt.x--;
+       break;
+       case FR:
+        tfield.pt.x++;
+       break;
+       case FUL:
+        tfield.pt.x--;
+        tfield.pt.y--;
+       break;
+       case FUR:
+        tfield.pt.x++;
+        tfield.pt.y--;
+       break;
+       case FDL:
+        tfield.pt.x--;
+        tfield.pt.y++;
+       break;
+       case FDR:
+        tfield.pt.x++;
+        tfield.pt.y++;
+       break;
+      }
+      if ( isrecordproperlydictated(tfield) )
+       record[currentfield]=tfield;
+      else
+       returnvalue=FAIL;
+     }
      break;
      default:
       if (scriptrunning)

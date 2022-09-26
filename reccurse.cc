@@ -1,7 +1,7 @@
 // reccurse, the filemaker of ncurses
 #include "reccurse.h"
 
-const double version=0.572;
+const double version=0.573;
 
 int main(int argc, char *argv[])
 {
@@ -2618,6 +2618,8 @@ int Show_Field_ID(Annotated_Field *tfield)
    gotoxy(x,y);
    printw("%d", tfield->id+1);
    refresh();
+   if ( editoroption == -2 ) // rccompar.cc
+    Sleep(1500);
    Change_Attributes(NORMAL);
    
  return 0;
