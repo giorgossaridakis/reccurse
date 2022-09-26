@@ -1,7 +1,7 @@
 // reccurse, the filemaker of ncurses
 #include "reccurse.h"
 
-const double version=0.571;
+const double version=0.572;
 
 int main(int argc, char *argv[])
 {
@@ -1388,7 +1388,9 @@ int Show_Record_and_Menu()
       break;
       case SCANTITLE:
        Show_Menu_Bar(ERASE);
-       Scan_Input(record[currentfield].title, 1, bottombary, record[currentfield].color);
+       strcpy(ttext, record[currentfield].title);
+       Scan_Input(ttext, 1, bottombary, record[currentfield].color);
+       strncpy(record[currentfield].title, ttext, MAXTITLE);
        alteredparameters=1;
       break;
       case TEXTTOAUTOMATICVALUE: {
@@ -2417,7 +2419,7 @@ int Show_Field(Annotated_Field *field, int flag) // 1 highlight, 2 only in scree
   //title
   if (strcmp(tfield->title, EMPTYSTRING)) {
       
-   strcpy(ttext, tfield->title);
+   strncpy(ttext, tfield->title, (size_t)record[field->id].size.x);
    stringformulacalculator(ttext, currentrecord);   
    switch (tfield->title_position) {
     case 0:
