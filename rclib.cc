@@ -282,13 +282,15 @@ int Scan_Input(char istring[MAXSTRING], int x_pos, int y_pos, int color, int len
         fieldreferenceflag=2;
        else {
         t=0;
-        for (i=0;i<(int) strlen(tstring)-1;i++) {
+        for (i=0;i<(int)strlen(tstring);i++) {
          if ( i == column - 1 && t < length - 2 )
           iistring[t++]=SPACE;
          if ( t < length - 2 )
           iistring[t++]=tstring[i]; 
         }
-        iistring[MAXSTRING-1]='\0';
+        while ( t < MAXSTRING -1 )
+         iistring[t++]=SPACE;
+        iistring[t]='\0';
         strcpy(tstring, iistring);
        }
       break;
@@ -543,11 +545,12 @@ int sgetch(int x_pos, int y_pos, int sleeptime, int showflag)
   int t;
   
   // are keys for next loops stored in vector ?
-  if (keyonnextloop.size()) {
+  if ( keyonnextloop.size() ) {
    t=keyonnextloop[0];
    vector<int>::iterator p=keyonnextloop.begin();
    keyonnextloop.erase(p);
-  return t; }
+   return t;
+  }
    
     t=getch();
     if ( t == ESC ) { // possible alt held down
@@ -870,6 +873,17 @@ int scantextforcommand(char *text, char *command, char separator)
    result=1; }
 
  return result;
+}
+
+// string to lower chars 
+char* stringtolower(char *text)
+{
+  int i;
+  
+   for (i=0;i<(int)strlen(text);i++)
+    text[i]=tolower(text[i]);
+  
+ return text;
 }
 
 // kbhit from old and wise

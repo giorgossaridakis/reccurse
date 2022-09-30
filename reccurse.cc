@@ -1,7 +1,7 @@
 // reccurse, the filemaker of ncurses
 #include "reccurse.h"
 
-const double version=0.573;
+double version=0.599;
 
 int main(int argc, char *argv[])
 {
@@ -80,7 +80,8 @@ int main(int argc, char *argv[])
     if ( pagesnumber > 1 ) {
      strcat(tmessage, " and ");
      strcat(tmessage, itoa(pagesnumber-1));
-    strcat(tmessage, " more"); }
+     strcat(tmessage, " more");
+    }
     // read record fields and records from dbfile
     Load_Database(currentpage);
     Show_Message(8, 20, GREEN, tmessage, 2250);
@@ -1190,6 +1191,7 @@ int Show_Record_and_Menu()
   FindSchedule tfindschedule;
   vector<Annotated_Field> trecords;
   vector<Annotated_Field> backupfields, currentfields;
+  int scriptrun=0;
   
    while ( true ) {
      
@@ -1235,7 +1237,7 @@ int Show_Record_and_Menu()
      for (i=0;i<(int)strlen(alterscreenparameterskeys);i++)
       if (c==alterscreenparameterskeys[i])
        alteredparametersshown=1;
-     if ( alteredparametersshown ) {
+     if ( alteredparametersshown && !runscript ) {
       Sleep(250); // time to show changes before highlight
      }
     }
@@ -1291,19 +1293,22 @@ int Show_Record_and_Menu()
     
     if (runscript) {
      runscript=commandparser(scriptcommand);
-     uSleep(scriptsleeptime); 
+     if ( runscript != SKIPCOMMAND )
+      Sleep(scriptsleeptime);
     }
     
     if (kbhit() && runscript) {
      strcpy(scriptcommand, "stop");
     runscript=commandparser(scriptcommand);
-    }
-    
+    }    
+     
     if ( !runscript || (keyonnextloop.size() && keyonnextloop[keyonnextloop.size()-1]!=SPACE) ) { // also process keyonnextloop from scripts, but not space
-     if ( recordsdemoall && printscreenmode )
-      blockunblockgetch(PRINTUNBLOCK);
-     else
-      blockunblockgetch(pagehasclockfields() ? UNBLOCK : UNBLOCK/3); // necessary to give live clock operational status
+     if ( runscript == NOCOMMAND ) {
+      if ( recordsdemoall && printscreenmode )
+       blockunblockgetch(PRINTUNBLOCK);
+      else
+       blockunblockgetch(pagehasclockfields() ? UNBLOCK : UNBLOCK/3); // necessary to give live clock operational status
+     }
      if ( mousemenucommands.size() )
       c=fetchmousemenucommand();
      else
@@ -1490,8 +1495,7 @@ int Show_Record_and_Menu()
        Initialize_Database_Parameters(1); }
       break;
       case 'm': // from all menus
-       ++menubar;
-       menubar=(menubar==4) ? 0 : menubar;
+       togglemenubar();
        if (autosave)
         Read_Write_Current_Parameters(2, WRITE);
       break;
@@ -2404,11 +2408,9 @@ int Show_Field(Annotated_Field *field, int flag) // 1 highlight, 2 only in scree
 
   if ( isfielddisplayable(tfield->id) == 0 )
    return -1;
-  lima=(tfield->box) ? 80 : 81;
+  lima=(tfield->box) ? 81 : 80;
   limb=(tfield->box) ? 23 : 24;
   if ((tfield->pt.x+tfield->size.x)>lima || (tfield->pt.y+tfield->size.y)>limb)
-   return -1;
-  if (tfield->size.x>MAXSTRING || tfield->size.y>20)
    return -1;
   
   // box
@@ -2488,7 +2490,7 @@ int Show_Field(Annotated_Field *field, int flag) // 1 highlight, 2 only in scree
     aligntext(ttext, field, ctoi(ttext[i+2])); 
    }
    // highlight field
-   if ( flag == 1 ) {
+   if ( flag == 1 && skiphighlight == OFF ) {
     if ( editoroption == -1 )
      tcolor=(tfield->color==highlightcolors[0]) ? highlightcolors[1] : highlightcolors[0];
     for (i=strlen(ttext);i<((tfield->size.x)+1)*((tfield->size.y)+1);i++)
@@ -3603,4 +3605,13 @@ void Hanle_AlteredScreenParameter(int c, int field_id)
        
 }
 
-
+// toggle bottom bar 
+void togglemenubar(int pos)
+{
+   if ( pos == -1 ) {
+    ++menubar;
+    menubar=(menubar==4) ? 0 : menubar;
+   }
+   else
+    menubar=pos;
+}

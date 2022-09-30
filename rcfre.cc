@@ -482,7 +482,7 @@ void Field_Editor()
       if (t!='y')
        break;
       clearinputline();
-      gotoxy(editorposition.x+1,20);
+      gotoxy(editorposition.x+1, editorposition.y+15);
       Change_Color(GREEN);
       printw("copy records (y/n):");
       t=sgetch();
@@ -518,7 +518,7 @@ void Field_Editor()
        case 1:
         strcpy(ttext, record[fieldshown].title);
         Scan_Input(ttext, 1, 24, record[fieldshown].title_color);
-        if (!strlen(ttext) || strlen(ttext)>MAXTITLE)
+        if (!strlen(ttext) || strlen(ttext) > MAXTITLE)
          break;
         strcpy(record[fieldshown].title, ttext);
        break;

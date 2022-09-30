@@ -95,6 +95,7 @@ enum { NOSEPARATOR=0, WORD, LINE };
 const int bottombary=24;
 const int MAXINSTANCES=69;
 enum { TEXT, TITLE, BOX };
+enum { NOCOMMAND=0, NONEXECUTABLE, SCRIPTCOMMAND, SKIPCOMMAND }; // rccompar.cc results
 const char *alteredparameterstargets[] = { "text", "title", "box" };
 int alteredparameterstarget=TEXT, alteredparametersshown=0;
 
@@ -174,12 +175,12 @@ int changedrecord=1, editoroption=-1;
 char input_string[MAXSTRING];
 int altpressed;
 int MOUSE=ON;
-extern int scriptsleeptime;
-extern int terminalhascolor;
 char *myname;
 int mypid;
 int pidof=1;
 static volatile int signalPid = -1;
+extern int scriptsleeptime, skiphighlight;
+extern int terminalhascolor;
 
 struct Points {
  int x;
@@ -374,6 +375,7 @@ void outputscreenarraytofile();
 void Shared_Databases_Handler(int page_id=-1);
 int togglealteredparameterstarget();
 void Hanle_AlteredScreenParameter(int c, int field_id=-1);
+void togglemenubar(int pos=-1);
 
 // rclib.cc
 void INThandler(int sig);
@@ -417,6 +419,7 @@ int findfieldege(int flag=0);
 void INThandler(int sig);
 char* bringstringtomiddle(char *text, int width);
 int scantextforcommand(char *text, char *command, char separator='@');
+char* stringtolower(char *text);
 int kbhit(void);
 int decimatestringtokey(char *text);
 int breaktexttokeys(char *text);
@@ -497,8 +500,10 @@ extern int References_Editor();
 extern void Field_Editor();
 extern void clearinputline();
 extern int Edit_Field(int &field_id);
-extern void Show_All_Fields_for_Editor(int field_id, int flag=0);
 extern void Duplicate_Field(int field_id, int flag=0);
+extern void Show_All_Fields_for_Editor(int field_id, int flag=0);
+extern void showfieldhint(char *text, int color1=CYAN, int sleeptime=0, int color2=YELLOW);
+extern void resetwindow();
 
 // rcpc.cc
 extern int parenthesesincluderforpolishreversecalculator(char formula[]);

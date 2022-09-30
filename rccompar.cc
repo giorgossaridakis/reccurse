@@ -31,6 +31,7 @@ using namespace std;
 // numericals
 const int MAXSTRING=80; // characters in a regular string
 const int MAXTITLE=20; // characters in a a title string
+const int MAXPAGES=25; // pages limit
 const int MAXSUFFIXCHARS=3; // max string for number suffixes
 const int MAXRELATIONSHIPS=25; // will fit into above 1kb, same as MAXPAGES
 const int SPACE=32;
@@ -40,16 +41,25 @@ enum { NUMERICAL=0, CALENDAR, STRING, MIXEDTYPE, VARIABLE, PROGRAM, CLOCK };
 enum { NORMAL=0, STANDOUT, UNDERLINE, REVERSE, BLINK, DIM, BOLD, PROTECT, INVISIBLE };
 enum { TOLEFT=1, CENTER, TORIGHT };
 enum { SAME=0, LOWER, UPPER };
-enum { NOCOMMAND=0, NONEXECUTABLE, COMMAND }; // return results
-const char *noparametercommands[]= { "push", "copy", "paste", "end", "compare", "greater", "smaller", "clear", "autosave", "quit", "stop", "pass", "flash", "id", "pause" };
-enum { PUSHSPACE=0, COPYTEXT, PASTETEXT, ENDLOOP, COMPAREWITHCLIPBOARD, COMPAREWITHCLIPBOARDGREATER, COMPAREWITHCLIPBOARDSMALLER, CLEARVARIABLES, AUTOSAVERECCURSE,  QUITPROGRAM, STOPSCRIPT, PASS, FLASH, SHOWID, PAUSE };
-int noparametercommandskeys=15;
-const char *parametercommands[]= { "file", "record", "field", "enter", "append", "variable", "variabletoclipboard", "delete", "loop", "wait", "goto", "page", "attributes", "color", "sleep", "menu", "key", "keys", "push", "move" };
-enum { FILEOPEN=0, GOTORECORD, GOTOFIELD, ENTERTEXT, APPENDTEXT, VARIABLESET, VARIABLETOCLIPBOARD, CLEARVARIABLE, LOOPFOR, WAITSECS, GOTOLABEL, GOTOPAGE, SETATTRIBUTES, SETCOLOR, SETSLEEPTIME, CHANGEMENU, PUSHKEY, PUSHKEYS, PUSHSPACEFIELD, MOVEFIELD };
+enum { NOCOMMAND=0, NONEXECUTABLE, SCRIPTCOMMAND, SKIPCOMMAND }; // return results
+const char *noparametercommands[]= { "push", "copy", "paste", "end", "compare", "greater", "smaller", "clear", "autosave", "quit", "stop", "pass", "flash", "id", "pause", "save", "load", "activate", "highlight" };
+enum { PUSHSPACE=0, COPYTEXT, PASTETEXT, ENDLOOP, COMPAREWITHCLIPBOARD, COMPAREWITHCLIPBOARDGREATER, COMPAREWITHCLIPBOARDSMALLER, CLEARVARIABLES, AUTOSAVERECCURSE,  QUITPROGRAM, STOPSCRIPT, PASS, FLASH, SHOWID, PAUSE, SAVEDATABASE, LOADDATABASE, ACTIVATEDEACTIVATEFIELD, TOGGLEHIGHLIGHTFIELD };
+int noparametercommandskeys=19;
+const char *parametercommands[]= { "file", "record", "field", "enter", "append", "variable", "variabletoclipboard", "delete", "loop", "wait", "goto", "page", "textattributes", "titleattributes", "textcolor", "titlecolor", "boxcolor", "sleep", "menu", "key", "keys", "push", "move", "waittime", "menubar" };
+enum { FILEOPEN=0, GOTORECORD, GOTOFIELD, ENTERTEXT, APPENDTEXT, VARIABLESET, VARIABLETOCLIPBOARD, CLEARVARIABLE, LOOPFOR, WAITSECS, GOTOLABEL, GOTOPAGE, SETTEXTATTRIBUTES, SETTITLEATTRIBUTES, SETTEXTCOLOR, SETTITLECOLOR, SETBOXCOLOR, SETSLEEPTIME, CHANGEMENU, PUSHKEY, PUSHKEYS, PUSHSPACEFIELD, MOVEFIELD, WAITTIME, TOGGLEBAR };
+int parametercommandskeys=25;
+const char *systemvariables[] = { "version", "records", "record", "fields", "field", "page" };
+enum { VERSION = 0, RECORDS, RECORD, FIELDS, FIELD, PAGE };
+int systemvariableskeys=6;
 enum { SEGMENTATIONFAULT = -4, FLOATINGPOINTEXCEPTION = -3, NOACTIVEFIELDS, FILEERROR, NORMALEXIT = 0 };
-int parametercommandskeys=20;
+enum { READ = 0, WRITE, CREATEDB, RECREATE, RECREATERC };
+enum { OFF = 0, ON };
+enum { MAIN=0, OPTIONS, EDIT, EXTRA, EDITOR, CALCULATOR, EDITEXTRA, EXTERNALDB };
+enum { TEXT, TITLE, BOX };
+enum { RESTORE = 0, BACKUP };
 
-int scriptrunning=0, scriptsleeptime=250;
+const int SCRIPTSLEEPTIME=250;
+int scriptrunning=0, scriptsleeptime=SCRIPTSLEEPTIME;
 char scriptfile[MAXSTRING];
 
 extern int fieldsperrecord;
@@ -65,6 +75,10 @@ extern const char *EMPTYSTRING;
 extern int currentpage;
 extern int pagesnumber;
 extern int currentmenu;
+extern int alteredparameterstarget;
+extern int runscript;
+extern double version;
+extern char pages[MAXPAGES][MAXSTRING];
 
 struct Points {
  int x;
@@ -126,7 +140,7 @@ extern vector<Field> record, dummyrecord, externalrecord[MAXRELATIONSHIPS];
 extern vector<Annotated_Field> records, dummyrecords, externalrecords[MAXRELATIONSHIPS];
 extern vector<int> keyonnextloop;
 
-int runline=0;
+int runline=0, skiphighlight=OFF;
 
 // function declarations
 int commandparser(char scriptcommand[MAXSTRING]);
@@ -149,9 +163,13 @@ extern int Read_Write_Field(Annotated_Field &tfield, long int field_position, in
 extern int Pages_Selector(int pagetochange=-1);
 extern int decimatestringtokey(char *text);
 extern int breaktexttokeys(char *text);
-extern void Flash_Field(int field_id, int sleeptime=250);
+extern void Flash_Field(int field_id, int sleeptime=SCRIPTSLEEPTIME);
 extern int isrecordproperlydictated(Field &tfield);
 extern int Show_Field_ID(Annotated_Field *tfield);
+extern char* stringtolower(char *text);
+extern int Read_Write_db_File(int mode=0);
+extern void Load_Database(int pagenumber);
+extern void togglemenubar(int pos=-1);
 
 // parse by line
 int commandparser(char scriptcommand[MAXSTRING])
@@ -160,7 +178,7 @@ int commandparser(char scriptcommand[MAXSTRING])
   double d;
   static int fileopen=0;;
   char tline[MAXSTRING], parameter[MAXSTRING];
-  int returnvalue=COMMAND;
+  int returnvalue=SCRIPTCOMMAND;
   
    if (fileopen) {
     ifstream infile(scriptfile);
@@ -178,33 +196,67 @@ int commandparser(char scriptcommand[MAXSTRING])
    }
    
    // stop script procedures
-   if ((runline>=(int) scriptlines.size() && scriptrunning) || !strcmp(scriptcommand, noparametercommands[STOPSCRIPT])) {
+   if ( (runline == (int)scriptlines.size() && scriptrunning) || !strcmp(scriptcommand, noparametercommands[STOPSCRIPT]) ) {
     stopscript();
-   return NOCOMMAND; }
-   if (scriptrunning)
+    return NOCOMMAND;
+   }
+   
+   if ( scriptrunning )
     strcpy(scriptcommand, scriptlines[runline++].textLine);
    thisfield=(currentrecord*fieldsperrecord)+currentfield; // commands only work on currentfield
    
    // split line to scriptcommand and parameter
    noparameters=scantextforcommand(scriptcommand, parameter, SPACE);
+   stringtolower(parameter);
    
    // handle labels
-   if (islinelabel(scriptcommand)) {
-    return COMMAND;
+   if ( islinelabel(scriptcommand) ) {
+    return SCRIPTCOMMAND;
    }
    
-    // variables replacement
-    if (strcmp(scriptcommand, parametercommands[VARIABLESET]) && strcmp(scriptcommand, parametercommands[CLEARVARIABLE])) {
-     for (i=0;i<(int) record.size();i++) {
-      if (record[i].type==VARIABLE) {
-       if (!strcmp(record[i].title, parameter) && strcmp(scriptcommand, parametercommands[VARIABLESET])) {
-        strcpy(parameter, record[i].automatic_value);
-       }
+   // variables replacement
+   if (strcmp(scriptcommand, parametercommands[VARIABLESET]) && strcmp(scriptcommand, parametercommands[CLEARVARIABLE])) {
+    for (i=0;i<(int)record.size();i++) {
+     if (record[i].type==VARIABLE) {
+      if (!strcmp(record[i].title, parameter) && strcmp(scriptcommand, parametercommands[VARIABLESET])) {
+       strcpy(parameter, record[i].automatic_value);
       }
      }
     }
+   }
    
-   if (!noparameters) {
+   // system variables
+   if ( noparameters ) {
+    for (i=0;i<systemvariableskeys;i++)
+     if ( !strcmp(parameter, systemvariables[i]) )
+      break;
+    if ( i < systemvariableskeys ) {
+     switch ( i ) {
+      case VERSION:
+       sprintf(tline, "%f", version);
+      break;
+      case RECORDS:
+       sprintf(tline, "%d", recordsnumber);
+      break;
+      case RECORD:
+       sprintf(tline, "%d", currentrecord);
+      break;
+      case FIELDS:
+       sprintf(tline, "%d", fieldsperrecord);
+      break;      
+      case FIELD:
+       sprintf(tline, "%d", currentfield);
+      break;
+      case PAGE:
+       sprintf(tline, "%s", pages[currentpage]);
+      break;
+     }
+     strcpy(parameter, tline);
+    }
+   }
+   
+   if ( !noparameters ) {
+     
     for (commandtorun=0;commandtorun<noparametercommandskeys;commandtorun++)
      if (!strcmp(noparametercommands[commandtorun], scriptcommand))
       break;
@@ -223,13 +275,14 @@ int commandparser(char scriptcommand[MAXSTRING])
        return NOCOMMAND;
       i1=runline-2; // endloop line-1
       strcpy(scriptcommand, noparametercommands[PASS]);
-      while (i1>0 && (strcmp(scriptcommand, parametercommands[LOOPFOR]))) {
-       strcpy(scriptcommand, scriptlines[i1].textLine);
-       scantextforcommand(scriptcommand, parameter, SPACE);
-      --i1; }
-      if (i1==0 && (strcmp(scriptcommand, parametercommands[LOOPFOR])))
+      while ( i1 > 0 && (strcmp(scriptcommand, parametercommands[LOOPFOR]))) {
+       strcpy(scriptcommand, scriptlines[i1--].textLine);
+       runscript=scantextforcommand(scriptcommand, parameter, SPACE);
+      }
+      if ( i1 == 0 && (strcmp(scriptcommand, parametercommands[LOOPFOR])) )
        stopscript();
       runline=i1+1;
+      returnvalue=SKIPCOMMAND;
      break;
      case COMPAREWITHCLIPBOARD:
       if (!scriptrunning)
@@ -280,6 +333,7 @@ int commandparser(char scriptcommand[MAXSTRING])
      break;
      case PASS:
       // do nothing
+      returnvalue=SKIPCOMMAND;
      break;
      case FLASH:
       Flash_Field(currentfield);
@@ -292,6 +346,20 @@ int commandparser(char scriptcommand[MAXSTRING])
      case PAUSE:
       getch();
      break;
+     case SAVEDATABASE:
+      alteredparameters=0;
+      Read_Write_db_File(RECREATE);
+      Read_Write_db_File(WRITE); 
+     break;
+     case LOADDATABASE:
+      Load_Database(currentpage);
+     break;
+     case ACTIVATEDEACTIVATEFIELD:
+      record[currentfield].active = (record[currentfield].active == ON) ? OFF : ON;
+     break;
+     case TOGGLEHIGHLIGHTFIELD:
+      skiphighlight = (skiphighlight == ON) ? OFF : ON;
+     break;
      default:
       if (scriptcommand[strlen(scriptcommand)-1]==':') // label
        break;
@@ -299,8 +367,10 @@ int commandparser(char scriptcommand[MAXSTRING])
        return NONEXECUTABLE;
       return NOCOMMAND;
     break; }
+    
    }
    else { // parameter scriptcommand
+     
     for (commandtorun=0;commandtorun<parametercommandskeys;commandtorun++)
      if (!strcmp(parametercommands[commandtorun], scriptcommand))
       break;
@@ -371,18 +441,20 @@ int commandparser(char scriptcommand[MAXSTRING])
       Delete_Field(i1-1);
      break;
      case LOOPFOR:
-      if (!scriptrunning)
+      if ( !scriptrunning )
        return NOCOMMAND;
       i1=atoi(parameter);
-      if (i1<1) { // loop has reached 0
+      if ( i1 < 1 ) { // loop has reached 0
        strcpy(scriptlines[runline-1].textLine, noparametercommands[PASS]);
-       while ((strcmp(scriptlines[runline].textLine, noparametercommands[ENDLOOP])) && runline<(int) scriptlines.size())
+       while ( (strcmp(scriptlines[runline].textLine, noparametercommands[ENDLOOP])) && runline < (int)scriptlines.size() )
         ++runline;
-       if (runline<(int) scriptlines.size())
+       if ( runline < (int)scriptlines.size() )
         strcpy(scriptlines[runline].textLine, noparametercommands[PASS]);
-      break;
+       ++runline;
       }
-      sprintf(scriptlines[runline-1].textLine, "%s %d", parametercommands[LOOPFOR], i1-1);
+      else
+       sprintf(scriptlines[runline-1].textLine, "%s %d", parametercommands[LOOPFOR], i1-1);
+      returnvalue=SKIPCOMMAND;
      break;
      case WAITSECS:
       i1=atoi(parameter);
@@ -408,7 +480,7 @@ int commandparser(char scriptcommand[MAXSTRING])
        return NOCOMMAND; // will fail in script as well
       Pages_Selector(i1);
      break;
-     case SETATTRIBUTES:
+     case SETTEXTATTRIBUTES:
       if (strlen(parameter)!=9) {
        returnvalue=FAIL;
        break;
@@ -420,15 +492,54 @@ int commandparser(char scriptcommand[MAXSTRING])
       }
       if (i1<9)
        returnvalue=FAIL;
-      else
+      else {
        strcpy(record[currentfield].attributes, parameter);
+       alteredparameters=1;
+      }
      break;
-     case SETCOLOR:
+     case SETTITLEATTRIBUTES:
+      if (strlen(parameter)!=9) {
+       returnvalue=FAIL;
+       break;
+      }
+      for (i1=0;i1<9;i1++) {
+       if (parameter[i1]!='0' && parameter[i1]!='1') {
+        break;
+       }
+      }
+      if (i1<9)
+       returnvalue=FAIL;
+      else {
+       strcpy(record[currentfield].title_attributes, parameter);
+       alteredparameters=1;
+      }
+     break;
+     case SETTEXTCOLOR:
       i1=atoi(parameter);
       if (i1<1 || i1>58)
        returnvalue=FAIL;
-      else
+      else {
        record[currentfield].color=i1;
+       alteredparameters=1;
+      }
+     break;
+     case SETTITLECOLOR:
+      i1=atoi(parameter);
+      if (i1<1 || i1>58)
+       returnvalue=FAIL;
+      else {
+       record[currentfield].title_color=i1;
+       alteredparameters=1;
+      }
+     break;
+     case SETBOXCOLOR:
+      i1=atoi(parameter);
+      if (i1<1 || i1>58)
+       returnvalue=FAIL;
+      else {
+       record[currentfield].box_color=i1;
+       alteredparameters=1;
+      }
      break;
      case SETSLEEPTIME:
       i1=atoi(parameter);
@@ -445,7 +556,7 @@ int commandparser(char scriptcommand[MAXSTRING])
        currentmenu=i1;
      break;
      case PUSHKEY:
-      if ((i1=decimatestringtokey(parameter))==0)
+      if ( (i1=decimatestringtokey(parameter))==0 )
        returnvalue=FAIL;
       else
        keyonnextloop.push_back(i1);
@@ -462,8 +573,6 @@ int commandparser(char scriptcommand[MAXSTRING])
       const char *MOVEPARAMETERS[] = { "up", "down", "left", "right", "upleft", "upright", "downleft", "downright" };
       enum { FU, FD, FL, FR, FUL, FUR, FDL, FDR };
       Field tfield=record[currentfield];
-      for (i=0;i<(int)strlen(parameter);i++)
-       parameter[i]=tolower(parameter[i]);
       for (i=FU;i<=FDR;i++)
        if ( !strcmp(MOVEPARAMETERS[i], parameter) )
         break;
@@ -501,22 +610,36 @@ int commandparser(char scriptcommand[MAXSTRING])
         tfield.pt.y++;
        break;
       }
-      if ( isrecordproperlydictated(tfield) )
+      if ( isrecordproperlydictated(tfield) ) {
        record[currentfield]=tfield;
+       alteredparameters=1; 
+      }
       else
        returnvalue=FAIL;
      }
+     break;
+     case WAITTIME:
+      i1=atoi(parameter);
+      if ( i1 > 0 )
+       scriptsleeptime=i1;
+     break;
+     case TOGGLEBAR:
+      i1=atoi(parameter);
+      if ( -1<i1<4 )
+       togglemenubar(i1);
      break;
      default:
       if (scriptrunning)
        return NONEXECUTABLE;
       return NOCOMMAND;
-    break; }
+     break;
+    }
+    
    }
    
    strcpy(scriptcommand, " ");
 
-   if (returnvalue==FAIL)
+   if ( returnvalue == FAIL )
     returnvalue=(scriptrunning) ? NONEXECUTABLE: NOCOMMAND;
    
  return returnvalue;
@@ -574,7 +697,8 @@ int setvariablefromfield(char *parameter, int field_id)
 void stopscript()
 {
     scriptlines.clear();
-    runline=scriptrunning=0;
+    runline=scriptrunning=skiphighlight=0;
+    scriptsleeptime=SCRIPTSLEEPTIME;
 }
 
 // return variable field id
@@ -589,3 +713,4 @@ int isvariable(char *parameter)
     
  return (i==(int) record.size()) ? 0 : i+1;
 }
+
