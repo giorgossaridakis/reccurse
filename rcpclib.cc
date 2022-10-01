@@ -6,7 +6,7 @@ int parseformulaforfunctions(char formula[]);
 int mathfunctionsparser(int function_id, char tcommand[MAXSTRING]);
 int parseformulaforerrors(char formula[]);
 extern int findsimple(char text[], char token[]);
-extern int extracttextpart(char source[MAXSTRING], char dest[MAXSTRING], int startpt, int endpt);
+extern int extracttextpart(char source[MAXSTRING], char dest[MAXSTRING], int startpt, int endpt=-1);
 extern void inserttextpart(char text[MAXSTRING], char part[MAXSTRING], int point);
 
 class Function {

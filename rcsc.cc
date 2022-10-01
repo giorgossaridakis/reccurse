@@ -70,7 +70,7 @@ extern vector<Annotated_Field> records, dummyrecords, externalrecords[MAXRELATIO
 // function declarations
 int stringformulacalculator(char formula[MAXSTRING], int record_id);
 int replacepartoftextwithcorrespondingvalue(char ttext[MAXSTRING], int record_id);
-int extracttextpart(char source[MAXSTRING], char dest[MAXSTRING], int startpt, int endpt);
+int extracttextpart(char source[MAXSTRING], char dest[MAXSTRING], int startpt, int endpt=-1);
 void inserttextpart(char text[MAXSTRING], char part[MAXSTRING], int point);
 int commandparser(int reference, char tcommand[MAXSTRING]);
 char* formatreplacer(char source[MAXSTRING], int field_id);
@@ -155,6 +155,8 @@ int extracttextpart(char source[MAXSTRING], char dest[MAXSTRING], int startpt, i
 {
   int i, n=0;
   char ttext[MAXSTRING];
+  if ( endpt == -1 )
+   endpt=startpt+(int)strlen(dest);
   
    for (i=startpt;i<endpt;i++)
     dest[n++]=source[i];

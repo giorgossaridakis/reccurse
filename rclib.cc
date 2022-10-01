@@ -493,6 +493,16 @@ void addleadingspaces(char ttext[], int overallsize)
   strcpy(ttext, ttext2);
 }
 
+// add ending spaces
+void addendingspaces(char ttext[], int overallsize)
+{
+  int i;
+  
+   for (i=strlen(ttext);i<overallsize;i++)
+    ttext[i]=SPACE;
+   ttext[i]='\0';
+}
+
 // count text length without spaces
 int fieldlength(char *fieldtext)
 {
@@ -570,7 +580,7 @@ int sgetch(int x_pos, int y_pos, int sleeptime, int showflag)
       gotoxy(x_pos, y_pos);
       refresh();
      Sleep(sleeptime); }
-    return tolower(t); 
+     return tolower(t); 
     }
   
   // movement or otherwise
@@ -855,22 +865,34 @@ char* bringstringtomiddle(char *text, int width)
 }
 
 // scan text for command
-int scantextforcommand(char *text, char *command, char separator)
+int scantextforcommand(char *text, char *command, char separator, int option)
 {
    char s[2]= { separator, '\0' };
    char *firstpart, *tcommand;
    tcommand=firstpart=NULL; // empty pointer
    int result=0;
    
-// get the first part
+   // get the first part
    firstpart = strtok(text, s);
    
-// obtain command 
+   // obtain command 
    tcommand = strtok(NULL, s);
    
+   // copy 1st parameter
    if (tcommand!=NULL) {
     strcpy(command, tcommand);
-   result=1; }
+    result=1;
+   }
+   
+   if ( option == 0 )
+    return result;
+    
+   // paste rest of text
+   while ( (tcommand = strtok(NULL, s))!= NULL ) {
+    strcat(command, " ");
+    strcat(command, tcommand);
+    ++result;
+   }
 
  return result;
 }
@@ -1851,6 +1873,20 @@ int findininstancesinfovector(int element, int page_id)
  return -1;
 }
 
+// number of active instances 
+int instancesnumber(int page_id)
+{
+  int i, ninstances=0;
+  if ( page_id == -1 )
+   page_id=currentpage;
+  
+   for (i=0;i<(int)instancesinfo[page_id].size();i++)
+    if ( instancesinfo[page_id][i].instancePid != mypid && instancesinfo[page_id][i].instanceOpen )
+     ++ninstances;
+      
+ return ninstances;
+}
+
 // reload fields from record
 void Read_Entire_Record(int record_id)
 {
@@ -1974,3 +2010,5 @@ char* tmpnam2(char name[L_tmpnam+1], int length)
      
  return &name[0];  
 }
+
+

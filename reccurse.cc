@@ -1,7 +1,7 @@
 // reccurse, the filemaker of ncurses
 #include "reccurse.h"
 
-double version=0.599;
+double version=0.605;
 
 int main(int argc, char *argv[])
 {
@@ -1447,12 +1447,12 @@ int Show_Record_and_Menu()
       }
       break;
       case SCRIPT_PLAYER:
+       memset(input_string, 0, MAXSTRING);
        Show_Message(1, bottombary, MAGENTA, "filename:", 0);
        i=Scan_Input(input_string, 10, bottombary, MAGENTAONBLACK);
        strcpy((scriptcommand=(char *)malloc(MAXSTRING)), "file ");
        strcat(scriptcommand, input_string);
        runscript=1;
-       memset(input_string, 0, MAXSTRING);
       break;
       case 'w': // demonstrate all records
        if (recordsdemoall) {
@@ -1787,7 +1787,7 @@ int Show_Record_and_Menu()
      case 's':
       Show_Menu_Bar(ERASE);
       Show_Message(1, bottombary, MAGENTA, "filename:", 0);
-      strcpy(input_string, dbfile);
+      strcpy(input_string, pages[currentpage]);
       i=Scan_Input(input_string, 1, bottombary, MAGENTAONBLACK);
       if (i==ESC)
        break;
@@ -1803,7 +1803,8 @@ int Show_Record_and_Menu()
       if (c=='y') {
        Show_Menu_Bar(ERASE);
        Show_Message(1, bottombary, MAGENTA, "filename:", 0);
-       Scan_Input();
+       strcpy( input_string, rcfile );
+       i=Scan_Input(input_string, 1, bottombary, MAGENTAONBLACK);
        i=Write_rc_File(input_string);
        Reccurse_File_Extension(input_string, 1);
        Show_Menu_Bar(ERASE);
@@ -2225,7 +2226,7 @@ int negatekeysforcurrentmenu(int t)
   if ( t == TOGGLEMOUSE )
    return t;
   
-  if ( t == SCRIPT_PLAYER)
+  if ( t == SCRIPT_PLAYER && currentmenu != OPTIONS )
    return t;
 
   if ( t == SCANAUTOMATICVALUE && currentmenu == EDIT )
@@ -2489,13 +2490,13 @@ int Show_Field(Annotated_Field *field, int flag) // 1 highlight, 2 only in scree
     Show_Field(field, 2);
     aligntext(ttext, field, ctoi(ttext[i+2])); 
    }
+   // fill with spaces
+   addendingspaces( ttext, ((tfield->size.x)+1)*((tfield->size.y)+1) );
+   
    // highlight field
    if ( flag == 1 && skiphighlight == OFF ) {
     if ( editoroption == -1 )
      tcolor=(tfield->color==highlightcolors[0]) ? highlightcolors[1] : highlightcolors[0];
-    for (i=strlen(ttext);i<((tfield->size.x)+1)*((tfield->size.y)+1);i++)
-     ttext[i]=SPACE;
-    ttext[i]='\0';
     if ( terminalhascolor == 0 )
      Change_Attributes(REVERSE);
    }

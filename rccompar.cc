@@ -28,10 +28,12 @@
 using namespace std;
 
 // definitions
+typedef unsigned long ul;
 // numericals
 const int MAXSTRING=80; // characters in a regular string
 const int MAXTITLE=20; // characters in a a title string
 const int MAXPAGES=25; // pages limit
+const int MAXNAME=80; // max chars in database filenames
 const int MAXSUFFIXCHARS=3; // max string for number suffixes
 const int MAXRELATIONSHIPS=25; // will fit into above 1kb, same as MAXPAGES
 const int SPACE=32;
@@ -48,15 +50,16 @@ int noparametercommandskeys=19;
 const char *parametercommands[]= { "file", "record", "field", "enter", "append", "variable", "variabletoclipboard", "delete", "loop", "wait", "goto", "page", "textattributes", "titleattributes", "textcolor", "titlecolor", "boxcolor", "sleep", "menu", "key", "keys", "push", "move", "waittime", "menubar" };
 enum { FILEOPEN=0, GOTORECORD, GOTOFIELD, ENTERTEXT, APPENDTEXT, VARIABLESET, VARIABLETOCLIPBOARD, CLEARVARIABLE, LOOPFOR, WAITSECS, GOTOLABEL, GOTOPAGE, SETTEXTATTRIBUTES, SETTITLEATTRIBUTES, SETTEXTCOLOR, SETTITLECOLOR, SETBOXCOLOR, SETSLEEPTIME, CHANGEMENU, PUSHKEY, PUSHKEYS, PUSHSPACEFIELD, MOVEFIELD, WAITTIME, TOGGLEBAR };
 int parametercommandskeys=25;
-const char *systemvariables[] = { "version", "records", "record", "fields", "field", "page" };
-enum { VERSION = 0, RECORDS, RECORD, FIELDS, FIELD, PAGE };
-int systemvariableskeys=6;
+const char *systemvariables[] = { "version", "records", "record", "fields", "field", "page", "date", "time", "connections" };
+enum { VERSION = 0, RECORDS, RECORD, FIELDS, FIELD, PAGE, DATE, TIME, CONNECTIONS };
+int systemvariableskeys=9;
 enum { SEGMENTATIONFAULT = -4, FLOATINGPOINTEXCEPTION = -3, NOACTIVEFIELDS, FILEERROR, NORMALEXIT = 0 };
 enum { READ = 0, WRITE, CREATEDB, RECREATE, RECREATERC };
 enum { OFF = 0, ON };
 enum { MAIN=0, OPTIONS, EDIT, EXTRA, EDITOR, CALCULATOR, EDITEXTRA, EXTERNALDB };
 enum { TEXT, TITLE, BOX };
 enum { RESTORE = 0, BACKUP };
+extern int BLOCK, UNBLOCK, PRINTUNBLOCK, QUITUNBLOCK, SCANUNBLOCK; // wait times for getch()
 
 const int SCRIPTSLEEPTIME=250;
 int scriptrunning=0, scriptsleeptime=SCRIPTSLEEPTIME;
@@ -149,7 +152,7 @@ int islinelabel(char *scriptcommand);
 int setvariablefromfield(char *parameter, int field_id);
 void stopscript();
 int isvariable(char *parameter);
-extern int scantextforcommand(char *text, char *command, char separator='@');
+extern int scantextforcommand(char *text, char *command, char separator='@', int option=0);
 extern void pushspaceonfield(int field_id=-1);
 extern void copytoclipboard();
 extern void pastefromclipboard();
@@ -170,11 +173,18 @@ extern char* stringtolower(char *text);
 extern int Read_Write_db_File(int mode=0);
 extern void Load_Database(int pagenumber);
 extern void togglemenubar(int pos=-1);
+extern int blockunblockgetch(int delay=BLOCK);
+extern void Sleep(ul sleepMs);
+extern int findsimple2(char text[MAXNAME], char token[MAXNAME]);
+extern int extracttextpart(char source[MAXSTRING], char dest[MAXSTRING], int startpt, int endpt=-1);
+extern void inserttextpart(char text[MAXSTRING], char part[MAXSTRING], int point);
+extern char* Bring_DateTime_Stamp(char tdatetime[MAXSTRING], int field_id=-1);
+extern int instancesnumber(int page_id=-1);
 
 // parse by line
 int commandparser(char scriptcommand[MAXSTRING])
 {
-  int i, i1, noparameters, commandtorun, thisfield, FAIL=0;
+  int i, i1, noparameters, commandtorun, thisfield, FAIL=0, operation=1;
   double d;
   static int fileopen=0;;
   char tline[MAXSTRING], parameter[MAXSTRING];
@@ -206,8 +216,8 @@ int commandparser(char scriptcommand[MAXSTRING])
    thisfield=(currentrecord*fieldsperrecord)+currentfield; // commands only work on currentfield
    
    // split line to scriptcommand and parameter
-   noparameters=scantextforcommand(scriptcommand, parameter, SPACE);
-   stringtolower(parameter);
+   noparameters=scantextforcommand(scriptcommand, parameter, SPACE, 1);
+//    stringtolower(parameter);
    
    // handle labels
    if ( islinelabel(scriptcommand) ) {
@@ -226,33 +236,52 @@ int commandparser(char scriptcommand[MAXSTRING])
    }
    
    // system variables
-   if ( noparameters ) {
-    for (i=0;i<systemvariableskeys;i++)
-     if ( !strcmp(parameter, systemvariables[i]) )
-      break;
-    if ( i < systemvariableskeys ) {
-     switch ( i ) {
-      case VERSION:
-       sprintf(tline, "%f", version);
-      break;
-      case RECORDS:
-       sprintf(tline, "%d", recordsnumber);
-      break;
-      case RECORD:
-       sprintf(tline, "%d", currentrecord);
-      break;
-      case FIELDS:
-       sprintf(tline, "%d", fieldsperrecord);
-      break;      
-      case FIELD:
-       sprintf(tline, "%d", currentfield);
-      break;
-      case PAGE:
-       sprintf(tline, "%s", pages[currentpage]);
-      break;
+   if ( noparameters && (!strcmp(scriptcommand, parametercommands[ENTERTEXT]) || !strcmp(scriptcommand, parametercommands[APPENDTEXT])) ) {
+    
+    while ( operation ) {
+     operation=0;
+     for (i=0;i<systemvariableskeys;i++) {
+      strcpy(tline, systemvariables[i]);
+      if ( i1=findsimple2(parameter, tline) ) {
+       operation=1;
+       extracttextpart(parameter, tline, --i1);
+       switch ( i ) {
+        case VERSION:
+         sprintf(tline, "%f", version);
+        break;
+        case RECORDS:
+        sprintf(tline, "%d", recordsnumber);
+        break;
+        case RECORD:
+         sprintf(tline, "%d", currentrecord+1);
+        break;
+        case FIELDS:
+         sprintf(tline, "%d", fieldsperrecord);
+        break;      
+        case FIELD:
+         sprintf(tline, "%d", currentfield+1);
+        break;
+        case PAGE:
+         sprintf(tline, "%s", pages[currentpage]);
+        break;
+        case DATE:
+         strcpy(tline, "%x");
+         Bring_DateTime_Stamp(tline);
+        break;
+        case TIME:
+         strcpy(tline, "%X");
+         Bring_DateTime_Stamp(tline);
+        break;
+        case CONNECTIONS:
+         sprintf(tline, "%d", instancesnumber());
+        break;
+       }
+       inserttextpart(parameter, tline, i1);
+       break;
+      }
      }
-     strcpy(parameter, tline);
     }
+    
    }
    
    if ( !noparameters ) {
@@ -458,10 +487,10 @@ int commandparser(char scriptcommand[MAXSTRING])
      break;
      case WAITSECS:
       i1=atoi(parameter);
-      if (i1>0)
+      if ( i1 < 1 )
        returnvalue=FAIL;
       else
-       sleep(atoi(parameter));
+       Sleep(i1 * 1000);
      break;
      case GOTOLABEL:
       if ((i1=labelposition(parameter))==0)
