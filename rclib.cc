@@ -494,11 +494,11 @@ void addleadingspaces(char ttext[], int overallsize)
 }
 
 // add ending spaces
-void addendingspaces(char ttext[], int overallsize)
+void addendingspaces(char ttext[MAXSTRING], int overallsize)
 {
   int i;
   
-   for (i=strlen(ttext);i<overallsize;i++)
+   for (i=(int)strlen(ttext);i<overallsize;i++)
     ttext[i]=SPACE;
    ttext[i]='\0';
 }

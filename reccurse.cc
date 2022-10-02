@@ -1,7 +1,7 @@
 // reccurse, the filemaker of ncurses
 #include "reccurse.h"
 
-double version=0.605;
+double version=0.608;
 
 int main(int argc, char *argv[])
 {
@@ -62,7 +62,7 @@ int main(int argc, char *argv[])
       ofstream outdbfile(dbfile, ios::binary);
       outdbfile.close();
       ofstream outrcfile(rcfile);
-      outrcfile << "#today 0 000000000 25 69 2 10 2 000000000 43 1 33 1 2 ~ 0 0 1 1 ~" << endl << "#";
+      outrcfile << "#today&now 0 000000000 25 62 3 17 1 000000000 26 1 33 1 2 ~ 0 0 1 1 ~" << endl << "#";
       outrcfile.close();
       strcpy(tmessage, "created file: ");
       Read_rc_File();
@@ -2490,8 +2490,6 @@ int Show_Field(Annotated_Field *field, int flag) // 1 highlight, 2 only in scree
     Show_Field(field, 2);
     aligntext(ttext, field, ctoi(ttext[i+2])); 
    }
-   // fill with spaces
-   addendingspaces( ttext, ((tfield->size.x)+1)*((tfield->size.y)+1) );
    
    // highlight field
    if ( flag == 1 && skiphighlight == OFF ) {
@@ -2629,7 +2627,7 @@ int Show_Field_ID(Annotated_Field *tfield)
 }
   
 // arrange string for field text
-void Generate_Field_String(Annotated_Field *field, char *ttext)
+void Generate_Field_String(Annotated_Field *field, char ttext[MAXSTRING])
 {
  int i, n=0;
  char formula[LMAXCOMMAND];
@@ -2728,12 +2726,15 @@ void Generate_Field_String(Annotated_Field *field, char *ttext)
   strcpy(field->text, ttext);
   // clear neighbouring signs
   if (ttext[0]=='<') {
-   for (i=0;i<(int)strlen(ttext) - 1;i++)
+   for (i=0;i<(int)strlen(ttext)-1;i++)
     ttext[i]=ttext[i+1];
    ttext[i]='\0';
   }
   if (ttext[strlen(ttext)-1]=='>')
    ttext[strlen(ttext)-1]='\0';
+  
+  // fill with spaces
+  addendingspaces( ttext, (tfield->size.x*tfield->size.y) );
   
   // restore button screen
   if (record[field->id].buttonbox==BUTTONSCREEN)
@@ -2741,7 +2742,7 @@ void Generate_Field_String(Annotated_Field *field, char *ttext)
 }
 
 // generate (if any) dependant field string
-int Generate_Dependant_Field_String(Annotated_Field *field, char *ttext)
+int Generate_Dependant_Field_String(Annotated_Field *field, char ttext[MAXSTRING])
 {
   int i, n;
   dummyfieldsperrecord=0; 
@@ -3113,9 +3114,11 @@ int Pages_Selector(int pagetochange)
   else
    currentpage=pagetochange;
   
-  if (currentpage!=tpage) {
+  if ( currentpage != tpage ) {
    changedrecord=1;
    checkalteredparameters();
+   strcpy(rcfile, pages[currentpage]);
+   Reccurse_File_Extension(rcfile, 1);
    alteredparameters=0; // anyways
   }
   if ( autosave )

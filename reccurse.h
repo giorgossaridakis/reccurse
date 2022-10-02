@@ -347,8 +347,8 @@ void Show_DB_Information();
 int Show_Field(Annotated_Field *tfield, int flag=0);
 void Flash_Field(int field_id, int sleeptime=250);
 int Show_Field_ID(Annotated_Field *tfield);
-void Generate_Field_String(Annotated_Field *tfield, char *ttext);
-int Generate_Dependant_Field_String(Annotated_Field *field, char *ttext);
+void Generate_Field_String(Annotated_Field *tfield, char ttext[MAXSTRING]);
+int Generate_Dependant_Field_String(Annotated_Field *field, char ttext[MAXSTRING]);
 int Export_Database(char *filename);
 int Import_Database(char *filename);
 int Import_External_db_File(char *filename);
@@ -396,7 +396,7 @@ char *addmissingzeros(char tstring[], int zeros);
 void terminatestringatcharactersend(char *ttext);
 void addleadingzeros(char ttext[], Annotated_Field *tfield, int flag=0);
 void addleadingspaces(char ttext[], int overallsize);
-void addendingspaces(char ttext[], int overallsize=MAXSTRING);
+void addendingspaces(char ttext[MAXSTRING], int overallsize=MAXSTRING);
 int fieldlength(char *fieldtext);
 void stringquotesencloser(char *tstring, int flag=0);
 void stringquotesopener(char *tstring);
@@ -538,6 +538,7 @@ extern int islinelabel(char *scriptcommand);
 extern int setvariablefromfield(char *parameter, int field_id);
 extern void stopscript();
 extern int isvariable(char *parameter);
+extern int replacesystemvariables(char *parameter);
 
 // rcscr.cc
 extern int Init_Screen();
