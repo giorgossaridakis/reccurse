@@ -50,7 +50,7 @@ int noparametercommandskeys=19;
 const char *parametercommands[]= { "file", "record", "field", "enter", "append", "variable", "variabletoclipboard", "delete", "loop", "wait", "goto", "page", "textattributes", "titleattributes", "textcolor", "titlecolor", "boxcolor", "sleep", "menu", "key", "keys", "push", "move", "waittime", "menubar" };
 enum { FILEOPEN=0, GOTORECORD, GOTOFIELD, ENTERTEXT, APPENDTEXT, VARIABLESET, VARIABLETOCLIPBOARD, CLEARVARIABLE, LOOPFOR, WAITSECS, GOTOLABEL, GOTOPAGE, SETTEXTATTRIBUTES, SETTITLEATTRIBUTES, SETTEXTCOLOR, SETTITLECOLOR, SETBOXCOLOR, SETSLEEPTIME, CHANGEMENU, PUSHKEY, PUSHKEYS, PUSHSPACEFIELD, MOVEFIELD, WAITTIME, TOGGLEBAR };
 int parametercommandskeys=25;
-const char *systemvariables[] = { "version", "records", "record", "fields", "field", "page", "date", "time", "connections" };
+const char *systemvariables[] = { "%version", "%records", "%record", "%fields", "%field", "%page", "%date", "%time", "%connections" };
 enum { VERSION = 0, RECORDS, RECORD, FIELDS, FIELD, PAGE, DATE, TIME, CONNECTIONS };
 int systemvariableskeys=9;
 enum { SEGMENTATIONFAULT = -4, FLOATINGPOINTEXCEPTION = -3, NOACTIVEFIELDS, FILEERROR, NORMALEXIT = 0 };
@@ -80,6 +80,7 @@ extern int pagesnumber;
 extern int currentmenu;
 extern int alteredparameterstarget;
 extern int runscript;
+extern int newsignal;
 extern double version;
 extern char pages[MAXPAGES][MAXSTRING];
 
@@ -152,6 +153,7 @@ int islinelabel(char *scriptcommand);
 int setvariablefromfield(char *parameter, int field_id);
 void stopscript();
 int isvariable(char *parameter);
+int replacesystemvariables(char *parameter);
 extern int scantextforcommand(char *text, char *command, char separator='@', int option=0);
 extern void pushspaceonfield(int field_id=-1);
 extern void copytoclipboard();
@@ -184,7 +186,7 @@ extern int instancesnumber(int page_id=-1);
 // parse by line
 int commandparser(char scriptcommand[MAXSTRING])
 {
-  int i, i1, noparameters, commandtorun, thisfield, FAIL=0, operation=1;
+  int i, i1, noparameters, commandtorun, thisfield, FAIL=0;
   double d;
   static int fileopen=0;;
   char tline[MAXSTRING], parameter[MAXSTRING];
@@ -217,7 +219,6 @@ int commandparser(char scriptcommand[MAXSTRING])
    
    // split line to scriptcommand and parameter
    noparameters=scantextforcommand(scriptcommand, parameter, SPACE, 1);
-//    stringtolower(parameter);
    
    // handle labels
    if ( islinelabel(scriptcommand) ) {
@@ -236,53 +237,9 @@ int commandparser(char scriptcommand[MAXSTRING])
    }
    
    // system variables
-   if ( noparameters && (!strcmp(scriptcommand, parametercommands[ENTERTEXT]) || !strcmp(scriptcommand, parametercommands[APPENDTEXT])) ) {
-    
-    while ( operation ) {
-     operation=0;
-     for (i=0;i<systemvariableskeys;i++) {
-      strcpy(tline, systemvariables[i]);
-      if ( i1=findsimple2(parameter, tline) ) {
-       operation=1;
-       extracttextpart(parameter, tline, --i1);
-       switch ( i ) {
-        case VERSION:
-         sprintf(tline, "%f", version);
-        break;
-        case RECORDS:
-        sprintf(tline, "%d", recordsnumber);
-        break;
-        case RECORD:
-         sprintf(tline, "%d", currentrecord+1);
-        break;
-        case FIELDS:
-         sprintf(tline, "%d", fieldsperrecord);
-        break;      
-        case FIELD:
-         sprintf(tline, "%d", currentfield+1);
-        break;
-        case PAGE:
-         sprintf(tline, "%s", pages[currentpage]);
-        break;
-        case DATE:
-         strcpy(tline, "%x");
-         Bring_DateTime_Stamp(tline);
-        break;
-        case TIME:
-         strcpy(tline, "%X");
-         Bring_DateTime_Stamp(tline);
-        break;
-        case CONNECTIONS:
-         sprintf(tline, "%d", instancesnumber());
-        break;
-       }
-       inserttextpart(parameter, tline, i1);
-       break;
-      }
-     }
-    }
-    
-   }
+   if ( noparameters && (!strcmp(scriptcommand, parametercommands[ENTERTEXT]) || !strcmp(scriptcommand, parametercommands[APPENDTEXT])) )
+    replacesystemvariables(parameter);
+
    
    if ( !noparameters ) {
      
@@ -353,6 +310,7 @@ int commandparser(char scriptcommand[MAXSTRING])
       for (i1=0;i1<(int)record.size();i1++)
        if (record[i1].type==VARIABLE)
         Delete_Field(i1);
+      newsignal=SIGUSR2;
      break;
      case QUITPROGRAM:
       End_Program(NORMALEXIT);
@@ -378,13 +336,16 @@ int commandparser(char scriptcommand[MAXSTRING])
      case SAVEDATABASE:
       alteredparameters=0;
       Read_Write_db_File(RECREATE);
-      Read_Write_db_File(WRITE); 
+      Read_Write_db_File(WRITE);
+      newsignal=SIGUSR2;
      break;
      case LOADDATABASE:
       Load_Database(currentpage);
      break;
      case ACTIVATEDEACTIVATEFIELD:
       record[currentfield].active = (record[currentfield].active == ON) ? OFF : ON;
+      alteredparameters=1;
+      newsignal=SIGUSR2;
      break;
      case TOGGLEHIGHLIGHTFIELD:
       skiphighlight = (skiphighlight == ON) ? OFF : ON;
@@ -434,18 +395,22 @@ int commandparser(char scriptcommand[MAXSTRING])
       currentfield=i1;
      break;
      case ENTERTEXT:
-      if (strcmp(record[currentfield].automatic_value, EMPTYSTRING) || !record[currentfield].editable)
+      if (strcmp(record[currentfield].automatic_value, EMPTYSTRING) || !record[currentfield].editable) {
        returnvalue=FAIL;
-      else
-       strcpy(records[thisfield].text, parameter);
+       break;
+      }
+      strcpy(records[thisfield].text, parameter);
+      newsignal=SIGUSR1;
       if (autosave)
        Read_Write_Field(records[thisfield], fieldposition(currentrecord, currentfield), 1);
      break;
      case APPENDTEXT:
-      if (strcmp(record[currentfield].automatic_value, EMPTYSTRING) || !record[currentfield].editable)
+      if (strcmp(record[currentfield].automatic_value, EMPTYSTRING) || !record[currentfield].editable) {
        returnvalue=FAIL;
-      else
-       strcat(records[thisfield].text, parameter);
+       break;
+      }
+      strcat(records[thisfield].text, parameter);
+      newsignal=SIGUSR1;
       if (autosave)
        Read_Write_Field(records[thisfield], fieldposition(currentrecord, currentfield), 1);
      break;
@@ -453,6 +418,8 @@ int commandparser(char scriptcommand[MAXSTRING])
       i1=setvariablefromfield(parameter, currentfield);
       // place values in clipboard
       strcpy(clipboard, record[i1].automatic_value);
+      alteredparameters=1;
+      newsignal=SIGUSR2;
      break;
      case VARIABLETOCLIPBOARD:
       for (i1=0;i1<(int) record.size();i1++)
@@ -464,10 +431,13 @@ int commandparser(char scriptcommand[MAXSTRING])
       strcpy(clipboard, record[i1].automatic_value);
      break;
      case CLEARVARIABLE:
-      if ((i1=isvariable(parameter))==0)
+      if ((i1=isvariable(parameter))==0) {
        returnvalue=FAIL;
-      else
+       break;
+      }
       Delete_Field(i1-1);
+      alteredparameters=1;
+      newsignal=SIGUSR2;
      break;
      case LOOPFOR:
       if ( !scriptrunning )
@@ -524,6 +494,7 @@ int commandparser(char scriptcommand[MAXSTRING])
       else {
        strcpy(record[currentfield].attributes, parameter);
        alteredparameters=1;
+       newsignal=SIGUSR2;
       }
      break;
      case SETTITLEATTRIBUTES:
@@ -541,6 +512,7 @@ int commandparser(char scriptcommand[MAXSTRING])
       else {
        strcpy(record[currentfield].title_attributes, parameter);
        alteredparameters=1;
+       newsignal=SIGUSR2;
       }
      break;
      case SETTEXTCOLOR:
@@ -559,6 +531,7 @@ int commandparser(char scriptcommand[MAXSTRING])
       else {
        record[currentfield].title_color=i1;
        alteredparameters=1;
+       newsignal=SIGUSR2;
       }
      break;
      case SETBOXCOLOR:
@@ -568,6 +541,7 @@ int commandparser(char scriptcommand[MAXSTRING])
       else {
        record[currentfield].box_color=i1;
        alteredparameters=1;
+       newsignal=SIGUSR2;
       }
      break;
      case SETSLEEPTIME:
@@ -641,7 +615,8 @@ int commandparser(char scriptcommand[MAXSTRING])
       }
       if ( isrecordproperlydictated(tfield) ) {
        record[currentfield]=tfield;
-       alteredparameters=1; 
+       alteredparameters=1;
+       newsignal=SIGUSR2;
       }
       else
        returnvalue=FAIL;
@@ -743,3 +718,57 @@ int isvariable(char *parameter)
  return (i==(int) record.size()) ? 0 : i+1;
 }
 
+// replace system variables in string
+int replacesystemvariables(char *parameter)
+{
+  int i, i1, operation=1, count=0;
+  char tline[MAXSTRING];
+  
+    while ( operation ) {
+      
+     operation=0;
+     for (i=0;i<systemvariableskeys;i++) {
+      strcpy(tline, systemvariables[i]);
+      if ( i1=findsimple2(parameter, tline) ) {
+       operation=1; ++count;
+       extracttextpart(parameter, tline, --i1);
+       switch ( i ) {
+        case VERSION:
+         sprintf(tline, "%f", version);
+        break;
+        case RECORDS:
+        sprintf(tline, "%d", recordsnumber);
+        break;
+        case RECORD:
+         sprintf(tline, "%d", currentrecord+1);
+        break;
+        case FIELDS:
+         sprintf(tline, "%d", fieldsperrecord);
+        break;      
+        case FIELD:
+         sprintf(tline, "%d", currentfield+1);
+        break;
+        case PAGE:
+         sprintf(tline, "%s", pages[currentpage]);
+        break;
+        case DATE:
+         strcpy(tline, "%x");
+         Bring_DateTime_Stamp(tline);
+        break;
+        case TIME:
+         strcpy(tline, "%X");
+         Bring_DateTime_Stamp(tline);
+        break;
+        case CONNECTIONS:
+         sprintf(tline, "%d", instancesnumber());
+        break;
+       }
+       inserttextpart(parameter, tline, i1);
+       break;
+      }
+     }
+     
+    }
+
+ return count;
+}

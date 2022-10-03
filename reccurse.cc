@@ -1,7 +1,7 @@
 // reccurse, the filemaker of ncurses
 #include "reccurse.h"
 
-double version=0.608;
+double version=0.610;
 
 int main(int argc, char *argv[])
 {
@@ -1201,6 +1201,10 @@ int Show_Record_and_Menu()
      for (i1=1;i1<25;i1++)
       screen[i][i1]=SPACE;
      
+    if ( newsignal && shareddatabases[currentpage] == ON )
+     sendsignals(newsignal);
+    newsignal=0;
+     
     // handle field repetitions
     if (changedrecord) {
      lastfieldrepeated=-1;
@@ -1427,8 +1431,7 @@ int Show_Record_and_Menu()
         records[(currentrecord*fieldsperrecord)+backupfields[i].id]=backupfields[i];
        if ( autosave )
         Write_Fields_AnnotatedField_Vector(backupfields);
-       if ( shareddatabases[currentpage] == ON )
-        sendsignals();
+       newsignal=SIGUSR1;
        if ( backupfields.size() == 1 ) 
         backupfields=tbackupfields; // otherwise, fieldsadjoiningfields is called without possibility, will re-bring only one after delete
       }
@@ -1549,8 +1552,7 @@ int Show_Record_and_Menu()
         if (tolower(c)=='y') {
          Initialize_Record();
          --currentrecord;
-         if ( shareddatabases[currentpage] == ON )
-          sendsignals(SIGUSR2);
+        newsignal=SIGUSR2;
         }
         else
        --currentrecord; }
@@ -1847,8 +1849,7 @@ int Show_Record_and_Menu()
        }
        if (autosave)
         Write_Fields_Int_Vector(adjoiningfields);
-       if ( shareddatabases[currentpage] == ON )
-        sendsignals();
+       newsignal=SIGUSR1;
        // jump to next BUTTONCOMMAND script, if any
        if (record[currentfield].fieldlist && record[record[currentfield].fieldlist-1].buttonbox==BUTTONCOMMAND) {
         currentfield=record[currentfield].fieldlist-1;
@@ -1867,8 +1868,7 @@ int Show_Record_and_Menu()
        c=sgetch();
        if (tolower(c)=='y') {
         Delete_Record(currentrecord);
-        if ( shareddatabases[currentpage] == ON )
-         sendsignals(SIGUSR2);
+        newsignal=SIGUSR2;
        }
       }
      break;
@@ -1915,8 +1915,7 @@ int Show_Record_and_Menu()
        for (i=0;i<8;i++)
         Read_Write_Field(records[(currentrecord*fieldsperrecord)+currentfield+i], fieldposition(currentrecord, currentfield+i), 1);
       }
-      if ( shareddatabases[currentpage] == ON )
-       sendsignals();
+      newsignal=SIGUSR1;
      break;
      case SPACE:
       pushspaceonfield();
@@ -1955,8 +1954,7 @@ int Show_Record_and_Menu()
       strcpy(records[(currentrecord*fieldsperrecord)+n-1].text, records[(currentrecord*fieldsperrecord)+i-1].text);
       if ( autosave )
        Read_Write_Field(records[(currentrecord*fieldsperrecord)+n-1], fieldposition(currentrecord, n-1), WRITE);
-      if ( shareddatabases[currentpage] == ON )
-       sendsignals();
+      newsignal=SIGUSR1;
      break;
      case DELETE: {
       backupfields=Records_From_Adjoining_Fields(currentfield);
@@ -1968,8 +1966,7 @@ int Show_Record_and_Menu()
        if ( autosave )
         Write_Fields_Int_Vector(fieldstodelete);
       }
-      if ( shareddatabases[currentpage] == ON )
-       sendsignals();
+      newsignal=SIGUSR1;
      break; }
      case INSERT:
       if ( currentmenu == EDIT ) {
@@ -1990,8 +1987,7 @@ int Show_Record_and_Menu()
       }
       if ( currentmenu == EDITEXTRA )
        Duplicate_Record(currentrecord);
-      if ( shareddatabases[currentpage] == ON )
-       sendsignals(SIGUSR2);
+      newsignal=SIGUSR2;
      break;
      case 'x':
       Show_Menu_Bar(ERASE);
@@ -2473,6 +2469,8 @@ int Show_Field(Annotated_Field *field, int flag) // 1 highlight, 2 only in scree
     Generate_Field_String(field, ttext);
    if ( (tfield->type != STRING && field->number) || record[field->id].type==NUMERICAL || record[field->id].type==MIXEDTYPE || record[field->id].buttonbox==BUTTONSCREEN)
     addleadingzeros(ttext, field);
+   // fill with spaces
+   addendingspaces( ttext, (tfield->size.x*tfield->size.y) );
      
    // add attributes
    for (i=0;i<9;i++)
@@ -2732,9 +2730,6 @@ void Generate_Field_String(Annotated_Field *field, char ttext[MAXSTRING])
   }
   if (ttext[strlen(ttext)-1]=='>')
    ttext[strlen(ttext)-1]='\0';
-  
-  // fill with spaces
-  addendingspaces( ttext, (tfield->size.x*tfield->size.y) );
   
   // restore button screen
   if (record[field->id].buttonbox==BUTTONSCREEN)
@@ -3312,8 +3307,7 @@ void pushspaceonfield(int field_id)
          }
          if ( autosave )
           Read_Write_Field(records[(currentrecord*fieldsperrecord)+record[field_id].fieldlist-1], fieldposition(currentrecord, record[field_id].fieldlist-1), WRITE);
-         if ( shareddatabases[currentpage] == ON )
-          sendsignals();
+         newsignal=SIGUSR1;
        }
        return;
       }

@@ -1935,13 +1935,13 @@ int readfileentry(int fd, char *line)
 }
 
 // read entry from file
-int readstringentry2(char *line, char *linepart)
+int readstringentry2(char *line, char linepart[MAXSTRING*5])
 {
   static int i=0; // source line position
   int i1=0; // word position
 
   // reset static
-  if ( i == strlen(line) ) {
+  if ( i == (int)strlen(line) ) {
    i=0;
    return -1;
   }
