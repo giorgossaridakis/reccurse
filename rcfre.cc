@@ -43,6 +43,7 @@ extern int changedrecord, editoroption;
 extern int currentrecord;
 extern int currentfield;
 extern int recordsnumber;
+extern int currentpage;
 extern int alteredparameters;
 extern int currentmenu;
 extern int menubar;
@@ -90,8 +91,10 @@ enum { OFF = 0, ON };
 enum { MAIN=0, OPTIONS, EDIT, EXTRA, EDITOR, CALCULATOR, EDITEXTRA, EXTERNALDB };
 enum { READ = 0, WRITE, CREATERC, RECREATE, RECREATERC };
 enum { DISPLAY = 0, ERASE };
+enum { X = 0, Y, ACTIVITY, EDITABLE };
 const char *FIELDEDITORHINTS[] = { "~ [ no text ]", "0up 1right 2down 3left 4inside", "see manual", "colors vary from 1..64", "horizonal screen position", "vertical screen position", "horizontal size", "vertical size", "see manual", "colors vary from 1..64 | used for repetitions in automatic scripts", "contained in box", "colors vary from 1..64", "[0 numerical 1 calendar 2 string 3 mixed type 4 variable 5 program 6 clock]", "decimal positions | direction for script commands | 0 AM designation for clocks", "~ [ no text ] | ~ 3 chars", "[perform numerical or alphanumerical calculations]", "[obtain values from field listed | self reference for adjoining fields]", "can be edited/accessed", "is active/shown", "~ [ no text ]" };
 const char *REFERENCEEDITORHINTS[] = { "~", "[external field for value evaluation to equal with local]", "[local field for value evaluation to equal with external]", "[external field to collect data for local field]", "[local field to store data from external field]" };
+const char *AUTOSAVEWARNING="<delete> <insert> <duplicate> <sort> <swap> will automatically save database";
 
 struct Points {
  int x;
@@ -180,6 +183,8 @@ void Duplicate_Field(int field_id, int flag=0); // 0 only record, 1 copy records
 void Show_All_Fields_for_Editor(int field_id, int flag=0);
 void showfieldhint(char *text, int color1=CYAN, int sleeptime=0, int color2=YELLOW);
 void resetwindow();
+int swapfields(int id1, int id2, int saveflag=ON);
+void sortrecords(int mode, int saveflag=ON);
 extern void Change_Color(int choice=WHITE);
 extern void Draw_Box(int color, int x_pos, int x_size, int y_pos, int y_size, int paintcolor=BLACK);
 extern void Draw_Box(char t, int color, int x_pos, int x_size, int y_pos, int y_size, int paintcolor=0);
@@ -218,13 +223,14 @@ extern void Flash_Field(int field_id, int sleeptime=250);
 extern int togglealteredparameterstarget();
 extern void Hanle_AlteredScreenParameter(int c, int field_id=-1);
 extern void Sleep(ul sleepMs);
+extern void Load_Database(int pagenumber);
 
 // field editor and setup routine
 void Field_Editor()
 {
-  int i, selection, fieldshown=currentfield, previousrecord=-1, t=0, x, y;
+  int i, selection, fieldshown=currentfield, previousrecord=-1, t=0, t1, x, y;
   char ttext[MAXSTRING];
-  editoroption=alteredparameters=1; // reserved to point to fieldshown, if needed
+  editoroption=1; // reserved to point to fieldshown, if needed
   mousemask(ALL_MOUSE_EVENTS, NULL);
   resetwindow();
   
@@ -240,7 +246,6 @@ void Field_Editor()
    if ( showallrecords )
     Show_All_Fields_for_Editor( fieldshown, 1 );
    Flash_Field(fieldshown, 150);
-//    Show_Field_ID(&records[(currentrecord*fieldsperrecord)+fieldshown]);
    Draw_Box(BOXCHAR, 6, editorposition.x, editorsize.x, editorposition.y, editorsize.y, MAGENTAONBLACK);
    Show_Menu_Bar(1);
    clearinputline();
@@ -358,7 +363,7 @@ void Field_Editor()
    printw("*");
    Change_Color(MAGENTA);
    gotoxy(editorposition.x+1, editorposition.y+13);
-   printw("<arrows><enter><space><esc><$ &>");
+   printw("<arrows><enter><space><esc><$&^>");
    gotoxy(editorposition.x+1, editorposition.y+14);
    printw("<j>ump <u>ndo <f>ront <ins><del>");
    sprintf(ttext, "[%s]&[%s]", FIELDTYPES[record[fieldshown].type], BUTTONBOXES[record[fieldshown].buttonbox]);
@@ -422,7 +427,7 @@ void Field_Editor()
     }
    }
    // more keys
-   if ( t!=SPACE && t!=LEFT && t!=RIGHT && t!=ESC && t!=INSERT && t!=DELETE && t!='j' && t!='$' && t!='&' && t!='u' && t != 'f' && t != TOGGLEMOUSE && t != 0 )
+   if ( t!=SPACE && t!=LEFT && t!=RIGHT && t!=ESC && t!=INSERT && t!=DELETE && t!='j' && t!='$' && t!='&' && t!='u' && t != 'f' && t != '^' && t != TOGGLEMOUSE && t != SHIFT_UP && t != SHIFT_DOWN && t != SHIFT_LEFT && t != SHIFT_RIGHT && t != 0 )
     t='\n';
    switch (t) {
     case 'u':
@@ -452,170 +457,235 @@ void Field_Editor()
     case LEFT:
      if (fieldshown)
       --fieldshown;
+    break;
+    case RIGHT:
+     if (fieldshown<fieldsperrecord-1)
+      ++fieldshown;
      break;
-     case RIGHT:
-      if (fieldshown<fieldsperrecord-1)
-       ++fieldshown;
-      break;
-     case INSERT:
+    case INSERT:
+     showfieldhint(const_cast<char *>(AUTOSAVEWARNING), RED);
+     printw("insert (y/n):");
+     t1=sgetch();
+     if (tolower(t1)=='y') {
       Add_Field();
       strcpy(ttext, "added field ");
       strcat(ttext, itoa(fieldsperrecord));
       Show_Message(editorposition.x+1, editorposition.y+15, RED, ttext, 1500);
-     break;
-     case DELETE:
-      if (fieldsperrecord<2)
-       break;
-      printw("delete (y/n):");
-      t=sgetch();
-      if (tolower(t)=='y') {
-       Delete_Field(fieldshown);
-       clearinputline();
-       Show_Message(editorposition.x+1, editorposition.y+15, RED, "field deleted", 1500);
-       if ( fieldshown )
-        --fieldshown; 
-      }
-     break;
-     case '&':
-      printw("duplicate (y/n):");
-      t=sgetch();
-      if (t!='y')
-       break;
-      clearinputline();
-      gotoxy(editorposition.x+1, editorposition.y+15);
-      Change_Color(GREEN);
-      printw("copy records (y/n):");
-      t=sgetch();
-      t = (t=='y') ? 2 : 0;
-      Duplicate_Field(fieldshown, t);
-      strcpy(ttext, "duplicated to field ");
-      strcat(ttext, itoa(fieldsperrecord));
-      Show_Message(editorposition.x+1, editorposition.y+15, RED, ttext, 1500);
-     break;
-     case 'j':
-      printw("to field:");
-      i=Scan_Input(1, 1, fieldsperrecord, 4)-1;
-      if (i>-1 && i<fieldsperrecord)
-       fieldshown=i;
-     break;
-     case TOGGLEMOUSE:
-      togglemouse();
-     break;
-     case '\n':
-      printw("selection:");
-      selection=Scan_Input(1, 1, 20, 2);
-      getyx(win1, y, x);
-      gotoxy(x+2, y+1);
-      i=1500;
-      if ( selection != 11 && selection != 16 && selection != 18 && selection != 19 ) {
-       printw("->");
-       i=0;
-      }
-      if ( selection < 1 || selection > 20 )
-       continue;
-      showfieldhint(const_cast<char *>(FIELDEDITORHINTS[selection-1]), GREEN, i);
-      switch (selection) {
-       case 1:
-        strcpy(ttext, record[fieldshown].title);
-        Scan_Input(ttext, 1, 24, record[fieldshown].title_color);
-        if (!strlen(ttext) || strlen(ttext) > MAXTITLE)
-         break;
-        strcpy(record[fieldshown].title, ttext);
-       break;
-       case 2:
-        record[fieldshown].title_position=Scan_Input(1, 0, 3, 1);
-       break;
-       case 3:
-        strcpy(ttext, record[fieldshown].title_attributes);
-        Scan_Input(ttext, 1, 24, record[fieldshown].title_color);
-        if (!strlen(ttext) || strlen(ttext)>9)
-         break;
-        strcpy(record[fieldshown].title_attributes, ttext);
-       break;
-       case 4:
-        i=Scan_Input(1, 1, 64, 2);
-        if (i && i<64)
-         record[fieldshown].title_color=i;
-       break;
-       case 5:
-        record[fieldshown].pt.x=Scan_Input(1, 1, 80, 2);
-       break;
-       case 6:
-        record[fieldshown].pt.y=Scan_Input(1, 1, 24, 2);
-       break;
-       case 7:
-        record[fieldshown].size.x=Scan_Input(1, 1, 75, 2);
-       break;
-       case 8:
-        record[fieldshown].size.y=Scan_Input(1, 1, 20, 2);
-       break;
-       case 9:
-        strcpy(ttext, record[fieldshown].attributes);
-        Scan_Input(ttext, 1, 24, record[fieldshown].color);
-        if (!strlen(ttext) || strlen(ttext)>9)
-         break;   
-        strcpy(record[fieldshown].attributes, ttext);
-       break;
-       case 10:
-        i=Scan_Input(1, 0, 65, 2);
-        if (i>-1 && i<66) // 0 or 65 is handled from fieldrepetitions
-         record[fieldshown].color=i;
-       break;
-       case 11:
-        record[fieldshown].box=( record[fieldshown].box == ON ) ? OFF : ON;
-       break;
-       case 12:
-        i=Scan_Input(1, 1, 64, 2);
-        if (i && i<65)
-         record[fieldshown].box_color=i;
-       break;
-       case 13:
-        i=Scan_Input(1, NUMERICAL, CLOCK, 1);
-        if (record[fieldshown].type==VARIABLE && i<VARIABLE && (record[fieldshown].pt.x<1 || record[fieldshown].pt.x>79 || record[fieldshown].pt.y<1 || record[fieldshown].pt.y>23))
-         break;
-        if (i>=NUMERICAL && i<=CLOCK)
-         record[fieldshown].type=i;
-       break;
-       case 14:
-        i=Scan_Input(1, 1, 5, 1);
-        if (i>-1 && i<6)
-         record[fieldshown].decimals=i;
-       break;
-       case 15:
-        strcpy(ttext, record[fieldshown].suffix);
-        Scan_Input(ttext, 1, 24, record[fieldshown].color);
-        if (!strlen(ttext) || strlen(ttext)>3)
-         break;
-        strcpy(record[fieldshown].suffix, ttext); 
-       break;
-       case 16:
-        record[fieldshown].formula=( record[fieldshown].formula == ON ) ? OFF : ON;
-       break;
-       case 17:
-        i=Scan_Input(1, 1, fieldsperrecord, 4);
-        if (i>-1 && i<fieldsperrecord+1)
-         record[fieldshown].fieldlist=i;
-       break;
-       case 18:
-        record[fieldshown].editable=( record[fieldshown].editable == ON ) ? OFF : ON;
-       break;
-       case 19:
-        record[fieldshown].active=( record[fieldshown].active == ON ) ? OFF : ON;
-       break;
-       case 20:
-        Scan_Input(record[fieldshown].automatic_value, 1, 24, record[fieldshown].color);
-       break;
-      }
-      if ( isrecordproperlydictated(record[fieldshown]) == 0 )
-       record[fieldshown]=backuprecord;
+     }
+    break;
+    case DELETE:
+     if (fieldsperrecord < 2 )
       break;
+     showfieldhint(const_cast<char *>(AUTOSAVEWARNING), RED);
+     printw("delete (y/n):");
+     t1=sgetch();
+     if (tolower(t1)=='y') {
+      Delete_Field(fieldshown);
+      clearinputline();
+      Show_Message(editorposition.x+1, editorposition.y+15, RED, "field deleted", 1500);
+      if ( fieldshown )
+       --fieldshown; 
+     }
+    break;
+    case '&':
+     showfieldhint(const_cast<char *>(AUTOSAVEWARNING), RED);
+     printw("duplicate (y/n):");
+     t1=sgetch();
+     if (t1!='y')
+      break;
+     clearinputline();
+     gotoxy(editorposition.x+1, editorposition.y+15);
+     Change_Color(GREEN);
+     printw("copy records (y/n):");
+     t1=sgetch();
+     t1 = (t1=='y') ? 2 : 0;
+     Duplicate_Field(fieldshown, t);
+     strcpy(ttext, "duplicated to field ");
+     strcat(ttext, itoa(fieldsperrecord));
+     Show_Message(editorposition.x+1, editorposition.y+15, RED, ttext, 1500);
+    break;
+    case '^':
+     showfieldhint(const_cast<char *>(AUTOSAVEWARNING), RED);
+     printw("sort [1.x 2.y 3.xy 4.activity]:");
+     t1=sgetch();
+     if ( t1 < 49 || t1 > 52 )
+      break;
+     switch ( t1 ) {
+      case '1':
+       sortrecords(X);
+      break;
+      case '2':
+       sortrecords(Y);
+      break;
+      case '3':
+       sortrecords(X, OFF);
+       sortrecords(Y);
+      break;
+      case '4':
+       sortrecords(ACTIVITY, OFF);
+       sortrecords(EDITABLE);
+      break;
+     }
+    break;
+    case SHIFT_UP:
+     showfieldhint(const_cast<char *>(AUTOSAVEWARNING), RED);
+     printw("swap with first (y/n):");
+     t1=sgetch();
+     if ( (tolower(t1)) == 'y' )
+      swapfields(fieldshown, 0);
+    break;
+    case SHIFT_DOWN:
+     if ( fieldshown == fieldsperrecord - 1 )
+      break;
+     showfieldhint(const_cast<char *>(AUTOSAVEWARNING), RED);
+     printw("swap with last (y/n):");
+     t1=sgetch();
+     if ( (tolower(t1)) == 'y' )
+      swapfields(fieldshown, fieldsperrecord-1);
+    break;    
+    case SHIFT_LEFT:
+     showfieldhint(const_cast<char *>(AUTOSAVEWARNING), RED);
+     printw("swap with previous (y/n):");
+     t1=sgetch();
+     if ( (tolower(t1)) == 'y' )
+      if ( (swapfields(fieldshown, fieldshown-1)) == 0 )
+       Show_Message(editorposition.x+1, editorposition.y+15, RED, "impossible: first/last field", 1500); 
+    break;
+    case SHIFT_RIGHT:
+     showfieldhint(const_cast<char *>(AUTOSAVEWARNING), RED);
+     printw("swap with next (y/n):");
+     t1=sgetch();
+     Show_Menu_Bar(ERASE);
+     if ( (tolower(t1)) == 'y' )
+      if ( (swapfields(fieldshown, fieldshown+1)) == 0 )
+       Show_Message(editorposition.x+1, editorposition.y+15, RED, "impossible: first/last field", 1500); 
+    break;
+    case 'j':
+     printw("to field:");
+     i=Scan_Input(1, 1, fieldsperrecord, 4)-1;
+     if (i>-1 && i<fieldsperrecord)
+      fieldshown=i;
+    break;
+    case TOGGLEMOUSE:
+     togglemouse();
+    break;
+    case '\n':
+     printw("selection:");
+     selection=Scan_Input(1, 1, 20, 2);
+     getyx(win1, y, x);
+     gotoxy(x+2, y+1);
+     i=1500;
+     if ( selection != 11 && selection != 16 && selection != 18 && selection != 19 ) {
+      printw("->");
+      i=0;
+     }
+     if ( selection < 1 || selection > 20 )
+      continue;
+     alteredparameters=1;
+     showfieldhint(const_cast<char *>(FIELDEDITORHINTS[selection-1]), GREEN, i);
+     switch (selection) {
+      case 1:
+       strcpy(ttext, record[fieldshown].title);
+       Scan_Input(ttext, 1, 24, record[fieldshown].title_color);
+       if (!strlen(ttext) || strlen(ttext) > MAXTITLE)
+        break;
+       strcpy(record[fieldshown].title, ttext);
+      break;
+      case 2:
+       record[fieldshown].title_position=Scan_Input(1, 0, 3, 1);
+      break;
+      case 3:
+       strcpy(ttext, record[fieldshown].title_attributes);
+       Scan_Input(ttext, 1, 24, record[fieldshown].title_color);
+       if (!strlen(ttext) || strlen(ttext)>9)
+        break;
+       strcpy(record[fieldshown].title_attributes, ttext);
+      break;
+      case 4:
+       i=Scan_Input(1, 1, 64, 2);
+       if (i && i<64)
+        record[fieldshown].title_color=i;
+      break;
+      case 5:
+       record[fieldshown].pt.x=Scan_Input(1, 1, 80, 2);
+      break;
+      case 6:
+       record[fieldshown].pt.y=Scan_Input(1, 1, 24, 2);
+      break;
+      case 7:
+       record[fieldshown].size.x=Scan_Input(1, 1, 75, 2);
+      break;
+      case 8:
+       record[fieldshown].size.y=Scan_Input(1, 1, 20, 2);
+      break;
+      case 9:
+       strcpy(ttext, record[fieldshown].attributes);
+       Scan_Input(ttext, 1, 24, record[fieldshown].color);
+       if (!strlen(ttext) || strlen(ttext)>9)
+        break;   
+       strcpy(record[fieldshown].attributes, ttext);
+      break;
+      case 10:
+       i=Scan_Input(1, 0, 65, 2);
+       if (i>-1 && i<66) // 0 or 65 is handled from fieldrepetitions
+        record[fieldshown].color=i;
+      break;
+      case 11:
+       record[fieldshown].box=( record[fieldshown].box == ON ) ? OFF : ON;
+      break;
+      case 12:
+       i=Scan_Input(1, 1, 64, 2);
+       if (i && i<65)
+        record[fieldshown].box_color=i;
+      break;
+      case 13:
+       i=Scan_Input(1, NUMERICAL, CLOCK, 1);
+       if (record[fieldshown].type==VARIABLE && i<VARIABLE && (record[fieldshown].pt.x<1 || record[fieldshown].pt.x>79 || record[fieldshown].pt.y<1 || record[fieldshown].pt.y>23))
+        break;
+       if (i>=NUMERICAL && i<=CLOCK)
+        record[fieldshown].type=i;
+      break;
+      case 14:
+       i=Scan_Input(1, 1, 5, 1);
+       if (i>-1 && i<6)
+        record[fieldshown].decimals=i;
+      break;
+      case 15:
+       strcpy(ttext, record[fieldshown].suffix);
+       Scan_Input(ttext, 1, 24, record[fieldshown].color);
+       if (!strlen(ttext) || strlen(ttext)>3)
+        break;
+       strcpy(record[fieldshown].suffix, ttext); 
+      break;
+      case 16:
+       record[fieldshown].formula=( record[fieldshown].formula == ON ) ? OFF : ON;
+      break;
+      case 17:
+       i=Scan_Input(1, 1, fieldsperrecord, 4);
+       if (i>-1 && i<fieldsperrecord+1)
+        record[fieldshown].fieldlist=i;
+      break;
+      case 18:
+       record[fieldshown].editable=( record[fieldshown].editable == ON ) ? OFF : ON;
+      break;
+      case 19:
+       record[fieldshown].active=( record[fieldshown].active == ON ) ? OFF : ON;
+      break;
+      case 20:
+       Scan_Input(record[fieldshown].automatic_value, 1, 24, record[fieldshown].color);
+      break;
+     }
+     if ( isrecordproperlydictated(record[fieldshown]) == 0 )
+      record[fieldshown]=backuprecord;
+     break;
    }
   }
   clearinputline();
   Change_Color(RED);
   gotoxy(editorposition.x+1,editorposition.y+15);
   cleanstdin();
-  if ( t != QUIT ) {
+  if ( alteredparameters && t != QUIT ) {
+   gotoxy(editorposition.x+1, editorposition.y+15);
    printw("save changes (y/n):");
    t=sgetch();
    if (tolower(t)=='y') {
@@ -631,7 +701,7 @@ void Field_Editor()
 // references editor
 int References_Editor()
 {
-  int i, t=0, relationshipshown=0;
+  int i, t=0, relationshipshown=0, correspondence=1;
   char ttext[MAXSTRING];
   vector<Relationship> trelationships=relationships; // create a copy, copy back afterwards if wanted
   Relationship trelationship(const_cast <char *> ("dummydatabase"), 0, 1, 2, 3);
@@ -644,6 +714,9 @@ int References_Editor()
    trelationships.push_back(trelationship);
   
   while ( t != ESC && trelationships.size() ) {
+    
+   if ( trelationships[relationshipshown].localFields[1] )
+    correspondence = (record[trelationships[relationshipshown].localFields[1]-1].fieldlist) ? OFF : ON;
    Draw_Box(BOXCHAR, 6, editorposition.x, editorsize.x, editorposition.y, editorsize.y, MAGENTAONBLACK);
    Show_Menu_Bar(ERASE);
    for (i=editorposition.x+1;i<editorposition.y+13;i++) {
@@ -660,6 +733,8 @@ int References_Editor()
    printw("1.filename:%.22s", trelationships[relationshipshown].extDbname);
    Change_Color(MAGENTA);
    gotoxy(editorposition.x+1, editorposition.y+6);
+   if ( correspondence == OFF )
+    Change_Attributes(DIM);
    printw("equalized fields");
    Change_Color(YELLOW);
    gotoxy(editorposition.x+1, editorposition.y+7);
@@ -667,6 +742,7 @@ int References_Editor()
    gotoxy(35,12);
    printw("3.local:%d", trelationships[relationshipshown].localFields[0]);
    gotoxy(editorposition.x+1, editorposition.y+9);
+   Change_Attributes(NORMAL);
    Change_Color(MAGENTA);
    printw("references fields");
    Change_Color(YELLOW);
@@ -680,10 +756,10 @@ int References_Editor()
    Change_Color(YELLOW);
    printw("%d", relationshipshown+1);
    Change_Color(GREEN);
-   gotoxy(22,18);
+   gotoxy(editorposition.x+5,editorposition.y+13);
    printw("<arrow keys|HOME|END>");
-   gotoxy(25,19);
-   printw("<INS|DEL|ESC>");
+   gotoxy(editorposition.x+6, editorposition.y+13);
+   printw("<$><*><INS|DEL|ESC>");
    refresh();
    Change_Color(YELLOW);
    gotoxy(editorposition.x+1, editorposition.y+15);
@@ -723,6 +799,16 @@ int References_Editor()
      relationshipshown+=(!relationshipshown) ? 1 : -1;
      Show_Message(editorposition.x+5, editorposition.y+15, RED, "relationship deleted", 1500);
     break;
+    case '$':
+     Show_All_Fields_for_Editor(trelationships[relationshipshown].localFields[1], 1);
+     Flash_Field(trelationships[relationshipshown].localFields[1]);
+     getch();
+    break;
+    case '*':
+     if ( trelationships[relationshipshown].extFields[1] < 1 || trelationships[relationshipshown].localFields[1] < 1 )
+      break;
+     record[trelationships[relationshipshown].localFields[1]-1].fieldlist = (record[trelationships[relationshipshown].localFields[1]-1].fieldlist) ? 0 : trelationships[relationshipshown].extFields[1]-1;
+    break;
     case '1':
      Show_Menu_Bar(1);
      strcpy(ttext, trelationships[relationshipshown].extDbname);
@@ -738,6 +824,8 @@ int References_Editor()
      strcpy(trelationships[relationshipshown].extDbname, ttext);
     break;
     case '2':
+     if ( correspondence == OFF )
+      break;
      Change_Color(CYAN);
      gotoxy(editorposition.x+1, editorposition.y+15);
      printw("field->");
@@ -746,6 +834,8 @@ int References_Editor()
       trelationships[relationshipshown].extFields[0]=i;
     break;
     case '3':
+     if ( correspondence == OFF )
+      break;
      Change_Color(CYAN);
      gotoxy(editorposition.x+1, editorposition.y+15);
      printw("field->");
@@ -992,6 +1082,9 @@ void Duplicate_Field(int field_id, int flag)
    Duplicate_Field(field_id);
    Duplicate_Field(field_id, 1);
   }
+  
+  Read_Write_db_File(RECREATE);
+  Read_Write_db_File(WRITE);
     
 }
 
@@ -1023,4 +1116,78 @@ void resetwindow()
 {
   editorposition.x=17; editorposition.y=5;
   editorsize.x=33; editorsize.y=17;
+}
+
+// swap record & records entries
+int swapfields(int id1, int id2, int saveflag)
+{
+  if ( id1 < 0 || id1 > (int)record.size() - 1 )
+   return 0;
+  if ( id2 < 0 || id2 > (int)record.size() - 1 )
+   return 0;
+  if ( id1 == id2 )
+   return 0;
+  
+  int i;
+  Field trecord1, trecord2;
+  Annotated_Field tfield1, tfield2;
+  trecord1=record[id2]; trecord1.id=id1;
+  trecord2=record[id1]; trecord2.id=id2;
+  record[id1]=trecord1;
+  record[id2]=trecord2;
+  
+   for (i=0;i<recordsnumber;i++) {
+    tfield1=records[(i*fieldsperrecord)+id2]; tfield1.id=id1;
+    tfield2=records[(i*fieldsperrecord)+id1]; tfield2.id=id2;
+    records[(i*fieldsperrecord)+id1]=tfield1;
+    records[(i*fieldsperrecord)+id2]=tfield2;
+   }
+   
+   if ( saveflag ) {
+    Read_Write_db_File(RECREATE);
+    Read_Write_db_File(WRITE);  
+    Load_Database(currentpage);
+   }
+   
+ return 1;
+}
+
+// sort xorizontally&vertically, by activity 
+void sortrecords(int mode, int saveflag)
+{
+  int i, operation=1;
+  
+   while ( operation ) {
+    operation=0;
+    
+    for (i=0;i<fieldsperrecord-1;i++) {
+     switch ( mode ) {
+      case X:
+       if ( record[i].pt.x > record[i+1].pt.x )
+        operation=swapfields(i, i+1, OFF);
+      break;
+      case Y:
+       if ( record[i].pt.y > record[i+1].pt.y )
+        operation=swapfields(i, i+1, OFF);
+      break;
+      case ACTIVITY:
+       if ( record[i].active > record[i+1].active )
+        operation=swapfields(i, i+1, OFF);
+      break;
+      case EDITABLE:
+       if ( record[i].editable > record[i+1].editable )
+        operation=swapfields(i, i+1, OFF);
+      break;
+     }
+     if ( operation )
+      break;
+    }
+    
+   }
+  
+   if ( saveflag ) {
+    Read_Write_db_File(RECREATE);
+    Read_Write_db_File(WRITE); 
+    Load_Database(currentpage);
+   }
 }

@@ -1,7 +1,7 @@
 // reccurse, the filemaker of ncurses
 #include "reccurse.h"
 
-double version=0.610;
+double version=0.619;
 
 int main(int argc, char *argv[])
 {
@@ -798,10 +798,8 @@ int Add_Field(int type, char *name, char *textvalue)
    Generate_Field_String(&records[(int) records.size()-1], ttext);
    ++fieldsperrecord;
    
-   if ( editoroption == -1 && autosave ) {
-    Read_Write_db_File(RECREATE);
-    Read_Write_db_File(WRITE);
-   }
+   Read_Write_db_File(RECREATE);
+   Read_Write_db_File(WRITE);
    
  return fieldsperrecord;
 }
@@ -930,7 +928,7 @@ void Renumber_Field_Fieldlist(int startingfield)
  int i;
  
    for (i=0;i<fieldsperrecord;i++) {
-    if ( record[i].fieldlist-1 == startingfield )
+    if ( record[i].fieldlist && record[i].fieldlist-1 == startingfield )
      record[i].fieldlist=0;
     if ( record[i].fieldlist && record[i].fieldlist-1 > startingfield )
      --record[i].fieldlist;
@@ -1830,12 +1828,12 @@ int Show_Record_and_Menu()
           Show_Field_ID(&records[(currentrecord*fieldsperrecord)+i]);
         else {
          Show_Menu_Bar(ERASE);
-         if (menubar==1)
+         if ( menubar == 1 && fieldhasdependancy != 2 )
           Show_Message(1, bottombary, MAGENTA, "fieldlist entry. <up> and <down> arrows, <insert> to bring relevant data", 1750);
-         if (fieldhasdependancy!=2) {
+         if ( fieldhasdependancy!=2 ) {
           attron(A_BLINK);
           Show_Field(&records[(currentrecord*fieldsperrecord)+record[currentfield].fieldlist-1], 1);
-         attroff(A_BLINK);
+          attroff(A_BLINK);
          }
         }
         Screen_String_Editor();
@@ -2419,6 +2417,7 @@ int Show_Field(Annotated_Field *field, int flag) // 1 highlight, 2 only in scree
   if (strcmp(tfield->title, EMPTYSTRING)) {
       
    strncpy(ttext, tfield->title, (size_t)record[field->id].size.x);
+   ttext[(int)record[field->id].size.x]='\0';
    stringformulacalculator(ttext, currentrecord);   
    switch (tfield->title_position) {
     case 0:
@@ -2434,7 +2433,7 @@ int Show_Field(Annotated_Field *field, int flag) // 1 highlight, 2 only in scree
      tposy=tfield->pt.y+tfield->size.y;
     break;
     case 3:
-     tposx=tfield->pt.x-(int) strlen(tfield->title)-1;
+     tposx=tfield->pt.x-(int)strlen(tfield->title)-1;
      tposy=tfield->pt.y;
     break;
     case 4:
@@ -2744,32 +2743,40 @@ int Generate_Dependant_Field_String(Annotated_Field *field, char ttext[MAXSTRING
   dummyrecordsnumber=0;
   
    // see if dependancy occurs
-   for (i=0;i<(int) relationships.size();i++)
-    if (field->id==relationships[i].localFields[1]-1)
+   for (i=0;i<(int)relationships.size();i++)
+    if ( field->id == relationships[i].localFields[1]-1 )
      break;
-   if (i==(int) relationships.size())
+   if ( i == (int)relationships.size() )
     return 0;
    Read_External_Database(i);
    
    // read external database
    dummyfieldsperrecord=externalrecord[i].size();
    dummyrecordsnumber=externalrecords[i].size()/externalrecord[i].size();
-   if (record[relationships[i].localFields[1]-1].fieldlist) {
-    relationships[i].extFields[0]=1;
-   relationships[i].localFields[0]=1; }
+   if ( relationships[i].localFields[1] > 0 ) {
+    if (record[relationships[i].localFields[1]-1].fieldlist) {
+     relationships[i].extFields[0]=1;
+     relationships[i].localFields[0]=1;
+    }
+   }
    if (relationships[i].extFields[0]<1 || relationships[i].extFields[1]<1 || relationships[i].localFields[0]<1 || relationships[i].localFields[1]<1 || relationships[i].extFields[0]>dummyfieldsperrecord || relationships[i].extFields[1]>dummyfieldsperrecord || relationships[i].localFields[0]>fieldsperrecord || relationships[i].localFields[1]>fieldsperrecord)
     return 0;
    
    // destination local field is fieldlist, return success and keep dummyrecords for reference in Scan_Input
-   if (record[relationships[i].localFields[1]-1].fieldlist) {
-    externalreferencedatabase=i;
-   return 2; }
+   if ( relationships[i].localFields[1] ) {
+    if (record[relationships[i].localFields[1]-1].fieldlist) {
+     record[relationships[i].localFields[1]-1].fieldlist=relationships[i].extFields[1];
+     externalreferencedatabase=i;
+     return 2;
+    }
+   }
    // dependancy check, if localFields[1] is not fieldlist
    for (n=0;n<dummyrecordsnumber;n++)
-    if (!strcmp(externalrecords[i][(n*dummyfieldsperrecord)+relationships[i].extFields[0]-1].text, records[(currentrecord*fieldsperrecord)+relationships[i].localFields[0]-1].text))
-     break;
+    if ( relationships[i].extFields[0] && relationships[i].localFields[0] )
+     if (!strcmp(externalrecords[i][(n*dummyfieldsperrecord)+relationships[i].extFields[0]-1].text, records[(currentrecord*fieldsperrecord)+relationships[i].localFields[0]-1].text))
+      break;
    // no equal field found, return 0
-   if (n==dummyrecordsnumber)
+   if ( n == dummyrecordsnumber )
     return 0;
    // copy external to local field
    strcpy(records[(currentrecord*fieldsperrecord)+field->id].text, externalrecords[i][(n*dummyfieldsperrecord)+relationships[i].extFields[1]-1].text);
@@ -3002,8 +3009,8 @@ int Read_Write_Relationships(int mode) // 0 read all, 1 write/add
      strcat(ttext, " ");
      strcat(ttext, itoa(relationships[i].localFields[0]));
      strcat(ttext, " ");
-     if ( record[relationships[i].localFields[1]].fieldlist )
-      record[relationships[i].localFields[1]].fieldlist=relationships[i].extFields[1]-1;
+     if ( relationships[i].localFields[1] && record[relationships[i].localFields[1]-1].fieldlist )
+      record[relationships[i].localFields[1]-1].fieldlist=relationships[i].extFields[1]-1;
      strcat(ttext, itoa(relationships[i].localFields[1]));
     strcat(ttext, " "); }
     for (i=strlen(ttext);i<RELATIONSHIPSLENGTH;i++)
@@ -3181,8 +3188,8 @@ int Determine_Button_Box(int field_id)
     if (record[field_id].size.x==1 && record[field_id].size.y==1 && record[field_id].editable && record[field_id].type!=VARIABLE && record[field_id].type!=PROGRAM)
      record[field_id].buttonbox=TICKBOX; // tick box
     for (i=0;i<buttonkeystotal;i++) {
-     if (!strcmp(buttonkeys[i], record[field_id].automatic_value) && record[field_id].type!=VARIABLE) { // button box
-      if (record[field_id].fieldlist-1!=field_id)
+     if ( record[field_id].fieldlist && !strcmp(buttonkeys[i], record[field_id].automatic_value) && record[field_id].type!=VARIABLE ) { // button box
+      if (record[field_id].fieldlist-1 != field_id)
        record[field_id].buttonbox=BUTTONBOX;
       record[record[field_id].fieldlist-1].buttonbox=BUTTONSCREEN; // button screen
       record[record[field_id].fieldlist-1].type=MIXEDTYPE;
@@ -3190,10 +3197,12 @@ int Determine_Button_Box(int field_id)
      }
     }
     strcpy(tautomaticvalue, record[field_id].automatic_value);
-    if (strcmp(tautomaticvalue, EMPTYSTRING) && (scantextforcommand(tautomaticvalue, command)) && record[field_id].fieldlist-1==field_id) // button command
-     record[field_id].buttonbox=BUTTONCOMMAND;
-    if (record[field_id].size.x==0 && record[field_id].size.y==0 && record[field_id].fieldlist-1==field_id) // automatic scripts, repetitions in color
-     record[field_id].buttonbox=AUTOMATICSCRIPT;
+    if ( strcmp(tautomaticvalue, EMPTYSTRING) && scantextforcommand(tautomaticvalue, command) && record[field_id].fieldlist ) // button command
+     if ( record[field_id].fieldlist-1 == field_id )
+      record[field_id].buttonbox=BUTTONCOMMAND;
+    if (record[field_id].size.x==0 && record[field_id].size.y==0 && record[field_id].fieldlist )
+     if ( record[field_id].fieldlist-1 == field_id) // automatic scripts, repetitions in color
+      record[field_id].buttonbox=AUTOMATICSCRIPT;
       
     if (record[field_id].buttonbox>NOBUTTON)
      record[field_id].type=STRING;
