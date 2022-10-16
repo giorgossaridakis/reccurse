@@ -1,7 +1,7 @@
 // reccurse, the filemaker of ncurses
 #include "reccurse.h"
 
-double version=0.619;
+double version=0.621;
 
 int main(int argc, char *argv[])
 {
@@ -1392,6 +1392,8 @@ int Show_Record_and_Menu()
        Show_Menu_Bar(ERASE);
        Scan_Input(record[currentfield].automatic_value, 1, bottombary, record[currentfield].color);
        alteredparameters=1;
+       Save_Parameters(); 
+       newsignal=SIGUSR2;
       break;
       case SCANTITLE:
        Show_Menu_Bar(ERASE);
@@ -1399,6 +1401,8 @@ int Show_Record_and_Menu()
        Scan_Input(ttext, 1, bottombary, record[currentfield].color);
        strncpy(record[currentfield].title, ttext, MAXTITLE);
        alteredparameters=1;
+       Save_Parameters(); 
+       newsignal=SIGUSR2;
       break;
       case TEXTTOAUTOMATICVALUE: {
        if ( record[currentfield].type == CLOCK )
@@ -1409,6 +1413,8 @@ int Show_Record_and_Menu()
        for (i=0;i<(int)texttoautomaticvaluefields.size();i++)
         strcpy(record[texttoautomaticvaluefields[i]].automatic_value, records[(currentrecord*fieldsperrecord)+texttoautomaticvaluefields[i]].text);
        alteredparameters=1;
+       Save_Parameters(); 
+       newsignal=SIGUSR2;
       }
       break;
       case IMPORTASCII:
@@ -1417,6 +1423,8 @@ int Show_Record_and_Menu()
        i=Scan_Input(input_string, 10, bottombary, MAGENTAONBLACK);
        backupfields=Records_From_Adjoining_Fields(currentfield, 1);
        loadasciitofields(currentfield, input_string);
+       Save_Parameters(); 
+       newsignal=SIGUSR1;
       break;
       case 'q':
        if (!printscreenmode)
@@ -1921,18 +1929,24 @@ int Show_Record_and_Menu()
      case '+':
       if ( record[currentfield].type == CLOCK ) {
        strcpy( record[currentfield].automatic_value, Time_Correction_Adjuster(30) );
+       newsignal=SIGUSR2;
+       Save_Parameters();        
        break;
       }
      break;
      case '-':
       if ( record[currentfield].type == CLOCK ) {
        strcpy( record[currentfield].automatic_value, Time_Correction_Adjuster(-30) );
+       newsignal=SIGUSR2;
+       Save_Parameters(); 
        break;
       }
      break;
      case '/':
       if ( record[currentfield].type == CLOCK ) {
        strcpy( record[currentfield].automatic_value, Time_Correction_Adjuster() );
+       newsignal=SIGUSR2;
+       Save_Parameters(); 
        break;
       }
      break;
@@ -2580,6 +2594,7 @@ int Show_Field(Annotated_Field *field, int flag) // 1 highlight, 2 only in scree
      columninprint=tfield->pt.x;
     ++rowinprint; }
    }
+   gotoxy(79,24);
    // remove attributes
    Change_Attributes(NORMAL);
     
@@ -3610,6 +3625,9 @@ void Hanle_AlteredScreenParameter(int c, int field_id)
         }
        }
        
+     Save_Parameters();
+     newsignal=SIGUSR2;
+       
 }
 
 // toggle bottom bar 
@@ -3621,4 +3639,15 @@ void togglemenubar(int pos)
    }
    else
     menubar=pos;
+}
+
+// save database
+void Save_Parameters(int flag) // 0 anyway, 1 if autosave, 2 if autosave&shareddatabases
+{
+
+   if ( flag == 0 || (flag == 1 && autosave == ON) || (flag == 2 && autosave == ON && shareddatabases[currentpage] == ON) ) { 
+    Read_Write_db_File(RECREATE);
+    Read_Write_db_File(WRITE);    
+   }
+    
 }

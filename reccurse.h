@@ -377,6 +377,7 @@ void Shared_Databases_Handler(int page_id=-1);
 int togglealteredparameterstarget();
 void Hanle_AlteredScreenParameter(int c, int field_id=-1);
 void togglemenubar(int pos=-1);
+void Save_Parameters(int flag=1);
 
 // rclib.cc
 void INThandler(int sig);
