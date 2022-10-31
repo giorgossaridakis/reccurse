@@ -98,6 +98,8 @@ enum { TEXT, TITLE, BOX };
 enum { NOCOMMAND=0, NONEXECUTABLE, SCRIPTCOMMAND, SKIPCOMMAND }; // rccompar.cc results
 const char *alteredparameterstargets[] = { "text", "title", "box" };
 int alteredparameterstarget=TEXT, alteredparametersshown=0;
+enum { MIDDLE = -1, FIRST, LAST };
+enum { READ = 0, WRITE, CREATEDB, RECREATE, RECREATERC };
 
 // keyboard
 const int DOWN=258;
@@ -182,6 +184,8 @@ int newsignal=0;
 static volatile int signalPid = -1;
 extern int scriptsleeptime, skiphighlight;
 extern int terminalhascolor;
+char textDbname[MAXNAME];
+int fieldreferencerecords[MAXFIELDS];
 
 struct Points {
  int x;
@@ -285,7 +289,13 @@ class InstanceInfo {
    InstanceInfo(int i, char s[MAXNAME]): instancePid(i), instanceOpen(true) { strcpy(instanceConnectionTime, s); };
    InstanceInfo() { };
 ~InstanceInfo() { }; };
-   
+
+class RecordText {
+  public:
+   char recordText[MAXSTRING];
+   RecordText(char s[MAXSTRING]) { strcpy(recordText, s); };
+   RecordText() { };
+~RecordText() { }; };
 
 // vectors
 vector<ButtonBarMenuEntry> buttonbarmenus;
@@ -313,7 +323,7 @@ char* Reccurse_File_Extension(char *filename, int flag=0);
 int Read_rc_File();
 int Write_rc_File(char *file);
 int Read_Write_db_File(int mode=0);
-int Read_External_Database(int externaldatabaseid);
+int Read_External_Database(int externaldatabaseid, int sortfield=-1);
 int Read_Write_Current_Parameters(int item, int mode=0); // 0 read, 1 write
 int Read_Record_Field(ifstream &instream, Field &tfield);
 int isrecordproperlydictated(Field &tfield);
@@ -353,7 +363,7 @@ int Generate_Dependant_Field_String(Annotated_Field *field, char ttext[MAXSTRING
 int Export_Database(char *filename);
 int Import_Database(char *filename);
 int Import_External_db_File(char *filename);
-int Read_Write_Relationships(int mode=0);
+int Read_Write_Relationships(int mode=READ);
 void Initialize_Database_Parameters(int mode=0);
 void Load_Database(int pagenumber);
 int Pages_Selector(int pagetochange=-1);
@@ -390,8 +400,6 @@ void Show_File_Error(char *filename);
 void stringcodedecode(char *source, char *destination, int mode=0);
 void checkpoint(int id, int color=58);
 int Scan_Input(int flag=0, int lim_a=0, int lim_b=1, int length=79);
-enum { MIDDLE = -1, FIRST, LAST };
-enum { READ = 0, WRITE, CREATEDB, RECREATE, RECREATERC };
 int Scan_Input(char istring[MAXSTRING], int x_pos, int y_pos, int color=WHITE, int length=79, int cursor=-1, int firstlast=-1);
 void Scan_Date(int x_pos, int y_pos, char tdate[], int flag=0);
 char *addmissingzeros(char tstring[], int zeros);
@@ -410,7 +418,7 @@ void Show_Message(int x_pos, int y_pos, int color, char *message, int sleeptime=
 void Show_Message(int x_pos, int y_pos, int color, const char *message, int sleeptime=1500);
 void replaceunderscoresandbrackets(char dataname[], int flag);
 int limitsignificantnumbers(char *s, int digits);
-int sortrecords(int field_id, int recordssequence[], int mode=0);
+int sortrecords(int field_id, vector<Annotated_Field>& recordstosort, int nrecords, int nfieldsperrecord, int recordssequence[], int mode=0);
 void sortfieldsbyxpt(int field_id, vector <int> &fieldxidentities);
 void sortfieldsbyypt(int field_id, vector <int> &fieldyidentities);
 int locatefieldbymouseclick();
@@ -422,7 +430,7 @@ int findfieldege(int flag=0);
 void INThandler(int sig);
 char* bringstringtomiddle(char *text, int width);
 int scantextforcommand(char *text, char *command, char separator='@', int option=0);
-char* stringtolower(char *text);
+char* stringtolower(char *text, int flag=0);
 int kbhit(void);
 int decimatestringtokey(char *text);
 int breaktexttokeys(char *text);
@@ -472,6 +480,8 @@ int readstringentry2(char *line, char linepart[MAXSTRING*5]);
 unsigned int isseparationchar2(char t);
 int findsimple2(char text[MAXNAME], char token[MAXNAME]);
 char* tmpnam2(char name[L_tmpnam+1], int length=8);
+void fillintarray(int tarray[], int size, int initializer=-101);
+int isstringnonspaces(char *text);
 
 // rcutil.cc
 extern int mod(double a, double b);
@@ -508,6 +518,9 @@ extern void Duplicate_Field(int field_id, int flag=0);
 extern void Show_All_Fields_for_Editor(int field_id, int flag=0);
 extern void showfieldhint(char *text, int color1=CYAN, int sleeptime=0, int color2=YELLOW);
 extern void resetwindow();
+extern int isrelationshipproperlydictated(Relationship trelationship);
+extern int swapfields(int id1, int id2, int saveflag);
+extern void sortrecords(int mode, int saveflag);
 
 // rcpc.cc
 extern int parenthesesincluderforpolishreversecalculator(char formula[]);

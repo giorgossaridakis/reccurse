@@ -50,6 +50,8 @@ extern int menubar;
 const int bottombary=24;
 extern int alteredparameterstarget, alteredparametersshown;
 extern const char *alterscreenparameterskeys;
+extern int dummyfieldsperrecord, dummyrecordsnumber;
+extern char textDbname[MAXNAME];
 
 // keyboard
 const int DOWN=258;
@@ -93,8 +95,9 @@ enum { READ = 0, WRITE, CREATERC, RECREATE, RECREATERC };
 enum { DISPLAY = 0, ERASE };
 enum { X = 0, Y, ACTIVITY, EDITABLE };
 const char *FIELDEDITORHINTS[] = { "~ [ no text ]", "0up 1right 2down 3left 4inside", "see manual", "colors vary from 1..64", "horizonal screen position", "vertical screen position", "horizontal size", "vertical size", "see manual", "colors vary from 1..64 | used for repetitions in automatic scripts", "contained in box", "colors vary from 1..64", "[0 numerical 1 calendar 2 string 3 mixed type 4 variable 5 program 6 clock]", "decimal positions | direction for script commands | 0 AM designation for clocks", "~ [ no text ] | ~ 3 chars", "[perform numerical or alphanumerical calculations]", "[obtain values from field listed | self reference for adjoining fields]", "can be edited/accessed", "is active/shown", "~ [ no text ]" };
-const char *REFERENCEEDITORHINTS[] = { "~", "[external field for value evaluation to equal with local]", "[local field for value evaluation to equal with external]", "[external field to collect data for local field]", "[local field to store data from external field]" };
+const char *REFERENCEEDITORHINTS[] = { "~", "[external field for value evaluation to equal with local]", "[local field for value evaluation to equal with external]", "[external field to collect data for local field]", "[local field to store data from external field]", "[ empty relationship ]" };
 const char *AUTOSAVEWARNING="<delete> <insert> <duplicate> <sort> <swap> will automatically save database";
+const char *DUMMYDATABASE="dummydatabase";
 
 struct Points {
  int x;
@@ -176,12 +179,13 @@ int showallrecords=ON;
 
 // function declarations
 int References_Editor();
+int isrelationshipproperlydictated(Relationship trelationship);
 void Field_Editor();
 void clearinputline();
 int Edit_Field(int &field_id);
 void Duplicate_Field(int field_id, int flag=0); // 0 only record, 1 copy records, 2 both
 void Show_All_Fields_for_Editor(int field_id, int flag=0);
-void showfieldhint(char *text, int color1=CYAN, int sleeptime=0, int color2=YELLOW);
+void showhint(char *text, int color1=CYAN, int sleeptime=0, int color2=YELLOW);
 void resetwindow();
 int swapfields(int id1, int id2, int saveflag=ON);
 void sortrecords(int mode, int saveflag=ON);
@@ -224,6 +228,7 @@ extern int togglealteredparameterstarget();
 extern void Hanle_AlteredScreenParameter(int c, int field_id=-1);
 extern void Sleep(ul sleepMs);
 extern void Load_Database(int pagenumber);
+extern int Read_External_Database(int externaldatabaseid, int sortfield=-1);
 
 // field editor and setup routine
 void Field_Editor()
@@ -367,7 +372,7 @@ void Field_Editor()
    gotoxy(editorposition.x+1, editorposition.y+14);
    printw("<j>ump <u>ndo <f>ront <ins><del>");
    sprintf(ttext, "[%s]&[%s]", FIELDTYPES[record[fieldshown].type], BUTTONBOXES[record[fieldshown].buttonbox]);
-   showfieldhint(ttext);
+   showhint(ttext);
    Change_Color(YELLOW);
    gotoxy(editorposition.x+1,editorposition.y+15);
    t=sgetch();
@@ -463,7 +468,7 @@ void Field_Editor()
       ++fieldshown;
      break;
     case INSERT:
-     showfieldhint(const_cast<char *>(AUTOSAVEWARNING), RED);
+     showhint(const_cast<char *>(AUTOSAVEWARNING), RED);
      printw("insert (y/n):");
      t1=sgetch();
      if (tolower(t1)=='y') {
@@ -476,7 +481,7 @@ void Field_Editor()
     case DELETE:
      if (fieldsperrecord < 2 )
       break;
-     showfieldhint(const_cast<char *>(AUTOSAVEWARNING), RED);
+     showhint(const_cast<char *>(AUTOSAVEWARNING), RED);
      printw("delete (y/n):");
      t1=sgetch();
      if (tolower(t1)=='y') {
@@ -488,7 +493,7 @@ void Field_Editor()
      }
     break;
     case '&':
-     showfieldhint(const_cast<char *>(AUTOSAVEWARNING), RED);
+     showhint(const_cast<char *>(AUTOSAVEWARNING), RED);
      printw("duplicate (y/n):");
      t1=sgetch();
      if (t1!='y')
@@ -505,7 +510,7 @@ void Field_Editor()
      Show_Message(editorposition.x+1, editorposition.y+15, RED, ttext, 1500);
     break;
     case '^':
-     showfieldhint(const_cast<char *>(AUTOSAVEWARNING), RED);
+     showhint(const_cast<char *>(AUTOSAVEWARNING), RED);
      printw("sort [1.x 2.y 3.xy 4.activity]:");
      t1=sgetch();
      if ( t1 < 49 || t1 > 52 )
@@ -528,7 +533,7 @@ void Field_Editor()
      }
     break;
     case SHIFT_UP:
-     showfieldhint(const_cast<char *>(AUTOSAVEWARNING), RED);
+     showhint(const_cast<char *>(AUTOSAVEWARNING), RED);
      printw("swap with first (y/n):");
      t1=sgetch();
      if ( (tolower(t1)) == 'y' )
@@ -537,14 +542,14 @@ void Field_Editor()
     case SHIFT_DOWN:
      if ( fieldshown == fieldsperrecord - 1 )
       break;
-     showfieldhint(const_cast<char *>(AUTOSAVEWARNING), RED);
+     showhint(const_cast<char *>(AUTOSAVEWARNING), RED);
      printw("swap with last (y/n):");
      t1=sgetch();
      if ( (tolower(t1)) == 'y' )
       swapfields(fieldshown, fieldsperrecord-1);
     break;    
     case SHIFT_LEFT:
-     showfieldhint(const_cast<char *>(AUTOSAVEWARNING), RED);
+     showhint(const_cast<char *>(AUTOSAVEWARNING), RED);
      printw("swap with previous (y/n):");
      t1=sgetch();
      if ( (tolower(t1)) == 'y' )
@@ -552,7 +557,7 @@ void Field_Editor()
        Show_Message(editorposition.x+1, editorposition.y+15, RED, "impossible: first/last field", 1500); 
     break;
     case SHIFT_RIGHT:
-     showfieldhint(const_cast<char *>(AUTOSAVEWARNING), RED);
+     showhint(const_cast<char *>(AUTOSAVEWARNING), RED);
      printw("swap with next (y/n):");
      t1=sgetch();
      Show_Menu_Bar(ERASE);
@@ -581,8 +586,8 @@ void Field_Editor()
      }
      if ( selection < 1 || selection > 20 )
       continue;
-     alteredparameters=1;
-     showfieldhint(const_cast<char *>(FIELDEDITORHINTS[selection-1]), GREEN, i);
+     alteredparameters=ON;
+     showhint(const_cast<char *>(FIELDEDITORHINTS[selection-1]), GREEN, i);
      switch (selection) {
       case 1:
        strcpy(ttext, record[fieldshown].title);
@@ -689,7 +694,7 @@ void Field_Editor()
    printw("save changes (y/n):");
    t=sgetch();
    if (tolower(t)=='y') {
-    alteredparameters=0;
+    alteredparameters=OFF;
     Read_Write_db_File(RECREATE);
     Read_Write_db_File(WRITE); 
    }
@@ -704,25 +709,32 @@ int References_Editor()
   int i, t=0, relationshipshown=0, correspondence=1;
   char ttext[MAXSTRING];
   vector<Relationship> trelationships=relationships; // create a copy, copy back afterwards if wanted
-  Relationship trelationship(const_cast <char *> ("dummydatabase"), 0, 1, 2, 3);
+  Relationship trelationship(const_cast <char *> (DUMMYDATABASE), 1, 1, 1, 1), brelationship=trelationship;
   vector<Relationship>::iterator p;
-  alteredparameters=1;
   resetwindow();
   editorsize.y--;
   
   if ( trelationships.size() == 0 )
    trelationships.push_back(trelationship);
+  if ( strcmp(trelationships[0].extDbname, DUMMYDATABASE) )
+   Read_External_Database(0);
   
   while ( t != ESC && trelationships.size() ) {
     
+   if ( isrelationshipproperlydictated(trelationships[relationshipshown]) == 0 )
+    trelationships[relationshipshown]=brelationship;
+   brelationship=trelationships[relationshipshown];
    if ( trelationships[relationshipshown].localFields[1] )
     correspondence = (record[trelationships[relationshipshown].localFields[1]-1].fieldlist) ? OFF : ON;
    Draw_Box(BOXCHAR, 6, editorposition.x, editorsize.x, editorposition.y, editorsize.y, MAGENTAONBLACK);
    Show_Menu_Bar(ERASE);
-   for (i=editorposition.x+1;i<editorposition.y+13;i++) {
-    gotoxy(i, 20);
-   addch(SPACE); }
-   Change_Color(GREEN);
+   for (i=editorposition.x+1;i<editorposition.x+13;i++) {
+    gotoxy(i, editorposition.y+15);
+    addch(SPACE);
+   }
+   gotoxy(editorposition.x+1, editorposition.y+15);
+   Change_Color(BLUE);
+   addch(SPACE);
    gotoxy(editorposition.x+3, editorposition.y+1);
    printw("reccurse relationship tables");
    Change_Color(MAGENTA);
@@ -753,8 +765,8 @@ int References_Editor()
    Change_Color(MAGENTA);
    gotoxy(editorposition.x+1, editorposition.y+12);
    printw("relatioship id:");
-   Change_Color(YELLOW);
-   printw("%d", relationshipshown+1);
+   Change_Color(RED);
+   printw("%d/%d [MAX %d]", relationshipshown+1, (int)trelationships.size(), MAXRELATIONSHIPS);
    Change_Color(GREEN);
    gotoxy(editorposition.x+5,editorposition.y+13);
    printw("<arrow keys|HOME|END>");
@@ -768,7 +780,9 @@ int References_Editor()
     break;
    cleanstdin(); 
    if ( t > 49 && t < 54 )
-    showfieldhint(const_cast<char *> (REFERENCEEDITORHINTS[t-49]));
+    showhint(const_cast<char *> (REFERENCEEDITORHINTS[t-49]));
+   if ( (t > 49 && t < 54) || t == INSERT || t == DELETE || t == '*' )
+    alteredparameters=ON;
    switch (t) {
      
     case LEFT:
@@ -805,11 +819,13 @@ int References_Editor()
      getch();
     break;
     case '*':
-     if ( trelationships[relationshipshown].extFields[1] < 1 || trelationships[relationshipshown].localFields[1] < 1 )
+     if ( trelationships[relationshipshown].extFields[1] - 1 < 0 || trelationships[relationshipshown].localFields[1] - 1 < 0 )
       break;
-     record[trelationships[relationshipshown].localFields[1]-1].fieldlist = (record[trelationships[relationshipshown].localFields[1]-1].fieldlist) ? 0 : trelationships[relationshipshown].extFields[1]-1;
+     record[trelationships[relationshipshown].localFields[1]-1].fieldlist = (record[trelationships[relationshipshown].localFields[1]-1].fieldlist) ? 0 : trelationships[relationshipshown].extFields[1];
     break;
-    case '1':
+    case '1': {
+     if ( !strcmp(trelationships[relationshipshown].extDbname, DUMMYDATABASE) )
+      showhint(const_cast<char *> (REFERENCEEDITORHINTS[5]));
      Show_Menu_Bar(1);
      strcpy(ttext, trelationships[relationshipshown].extDbname);
      t=Scan_Input(ttext, 1, 24, 49);
@@ -822,6 +838,12 @@ int References_Editor()
       Show_Message(editorposition.x+5, editorposition.y+15, RED, "nonexistant database", 1500);
      break; }
      strcpy(trelationships[relationshipshown].extDbname, ttext);
+     Relationship backuprelationship=relationships[relationshipshown];
+     relationships[relationshipshown]=trelationships[relationshipshown];
+     Read_External_Database(relationshipshown);
+     strcpy(textDbname, DUMMYDATABASE);
+     relationships[relationshipshown]=backuprelationship;
+    }
     break;
     case '2':
      if ( correspondence == OFF )
@@ -866,21 +888,37 @@ int References_Editor()
    
   }
   clearinputline();
-  gotoxy(18,20);
+  for (i=editorposition.x+1;i<editorposition.x+33;i++) {
+   gotoxy(i, editorposition.y+15);
+   addch(SPACE);
+  }
+  gotoxy(editorposition.x+1, editorposition.y+15);
   Change_Color(RED);
   cleanstdin();
   printw("save changes (y/n):");
   t=sgetch();
   if (tolower(t)=='y') {
-   alteredparameters=0;
+   alteredparameters=OFF;
    relationships.clear();
    for (i=0;i<(int) trelationships.size();i++)
-    if (strcmp(trelationships[i].extDbname, "dummydatabase"))
+    if (strcmp(trelationships[i].extDbname, DUMMYDATABASE))
      relationships.push_back(trelationships[i]);
-   Read_Write_db_File(3);
-  Read_Write_db_File(1); }
+   Read_Write_db_File(RECREATE);
+   Read_Write_db_File(WRITE);
+  }
     
  return alteredparameters;
+}
+
+// check relationship validity
+int isrelationshipproperlydictated(Relationship trelationship)
+{
+  if ( trelationship.localFields[0] < 1 ||  trelationship.localFields[1] < 1 || trelationship.extFields[0] < 1 || trelationship.extFields[1] < 1 )
+   return 0;
+  if ( trelationship.localFields[0] > fieldsperrecord ||  trelationship.localFields[1] > fieldsperrecord || trelationship.extFields[0] > dummyfieldsperrecord || trelationship.extFields[1] > dummyfieldsperrecord )
+   return 0;
+  
+ return 1;
 }
 
 // clear input line
@@ -1089,7 +1127,7 @@ void Duplicate_Field(int field_id, int flag)
 }
 
 // show messages in edit box
-void showfieldhint(char *text, int color1, int sleeptime, int color2)
+void showhint(char *text, int color1, int sleeptime, int color2)
 {
   int x, y, i;
   getyx(win1, y, x);

@@ -159,23 +159,46 @@ int Scan_Input(int flag, int lim_a, int lim_b, int length) // 0 string, 1 intege
 // scan input overloaded
 int Scan_Input(char istring[MAXSTRING], int x_pos, int y_pos, int color, int length, int cursor, int firstlast)
 {
-  int i, t=0, column, fieldreferenceflag=0, fieldreferencelist, dummyfieldreferencelist, fieldreferencerecord=currentrecord, exitscan=0;
+  int i, t=0, nextkey=0, column, fieldreferenceflag=0, fieldreferencelist, exitscan=0, sp, searchrequest=0;
   char tstring[MAXSTRING], iistring[MAXSTRING];
+  vector<RecordText> recordtexts;
   if ( cursor == -1 )
    cursor=(int)strlen(istring);
   else
    cursor=0;
+  sp=fieldreferencerecords[currentfield];
   
-  if ( record.size() && records.size() && record[currentfield].fieldlist && adjoiningfields.size() == 1 ) {
-   fieldreferenceflag=1;
-   if (fieldhasdependancy==2) {
-    fieldreferencerecord=0;
-    dummyfieldreferencelist=relationships[externalreferencedatabase].extFields[1]-1;
+   // push non empty fields to vector
+   if ( record.size() && records.size() && record[currentfield].fieldlist && adjoiningfields.size() == 1 ) {
+     
+    fieldreferenceflag=1;
+    if (fieldhasdependancy==2) {
+     fieldreferencelist=relationships[externalreferencedatabase].extFields[1]-1;
+     for (i=0;i<dummyrecordsnumber;i++) {
+      RecordText trecordtext(externalrecords[externalreferencedatabase][(i*dummyfieldsperrecord)+fieldreferencelist].text);
+      if ( isstringnonspaces(trecordtext.recordText) )
+       recordtexts.push_back(trecordtext);
+     }
+    }
+    else {
+     fieldreferencelist=record[records[(fieldreferencerecords[currentfield]*fieldsperrecord)+currentfield].id].fieldlist-1;
+     for (i=0;i<recordsnumber;i++) {
+      RecordText trecordtext(records[(i*fieldsperrecord)+fieldreferencelist].text);
+      if ( isstringnonspaces(trecordtext.recordText) )
+       recordtexts.push_back(trecordtext);
+     }
+    }
+    // correct scan position, if needed
+    if ( fieldreferencerecords[currentfield] > (int)recordtexts.size() - 1 )
+     fieldreferencerecords[currentfield]=0;
    }
-   else 
-    fieldreferencelist=record[records[(fieldreferencerecord*fieldsperrecord)+currentfield].id].fieldlist-1;
-  }
-  
+   // locate already stored text
+   if ( fieldreferenceflag & fieldreferencerecords[currentfield] == 0 )
+    for (i=0;i<(int)recordtexts.size();i++)
+     if ( !strcmp(istring, recordtexts[i].recordText) )
+      fieldreferencerecords[currentfield]=i;
+   
+   // construct temporary screen string
    strcpy(tstring, istring);
    for (i=(int)strlen(istring);i<length+(int)strlen(istring) && i < MAXSTRING-1;i++)
     tstring[i]=SPACE;
@@ -189,16 +212,13 @@ int Scan_Input(char istring[MAXSTRING], int x_pos, int y_pos, int color, int len
    column=x_pos+cursor;
    if ( column > 79 )
     column=79;
-   
+
    // scan loop
    while ( t!=ESC && t!='\n' && exitscan == 0 ) {
     gotoxy(x_pos, y_pos);
-    if (fieldreferenceflag==2) {
+    if ( fieldreferenceflag == 2 ) {
      fieldreferenceflag=1;
-     if (fieldhasdependancy!=2)
-      strcpy(tstring, records[(fieldreferencerecord*fieldsperrecord)+fieldreferencelist].text); 
-     else
-      strcpy(tstring, externalrecords[externalreferencedatabase][(fieldreferencerecord*dummyfieldsperrecord)+dummyfieldreferencelist].text);
+     strcpy( tstring, recordtexts[fieldreferencerecords[currentfield]].recordText );
     }
     Change_Color(color);
     printw("%s", tstring);
@@ -210,7 +230,15 @@ int Scan_Input(char istring[MAXSTRING], int x_pos, int y_pos, int color, int len
     gotoxy(column, y_pos);
     refresh();
     cleanstdin();
-    t=bgetch(SCANUNBLOCK); // give time for input char, otherwise leave 
+    if ( !nextkey )
+     t=bgetch(SCANUNBLOCK); // give time for input char, otherwise leave
+    else {
+     t=nextkey;
+     nextkey=0;
+    }
+    if ( searchrequest == 1 && t == SCRIPT_PLAYER )
+     strcpy( tstring, iistring );
+    searchrequest=0;
     if (t==-1)
      t='\n';
     if ( t == PASTE && (int)strlen(clipboard) )
@@ -218,7 +246,7 @@ int Scan_Input(char istring[MAXSTRING], int x_pos, int y_pos, int color, int len
     if ( isprintablecharacter(t) && column<length+1 ) {
      tstring[column-x_pos]=t;
      if (column<length)
-    ++column; }
+      ++column; }
      if ( t == SHIFT_UP ) {
       column=x_pos;
       t=LEFT;
@@ -243,6 +271,22 @@ int Scan_Input(char istring[MAXSTRING], int x_pos, int y_pos, int color, int len
       case TOGGLEMOUSE:
        togglemouse();
       break;
+      case SCRIPT_PLAYER:
+       searchrequest=1;
+       strcpy(iistring, tstring);
+       limitspaces(iistring);
+       stringtolower(iistring);
+       for (;sp<(int)recordtexts.size();sp++)
+        if ( findsimple2(stringtolower(recordtexts[sp].recordText, 1), iistring) )
+         break;
+       if ( sp == (int)recordtexts.size() )
+        for (sp=0;sp<fieldreferencerecords[currentfield];sp++)
+         if ( findsimple2(stringtolower(recordtexts[sp].recordText, 1), iistring) )
+          break;
+       fieldreferencerecords[currentfield]=sp++;
+       fieldreferenceflag=2;
+       column=x_pos;
+      break;
       case LEFT:
        if ( column == x_pos && adjoiningfields.size() > 1 && firstlast != FIRST ) {
         exitscan=1;
@@ -260,22 +304,30 @@ int Scan_Input(char istring[MAXSTRING], int x_pos, int y_pos, int color, int len
         ++column;
       break;
       case UP:
-       if (fieldreferenceflag && fieldreferencerecord>0) {
-        --fieldreferencerecord;
+       if ( fieldreferenceflag == 0 )
+        break;
+       if ( fieldreferencerecords[currentfield] > 0 ) {
+        --fieldreferencerecords[currentfield];
+        fieldreferenceflag=2;
+        break;
+       }
+       if ( fieldreferencerecords[currentfield] == 0 ) {
+        fieldreferencerecords[currentfield]=(int)recordtexts.size()-1;
         fieldreferenceflag=2;
        }
       break;
       case DOWN:
-       if (fieldhasdependancy==2) {
-        if (fieldreferenceflag && fieldreferencerecord<dummyrecordsnumber-1) {
-         ++fieldreferencerecord;
-         fieldreferenceflag=2;
-        }
+       if ( fieldreferenceflag == 0 )
+        break;
+       if ( fieldreferencerecords[currentfield] < (int)recordtexts.size() - 1 ) {
+         ++fieldreferencerecords[currentfield];
+         fieldreferenceflag=2;       
+       break;
        }
-       else
-       if (fieldreferenceflag && fieldreferencerecord<recordsnumber-1) {
-        ++fieldreferencerecord;
-       fieldreferenceflag=2; }
+       if ( fieldreferencerecords[currentfield] == (int)recordtexts.size() - 1 ) {
+         fieldreferencerecords[currentfield]=0;
+         fieldreferenceflag=2;        
+       }
       break;
       case INSERT:
        if (fieldreferenceflag)
@@ -682,29 +734,36 @@ int limitsignificantnumbers(char *s, int digits)
 }
 
 // sort records from sequence in parameter array
-int sortrecords(int field_id, int recordssequence[], int mode) // 0 ascending 1 descending
+int sortrecords(int field_id, vector<Annotated_Field>& recordstosort, int nrecords, int nfieldsperrecord, int recordssequence[], int mode) // 0 ascending 1 descending 
 {
   int i, n, tlength, loopflag=1, sortflag=0, trecord;
   vector <int> trecordsequece;
+  char s1[MAXSTRING], s2[MAXSTRING];
 
    while (loopflag) { // one more turn of string swapping
-    for (loopflag=0, i=recordsnumber-1;i>0;sortflag=0, i--) {
-     tlength=((int) strlen(records[(recordssequence[i]*fieldsperrecord)+field_id].text)<(int) strlen(records[(recordssequence[i-1]*fieldsperrecord)+field_id].text)) ? (int) strlen(records[(recordssequence[i]*fieldsperrecord)+field_id].text) : (int) strlen(records[(recordssequence[i-1]*fieldsperrecord)+field_id].text);
+    for (loopflag=0, i=nrecords-1;i>0;sortflag=0, i--) {
+     tlength=((int) strlen(recordstosort[(recordssequence[i]*nfieldsperrecord)+field_id].text)<(int) strlen(recordstosort[(recordssequence[i-1]*nfieldsperrecord)+field_id].text)) ? (int) strlen(recordstosort[(recordssequence[i]*nfieldsperrecord)+field_id].text) : (int) strlen(recordstosort[(recordssequence[i-1]*nfieldsperrecord)+field_id].text);
+     strcpy( s1, stringtolower(recordstosort[(recordssequence[i]*nfieldsperrecord)+field_id].text, 1) );
+     strcpy( s2, stringtolower(recordstosort[(recordssequence[i-1]*nfieldsperrecord)+field_id].text, 1) );
      for (n=0;n<tlength;n++) {
-      if ((int)(records[(recordssequence[i]*fieldsperrecord)+field_id].text[n])<(int)(records[(recordssequence[i-1]*fieldsperrecord)+field_id].text[n]) && !sortflag) {
+      if ( (int) s1[n] < (int) s2[n] && sortflag == 0 ) {
        sortflag=1; loopflag=1;
        trecord=recordssequence[i-1];
        recordssequence[i-1]=recordssequence[i];
       recordssequence[i]=trecord; }
-      if ((int)(records[(recordssequence[i]*fieldsperrecord)+field_id].text[n])>(int)(records[(recordssequence[i-1]*fieldsperrecord)+field_id].text[n]))
-    sortflag=1; } } }
+      if ( (int)s1[n] > (int)s2[n] )
+       sortflag=1; 
+     }
+    }
+   }
 
-    // if mode, reverse array
-    if (mode) {
-     for (i=recordsnumber-1;i>-1;i--)
-      trecordsequece.push_back(recordssequence[i]);
-     for (i=0;i<recordsnumber;i++)
-    recordssequence[i]=trecordsequece[i]; }
+   // if mode, reverse array
+   if (mode) {
+    for (i=nrecords-1;i>-1;i--)
+     trecordsequece.push_back(recordssequence[i]);
+    for (i=0;i<nrecords;i++)
+     recordssequence[i]=trecordsequece[i];
+   }
     
   return 0;
 }
@@ -818,6 +877,9 @@ void INThandler(int sig)
     if ( sig == SIGFPE )
      End_Program(FLOATINGPOINTEXCEPTION);
     
+    if ( record.size() == 0 )
+     End_Program(BREAKEXIT);
+  
     Show_Menu_Bar(ERASE);
     Change_Color(RED);
     gotoxy(1,bottombary);
@@ -898,14 +960,20 @@ int scantextforcommand(char *text, char *command, char separator, int option)
 }
 
 // string to lower chars 
-char* stringtolower(char *text)
+char* stringtolower(char *text, int flag) // 0 alter *text, 1 do not alter
 {
   int i;
+  static char ttext[MAXSTRING];
+  strcpy(ttext, text);
   
-   for (i=0;i<(int)strlen(text);i++)
-    text[i]=tolower(text[i]);
+   for (i=0;i<(int)strlen(ttext);i++)
+    ttext[i]=tolower(ttext[i]);
+   ttext[i]='\0';
   
- return text;
+   if ( flag == 0 )
+    strcpy(text, ttext);
+  
+ return &ttext[0];
 }
 
 // kbhit from old and wise
@@ -2011,4 +2079,24 @@ char* tmpnam2(char name[L_tmpnam+1], int length)
  return &name[0];  
 }
 
+// fill int array
+void fillintarray(int tarray[], int size, int initializer)
+{
+  int i;
+  
+   for (i=0;i<size;i++)
+    tarray[i] = ( initializer == -101 ) ? i : initializer;
+}
 
+// does string have anything else than spaces
+int isstringnonspaces(char *text)
+{
+  int i, nonspaces=0;
+  
+   for (i=0;i<(int)strlen(text);i++)
+    if ( text[i] != SPACE )
+     ++nonspaces;
+  
+ return nonspaces;
+}
+   

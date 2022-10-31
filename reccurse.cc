@@ -1,7 +1,7 @@
 // reccurse, the filemaker of ncurses
 #include "reccurse.h"
 
-double version=0.621;
+double version=0.640;
 
 int main(int argc, char *argv[])
 {
@@ -284,7 +284,7 @@ int Read_Write_db_File(int mode) // 0 read, 1 write, 2 create from file, 3&4 rec
   dbfileaccess.seekg(0, ios::beg);
   dbfileaccess.seekp(0, ios::beg);
   
-   if (!mode) { // out of switch due to initializations
+   if ( mode == READ ) { // out of switch due to initializations
     int activefields=0;
     startofrecords=0;
     fieldsperrecord=0;
@@ -294,7 +294,8 @@ int Read_Write_db_File(int mode) // 0 read, 1 write, 2 create from file, 3&4 rec
      dbfileaccess.get(c);
      c=charcoder(c, 1);
      ++startofrecords;
-    ttext+=c; }
+     ttext+=c;
+    }
     char tttext[(int) ttext.size()+1];
     for (i=0;i<(int) ttext.size();i++)
      tttext[i]=ttext[i];
@@ -335,7 +336,7 @@ int Read_Write_db_File(int mode) // 0 read, 1 write, 2 create from file, 3&4 rec
      Determine_Button_Box(i);
    }
    
-   if (mode==3) { // recreate rc data into string and rewrite dbfile, relationships
+   if ( mode == RECREATE ) { // recreate rc data into string and rewrite dbfile, relationships
     char ttext3[MAXSTRING*5];
     dbfileaccess.close();
     remove(dbfile);
@@ -350,9 +351,10 @@ int Read_Write_db_File(int mode) // 0 read, 1 write, 2 create from file, 3&4 rec
     outdbfile.put(charcoder('#', 0));
     ++startofrecords;
     outdbfile.close(); 
-   Read_Write_Relationships(1); }
+    Read_Write_Relationships(WRITE);
+   }
 
-   if (mode==4) { // only rewrite rcdata, relationships
+   if ( mode == RECREATERC ) { // only rewrite rcdata, relationships
     char ttext3[MAXSTRING*5];
     fstream outdbfile(dbfile, ios::in | ios::out | ios::binary);
     startofrecords=0;
@@ -365,10 +367,11 @@ int Read_Write_db_File(int mode) // 0 read, 1 write, 2 create from file, 3&4 rec
     outdbfile.put(charcoder('#', 0));
     ++startofrecords;
     outdbfile.close(); 
-   Read_Write_Relationships(1); }
+    Read_Write_Relationships(WRITE);
+   }
    
-   switch (mode) {
-    case 1:
+   switch ( mode ) {
+    case WRITE:
      for (i=0;i<(int)records.size();i++)
       Read_Write_Field(records[i], fieldserialtofieldposition(i), WRITE);
      if (currentfield<findfieldege() && currentfield<findfieldege(1))
@@ -376,7 +379,7 @@ int Read_Write_db_File(int mode) // 0 read, 1 write, 2 create from file, 3&4 rec
      for (i=0;i<5;i++)
       Read_Write_Current_Parameters(i, WRITE);
     break;
-    case 2:
+    case CREATEDB:
     // create dbfile from source file
      ifstream inrcfile(rcfile);
      ofstream outdbfile(dbfile, ios::out | ios::binary);
@@ -392,8 +395,9 @@ int Read_Write_db_File(int mode) // 0 read, 1 write, 2 create from file, 3&4 rec
      outdbfile.put(charcoder(c, 0)); }
      inrcfile.close();
      outdbfile.close();
-     Read_Write_Relationships(1);
-    break; }
+     Read_Write_Relationships(WRITE);
+    break;
+   }
     
    dbfileaccess.flush();
    dbfileaccess.close();
@@ -402,9 +406,9 @@ int Read_Write_db_File(int mode) // 0 read, 1 write, 2 create from file, 3&4 rec
 }
 
 // read external .db files to vectors
-int Read_External_Database(int externaldatabaseid)
+int Read_External_Database(int externaldatabaseid, int sortfield)
 {
-  int i, activefields=0, tfieldsperrecord=0;
+  int i, activefields=0;
   char c=0, ttext3[FIELDSIZE];
   string ttext;
   Field tfield2;
@@ -414,18 +418,22 @@ int Read_External_Database(int externaldatabaseid)
   ifstream externaldatabase(relationships[externaldatabaseid].extDbname, ios::binary);
   if (!externaldatabase)
    return -1;
+  strcpy(textDbname, relationships[externaldatabaseid].extDbname);
+  dummyfieldsperrecord=0;
 
   // clear all relationships, only requested in memory
-  for (i=0;i<(int) relationships.size();i++) {
+  for (i=0;i<(int)relationships.size();i++) {
    externalrecord[i].clear();
-  externalrecords[i].clear(); }
+   externalrecords[i].clear();
+  }
    
     while (c!='#') {
      externaldatabase.get(c);
      c=charcoder(c, 1);
-    ttext+=c; }
-    char tttext[(int) ttext.size()+1];
-    for (i=0;i<(int) ttext.size();i++)
+     ttext+=c;
+    }
+    char tttext[(int)ttext.size()+1];
+    for (i=0;i<(int)ttext.size();i++)
      tttext[i]=ttext[i];
     tttext[i]='\0';
     istringstream ttext2(tttext);
@@ -433,10 +441,11 @@ int Read_External_Database(int externaldatabaseid)
      c=ttext2.peek();
      if (c=='#' || c==EOF)
       break;
-     tfield2.id=tfieldsperrecord;
+     tfield2.id=dummyfieldsperrecord;
      Read_Record_Field(ttext2, tfield2);
-     ++tfieldsperrecord;
+     ++dummyfieldsperrecord;
     externalrecord[externaldatabaseid].push_back(tfield2); }
+    --dummyfieldsperrecord;
     p=externalrecord[externaldatabaseid].end(); // delete last read
     --p;
     externalrecord[externaldatabaseid].erase(p);
@@ -463,9 +472,21 @@ int Read_External_Database(int externaldatabaseid)
     --s;
     externalrecords[externaldatabaseid].erase(s);
     if (!activefields)
-   return -1;
+     return -1;
     
    externaldatabase.close();
+   dummyrecordsnumber=(int)externalrecords[externaldatabaseid].size()/dummyfieldsperrecord;
+   
+   // sort only fieldlist link
+   if ( sortfield > -1 ) {
+    int tsortresults[dummyrecordsnumber];
+    fillintarray( tsortresults, dummyrecordsnumber );
+    vector<Annotated_Field> texternalrecords;
+    sortrecords( sortfield, externalrecords[externaldatabaseid], dummyrecordsnumber, dummyfieldsperrecord, tsortresults );
+    texternalrecords=externalrecords[externaldatabaseid];
+    for (i=0;i<dummyrecordsnumber;i++)
+     externalrecords[externaldatabaseid][(i*dummyfieldsperrecord)+sortfield]=texternalrecords[(tsortresults[i]*dummyfieldsperrecord)+sortfield];
+   }
     
  return 0;
 }
@@ -1207,6 +1228,7 @@ int Show_Record_and_Menu()
     if (changedrecord) {
      lastfieldrepeated=-1;
      backupfields=currentfields;
+     fillintarray( fieldreferencerecords, MAXFIELDS, 0 );
      if ( shareddatabases[currentpage] == ON )
       Read_Entire_Record();
      for (i=0;i<fieldsperrecord;i++)
@@ -1259,7 +1281,7 @@ int Show_Record_and_Menu()
     
     // if changed field had script command in automatic value
     if ( previousfield != currentfield || changedrecord ) {
-      
+     
      if ( changedrecord == 0 ) {
       if ( autosave ) {
        if ( savedonedit != previousfield ) {
@@ -1837,7 +1859,7 @@ int Show_Record_and_Menu()
         else {
          Show_Menu_Bar(ERASE);
          if ( menubar == 1 && fieldhasdependancy != 2 )
-          Show_Message(1, bottombary, MAGENTA, "fieldlist entry. <up> and <down> arrows, <insert> to bring relevant data", 1750);
+          Show_Message(1, bottombary, MAGENTA, "fieldlist entry. <up> and <down> arrows, <insert> to bring relevant data", 750);
          if ( fieldhasdependancy!=2 ) {
           attron(A_BLINK);
           Show_Field(&records[(currentrecord*fieldsperrecord)+record[currentfield].fieldlist-1], 1);
@@ -2033,7 +2055,9 @@ int Show_Record_and_Menu()
      case 'r':
       if ( currentmenu == EXTERNALDB ) {
        References_Editor();
-      break; }
+       break;
+      }
+      // sort records
       for (i=0;i<fieldsperrecord;i++)
        Show_Field_ID(&records[(currentrecord*fieldsperrecord)+i]);
       findschedule.clear();
@@ -2046,29 +2070,34 @@ int Show_Record_and_Menu()
        Change_Color(BLUE);
        gotoxy(1, bottombary);
        tfindschedule.field_id=Scan_Input(1, 1, MAXFIELDS);
-       if (!tfindschedule.field_id)
+       if ( tfindschedule.field_id == 0 )
         break;
        --tfindschedule.field_id;
        Show_Menu_Bar(ERASE);
        Change_Color(BLUE);
        gotoxy(1, bottombary);
        Scan_Input();
+       if ( !strlen(input_string) )
+        strcpy(input_string, "ascending");
        strcpy(tfindschedule.texttolookfor, input_string);
-      findschedule.push_back(tfindschedule); }
+       findschedule.push_back(tfindschedule);
+      }
       for (i=0;i<(int) findschedule.size();i++) {
-       i1=0;
-       i1=(tolower(findschedule[i].texttolookfor[0])=='a') ? i1 : 1;
-      sortrecords(findschedule[i].field_id, tsortresults, i1); }
+       i1 = (tolower(findschedule[i].texttolookfor[0])=='a') ? 0 : 1;
+      sortrecords(findschedule[i].field_id, records, recordsnumber, fieldsperrecord, tsortresults, i1); }
       // rearrange records order
       for (i1=0,i=0;i<recordsnumber;i1++,i++)
        for (n=0;n<fieldsperrecord;n++)
         trecords.push_back(records[(tsortresults[i1]*fieldsperrecord)+n]);
       records.clear();
       records=trecords;
-      Read_Write_db_File(WRITE);
-      Read_Write_db_File();
+      if ( autosave ) {
+       Read_Write_db_File(WRITE);
+       Read_Write_db_File();
+      }
       Show_Menu_Bar(ERASE);
-      Show_Message(1, bottombary, BLUE, "database sorted", 1500); 
+      if ( findschedule.size() )
+       Show_Message(1, bottombary, BLUE, "database sorted", 1500); 
      break;
      case 'f':
       for (i=0;i<fieldsperrecord;i++)
@@ -2477,8 +2506,9 @@ int Show_Field(Annotated_Field *field, int flag) // 1 highlight, 2 only in scree
   }
   
    // field string to field size and lines
-   fieldhasdependancy=Generate_Dependant_Field_String(field, ttext);
-   if (fieldhasdependancy!=1)
+   if ( field->id == currentfield )
+    fieldhasdependancy=Generate_Dependant_Field_String(field, ttext);
+//    if (fieldhasdependancy != 1 )
     Generate_Field_String(field, ttext);
    if ( (tfield->type != STRING && field->number) || record[field->id].type==NUMERICAL || record[field->id].type==MIXEDTYPE || record[field->id].buttonbox==BUTTONSCREEN)
     addleadingzeros(ttext, field);
@@ -2753,38 +2783,31 @@ void Generate_Field_String(Annotated_Field *field, char ttext[MAXSTRING])
 // generate (if any) dependant field string
 int Generate_Dependant_Field_String(Annotated_Field *field, char ttext[MAXSTRING])
 {
-  int i, n;
-  dummyfieldsperrecord=0; 
-  dummyrecordsnumber=0;
+  int i, i1, n;
+  static int tdependantfield=-1;
   
+   externalreferencedatabase=0;
    // see if dependancy occurs
    for (i=0;i<(int)relationships.size();i++)
     if ( field->id == relationships[i].localFields[1]-1 )
      break;
    if ( i == (int)relationships.size() )
     return 0;
-   Read_External_Database(i);
-   
-   // read external database
-   dummyfieldsperrecord=externalrecord[i].size();
-   dummyrecordsnumber=externalrecords[i].size()/externalrecord[i].size();
-   if ( relationships[i].localFields[1] > 0 ) {
-    if (record[relationships[i].localFields[1]-1].fieldlist) {
-     relationships[i].extFields[0]=1;
-     relationships[i].localFields[0]=1;
-    }
-   }
-   if (relationships[i].extFields[0]<1 || relationships[i].extFields[1]<1 || relationships[i].localFields[0]<1 || relationships[i].localFields[1]<1 || relationships[i].extFields[0]>dummyfieldsperrecord || relationships[i].extFields[1]>dummyfieldsperrecord || relationships[i].localFields[0]>fieldsperrecord || relationships[i].localFields[1]>fieldsperrecord)
+   if ( isrelationshipproperlydictated(relationships[i]) == 0 )
     return 0;
-   
-   // destination local field is fieldlist, return success and keep dummyrecords for reference in Scan_Input
-   if ( relationships[i].localFields[1] ) {
-    if (record[relationships[i].localFields[1]-1].fieldlist) {
-     record[relationships[i].localFields[1]-1].fieldlist=relationships[i].extFields[1];
-     externalreferencedatabase=i;
-     return 2;
-    }
+   externalreferencedatabase=i;
+  
+   // does external database need to be reloaded
+   if ( strcmp(relationships[i].extDbname, textDbname) || (field->id == currentfield && tdependantfield != currentfield) ) {
+    Read_External_Database(i, relationships[i].extFields[1]-1);
+    tdependantfield=currentfield;
    }
+   
+   // fieldlist local[1], return success [2]
+   if ( relationships[i].localFields[1] )
+    if ( record[relationships[i].localFields[1]-1].fieldlist )
+     return 2;
+   
    // dependancy check, if localFields[1] is not fieldlist
    for (n=0;n<dummyrecordsnumber;n++)
     if ( relationships[i].extFields[0] && relationships[i].localFields[0] )
@@ -2993,7 +3016,7 @@ int Read_Write_Relationships(int mode) // 0 read all, 1 write/add
   dbfileaccess.seekg(startofrecords, ios::beg);
   dbfileaccess.seekp(startofrecords, ios::beg);
   
-   if (!mode) {
+   if ( mode == READ ) {
     relationships.clear();
     for (i=0;i<RELATIONSHIPSLENGTH;i++) {
      dbfileaccess.get(c);
@@ -3006,10 +3029,12 @@ int Read_Write_Relationships(int mode) // 0 read all, 1 write/add
      trelationships >> trelationship.extFields[1];
      trelationships >> trelationship.localFields[0];
      trelationships >> trelationship.localFields[1];
-    relationships.push_back(trelationship); } 
-    vector<Relationship>::iterator p=relationships.end();
+     relationships.push_back(trelationship);
+    }
+    vector<Relationship>::iterator p=relationships.end(); // delete last read
     --p;
-   relationships.erase(p); }
+    relationships.erase(p);
+   }
    
    else {
     for (i=0;i<(int) relationships.size();i++) {
@@ -3032,7 +3057,8 @@ int Read_Write_Relationships(int mode) // 0 read all, 1 write/add
      ttext[i]=SPACE;
     stringcodedecode(ttext, ttext);
     for (i=0;i<(int) strlen(ttext);i++)
-   dbfileaccess.put(ttext[i]); }
+     dbfileaccess.put(ttext[i]);
+   }
 
   dbfileaccess.flush();
   dbfileaccess.close();
@@ -3058,6 +3084,8 @@ void Load_Database(int pagenumber)
   strcpy(dbfile, pages[pagenumber]);
   Read_Write_db_File();
   Initialize_Database_Parameters();
+  if ( relationships.size() )
+   Read_External_Database(0);
 }
 
 // pages selector - editor
