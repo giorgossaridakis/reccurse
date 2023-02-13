@@ -3,10 +3,8 @@ a terminal record creator with ncurses
 
 filemaker type with many customizable options
 
-compile with 
-Make or sh ./build.sh
+Reccurse is reaching it's release phase. I will be uploading the final 1.00 version code later on.
 
-Reccurse is still in the expansion phase, yet fully functional and quite rich. 
-Consider this a BETA version.
+Executable has been dynamically compiled on Ubuntu 22.04 LTS.
 
-the manual is not yet completed, for any questions, please contact me.
+my email is [giorgossaridakis@gmail.com]
