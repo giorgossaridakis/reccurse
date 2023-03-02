@@ -7,6 +7,6 @@ Reccurse is reaching it's release phase. I will be uploading the final 1.00 vers
 
 Executables has been compiled on Ubuntu 22.04 LTS, OpenBSD 7.2, Fedora Workstation 36-37.
 
-**caution: rename your executable to reccurse
+***caution: rename your executable to reccurse
 
 my email is [giorgossaridakis@gmail.com]
