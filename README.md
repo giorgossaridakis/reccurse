@@ -9,4 +9,6 @@ Executables has been compiled on Ubuntu 22.04 LTS, OpenBSD 7.2, Fedora Workstati
 
 ***caution: rename your executable to reccurse .It must be executed from it's containing directory.
 
+manual coming up soon/
+
 my email is [giorgossaridakis@gmail.com]
