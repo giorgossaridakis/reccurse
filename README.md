@@ -11,8 +11,6 @@ If your OS is different from all the above, I will build it for you.
 
 ***caution: rename your executable to reccurse .It must be executed from it's containing directory.
 
-manual coming up soon.
-
 Reccurse is proprietary software.
 
 my email is [giorgossaridakis@gmail.com]
