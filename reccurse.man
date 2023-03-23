@@ -1,0 +1,249 @@
+reccurse manual
+
+starting up
+-----------
+Reccurse is a "filemaker" type program for the terminal. It is basically a  database with  customizable page setup for it's fields. Each record has the same number of fields and each field is given with a number of parameters. Reccurse doesn't keep temporary files, all operations are done directly on the files involved. All this classifies it as one-of-a-kind application
+
+there are three ways to start a new database:
+1. reccurse existing.rc:
+this will prompt the program to read page structure from a text file with .rc extension. The program will then create the corresponding .db file. this is the file where everything will be stored. reccurse by default saves changes in records in real time, so it's a good idea to always keep a backup of this
+file, to prevent loss of data.
+2. reccurse existing.db:
+if you have a ready .db file, the program will read from it directly, it will not look for existing.rc
+3. reccurse nonexisting reccurse will open and ask for verification of the filename. consequently, it
+will create a .rc file with a sample field and the corresponding .db file
+4. reccurse existing1.db existing2.db existing3.db etc
+reccurse will start up with the first existing database file, named page 1.  The pages menu is accessed with ctrl+w, navigated with cursor keys. <ins>ert new and <del>ete selectable database pages is an option as well.
+5. reccurse {locale} existing1 existing2 etc will open the requested databases in the locale requested. check your installed locales with $locale -a
+
+locales
+-------
+you can usually view the locales installed in your system with $locale -a
+Reccurse offers the ability to switch between your installed locales with alt+j ( when in edit menu ). different locales affect formatting of dates, money, numbers a % in a field's automatic value will cause the contents to be formatted according to the current locale's monetary format. it can be applied at the start of a record's contents, for example %123456.78
+
+
+directory viewer
+----------------
+alt+k will take you to the directory viewer, ctrl+k when the program is asking for a filename. enter will select a file
+
+mouse usage
+-----------
+clicking on a field will highlight it, double click will edit it, if in edit mode. if mouse is active: right mouse click acts as ESC, double click on items of the bottom bar will activate them.
+mouse capture is toggled with ctrl+l
+
+find routine
+------------
+when find is selected, user is prompted to enter a field number, then a search criteria (asterisks imply any text until the next alphanumeric character). The sequence is repeated until a carriage return is given. This allows for multiple searches, each sequential will operate on the previous find records
+that match the requested criteria. ESC will show all records again
+
+sort records
+------------
+When sort is selected, user is prompted to enter a field number, then <a>scending or <d>escending order. the sequence is repeated and records are sorted each time according to the requested sort parameters
+
+autosave
+--------
+this will automatically save changes you make into fields if enabled. When attributes have been changed through screen buttons or the field setup menu, you will be asked whether to save or not. keep in mind that adding or deleting fields or entire records will be saved either autosave is enabled or not
+The same goes for joining or dividing fields.
+
+field types
+-----------
+Reccurse recognizes the following types for fields:
+1 - numerical, real or integer. number of decimal places can be declared
+2 - calendar field, a snapshot of date and time. automatic value can be
+declared to change the calendar/time format shown for every field (see below)
+3 - string, alphanumerical
+4 - mixed type, alphanumerical or numerical which allows calculations
+5 - variable, a field that is used to keep variables
+6 - program field, a field with title 0 to 9 that can keep a series of keys
+to be pressed automatically, a script key
+7 - clock, a live calendar/clock. automatic value can be utilized, see
+calendar above
+8 - user account, user and access level
+
+secondary field types
+---------------------
+by fulfilling certain criteria, a field can assume a subtype, without escaping it's "mother" type, for example a string field. these subtypes are:
+1. tickbox - if an editable field is 1x1 in size, it becomes one. Pressing <space> while on edit mode will mark/unmark an X in it
+2. buttonbox - is a field with a pressable key in it, used to construct screen calculators. to define a buttonbox, you'll need a field with an automatic value of one of the following: "0", "1", "2", "3", "4", "5", "6", "7", "8", "9", "/", "*", "-", "+", "^", ",", ".", "(", ")", "=", "sin", "cos", "tan", "cotan", "sqr", "abs", "log", "AC", "DEL", "EXEC". A button box must has a field reference to a field in the same database that will become the screen of the calculator Pressing <space> on a buttonbox while on edit mode will punch that key to it's corresponding screen buttonscreen - a field referenced by one or more button boxes. The field must have adequate length to display desired number of digits/functions
+3. buttoncommand - a pressable with <space> field that will execute a script command (see below). A script command is prefixed with @ . For example @file script . The characters in the automatic value before @ will be displayed automatically in that field's place, as with all automatic
+values. You can set-up a buttoncommand by placing a script command in that field's automatic value and making the field reference it's own number. a buttoncommand subtype must be self-referenced
+4. automatic script - is a field that will automatically execute a script command when record is entered. autoscript fields must be declared with size x and y of 0 and with reference (fieldreference) to themselves. the script command to be executed is again taken from the automatic value. you can choose either to execute a script file or a single command. repetitions play a role in these fields, if it set to 0, the automatic value command will be played indefinitely, in each second cycle. if it's set to 1..64, it will be executed the same number of times before it's stopped. if it's set to 65, it will execute once. Naturally, you can have more than one automatic script fields running. they will be executed one by one, by order of id
+5. automatic bool is a secondary type that will evaluate a formula and execute a command. this formula can be numerical or alphanumerical and the command always starts with @ .for example: @enter correct will replace the target record with "correct"
+6. user account is a subtype Reccurse uses to determine access levels for it's users. now the program doesn't have a login screen, or require a password, the user name is your system's username. it's obvious that you've entered your password to login. if you are the owner of the executable ( reccurse ), then you automatically gain ownership level, except if stated otherwise in a user account field. but if you are executing reccurse that is owned by someone else, then you automatically assume level 1, which basically allows a user to browse the first record while on main submenu. levels are: OWNER 999, SUPERVISOR 899, PRIVILEGED 799, EDITOR 99, READER 9, LIMITED, LOCKEDOUT 0. the names are self-explanatory. further customization is possible, upon request from the author.
+
+Above field types and secondary types can be declared implicitly in the database editor, they can be altered ( selection no. 13 ) or can be switched with [ (type) and ] (subtype)
+
+field attributes
+----------------
+attributes for field titles and contents can be declared as active or not (0 1) in the .rc file or switched on/off during execution.
+it's a nine digit number:
+  0 1        0 1      0 1      0 1      0 1    0 1    0 1   0 1       0 1
+normal   standout  underline reverse   blink   dim   bold  protect  invisible
+
+changing attributes
+-------------------
+while browsing, it's possible to alter attributes. /*-+.!@, will toggle respective attributes for your current field. # will change the alteration target: text, title, box
+
+automatic values
+----------------
+automatic value is the value the field in the current record will be given automatically. it can have a formula format, with numerical or text functions. an automatic value of a field can be a script command, if the field's subtype is automatic script, the time option is:
+1 execute on entry, 2 execute on exit, 3 execute both on entry and exit. ctrl+p will ask for the current field's automatic value
+
+automatic value exceptions
+--------------------------
+an alignment request, for example \p2 in the field's automatic value will always align that field's text to the middle.
+a single % in a numerical field's automatic value will format the field according to the system locale
+
+clocks
+------
+a clock field will display the time. it's possible to select a 12 hour or a 24 hour clock with the database editor. automatic values with time format will change the clock's formatting. pressing + or - on a clock record will add/substract 30 mins from it's automatic value. this is useful for world clocks. / will reset to your local time
+
+adjoining fields
+----------------
+since the maximum length for a field is 80 characters ( and if more than that, that field will become non-editable ), it's possible to join fields together. adding a > at the end of your input and a < at the start of the next neighbour field ( horizontal or vertical neighbour ) will link these two together. this is also possible for neighbouring fields which reference themselves, they will become joined. fields that reference themselves and are neighbours, also become adjoining.
+adjoining fields can be edited together, although they will remain separate after editing. copy and paste will regard adjoining fields as one
+
+multiple choice
+---------------
+if the words in a  record are separated with spaces and a space exists before the first word, then space will toggle highlight in each next word, returning to the first on end. this is useful in calendar fields, but can be applied anywhere
+
+field / list references
+----------------------------
+a ( reference for a field ) list entry above 0 means that field can collect values from the field declared. up and down arrows during editing will summon them. <insert> will copy the value of the field referenced in the same record. a field that references the same id as it's own is a self-referenced field, used in field subtypes and adjoining fields
+
+external references
+-------------------
+your database file can have references to other database files. from edit menu, INS key will bring selection of externa<l> databases. The References Editor is relatively simple and things go like this -> you have an external field (to the current database or other) to be measured
+for equality with a local field. once this occurs, the local reference field will automatically bring up the external reference field's contents. If local destination field is a list, equalized fields will not be taken into account. The local field will collect selectable values from the external reference field, no matter it's reference id. There is help available here also.
+External database filenames can be up to 25 characters in length, including the suffix .db 3 characters. It's a good idea to have all database pages files in the same directory, to avoid long path in filenames
+
+formulas
+--------
+if formula is activated (1) then an entry of (12345+54321)/(1*0.33443) will  produce a numerical result in a numerical or a mixed type field. formula entries can also be given in reverse polish calculator notation,  i.e. (12345 12345 +) (1*0.33433) / .
+#5 is a reference to the value of the 5th field in the same record as the one being edited. A formula of #5+12345 will calculate <what's in field 5>+12345. Mathematical functions have been implemented: exp(a,b), sin(a), cos(a), tan(a), cotan(a), sqr(a), abs(a), log(a), 1 < 1, 1 >=0.1
+formulas for string fields can also be used: examples: #5 will collect the text value from field 5.
+string functions: mid$(text or field reference, start character, number of characters), mid$(hello, 1, 2), left$(text, 2), right$(text, 2), toupper$(text), tolower$(text), cmp(test, #5), datetime$(format), date$, time$
+
+system variables
+----------------
+they can be evoked through any record formula or from script. %version -> current version, %records -> number of records, %record -> current record number, %fields -> number of fields per record, %field -> current field number,  %page -> current database name, %date -> current date, %time -> current time, %connections -> number of program instances
+
+suffixes
+--------
+a suffix (max 3 chars) will be appended to end of a field's contents if that field is of type 1 (numerical) or 4 (mixed type)
+
+fraction adjustment
+-------------------
+when browsing on a numerical record ( with formula enabled ), [ and ] will substract/add a numerical fraction. { and } decrease/increase the current fraction adjustment. alt+q and alt+w decrease/increase the program's refresh rate with that fraction. this is useful for slow or crowded systems
+
+filenames
+---------
+they can reach up to 24 characters length
+
+programs
+--------
+alt+0..9 will initiate a program (a series of keystrokes). if not already stored, user will be prompted to enter that key series. separate with -, example up-a-left-enter
+
+importing/exporting
+-------------------
+are possible, both with Reccurse .db files and with comma separated value files .csv .In the later case, the .csv file must comply with your database fields per record. A newline character has to be located after n entries, where n is the same as your database fields per record
+
+script commands
+---------------
+These can be called with a buttoncommand field (see above). They are single 
+word commands or command <argument> types.
+
+Single word commands:
+START: will create a label named START in your script text file
+push - push space on the current field
+copy - copy current field entry to the clipboard
+paste - paste clipboard contents to current field
+end - signal for end of a loop
+compare - if the contents of the current field are the same as in the  clipboard, execute next line of a script file. otherwise, skip it
+greater - like compare, only comparison is done with current record being  greater in number than the clipboard
+smaller - like above, comparison is done with currrent record being smaller in numerical value than the clipboard
+clear - delete all variable fields from the databse
+autosave - will toggle autosave on/off
+quit - obvious, quit the program
+stop - stop the running script
+pass - do nothing, go to the next line
+pause - stop and wait for key hit
+id - show current field's id
+flash - flash current field
+save - save the database
+load - load the database anew
+activate - toggle current field to active/deactivated
+highlight - toggle highlight record during script on/off
+
+Commands with arguments:
+file - file <script> will execute a text file named script that contains script commands. A buttoncommand field will usually be used for that purpose
+record - record 10 will take you to record number 10 in the current database
+field - field 10 will take you to field number 10 in the current record
+enter - enter <entry text> will write your text to the current field
+append - append <entry text> will append your text to the current field
+variable - variable test will create/rewrite a variable named (titled) 
+test with the the value contained in the current field
+variabletoclipboard - @variabletoclipboard test will copy the contents of the variable titled test to the clipboard
+delete - delete test will delete the variable field titled test
+loop - loop 5 will execute all commands below until @pass for 5 times
+wait - wait 4 will pause for 4 seconds
+goto - goto START will take the pointer to the label named START
+return - return from last goto
+page - page 3 will change the current database page to the 3rd
+color - color 25 will change the current field's color to 25 (see below)
+sleep - sleep 2 will set sleep time between commands to 2 seconds
+menu - menu 3 will take you to menu 3. acceptable values: 0 1 2 3 5
+key - key l will push the l key on the current menu
+keys - keys a-b-c-d will push keys given one by one. acceptable keys are all keyboard keys and -> down, up, left, right, shift_left, shift_right, escape or esc, enter, backspace or bs, delete or del, insert or ins, home, end, copy, paste,
+tab, shift_tab, space
+push <field> will push space on <field>
+move - move field: move up|down|left|right|upleft|upright|downleft|downright
+bar - toggle menu bar, bar 0..3 (hide = 0, show menu = 1, record info = 2, record text = 3)
+textcolor 0..64 change record text color
+titlecolor 0..64 change record title color
+boxcolor 0..64 change record box color
+textattributes 010010010 will change the current field's attributes
+titleattributes 010010010 will change the current field's title attributes
+eval - eval #01=#02 ..if evaluated to TRUE will execute next script line, otherwise it will be skipped
+locale <locale name> will change the current locale
+write <filename> will output ( append ) the current record to file
+
+ctrl+s in edit mode will ask for a script file to be played.
+
+the editor
+----------
+ctrl+t and u will take you to the database field editor. choices follow on screen which will determine the field parameters, one field at a time you can edit these parameters here, or declare them in the database .rc file
+
+shared database
+---------------
+Reccurse is designed to operate directly on the database file. it doesn't keep temporary files, so any writing if autosave is enabled and any database alteration is done on the .db file. on the same time, different program instances from the same or different user may operate directly on the same database file. ctrl+q toggles notifications of change from/to other program instances and ctrl+d displays the possible connections to the database file. if the program instances exceed one full page, autoload for every record will automatically be activated
+
+.rc file structure
+------------------
+Here is a sample .rc file that you should have with the code->
+
+sample reccurse .rc file
+
+begin and end with character seen below, so no others allowed in strings
+~ is absence of string 0 is absence of number.
+
+structure of record: <title (12 chars max), title_pos (0 on top, 1 right, 2 under, 3 left, 4 inside field), title attributes, title color, pos_x, pos_y, size_x, size_y, attributes, color, box or not, box color, type (0 int or double 1 date 2 string 3 mixed 4 variable 5 program), number of decimals, suffix if number or formula, formula or not, field list reference (0 for none), editable, active, auto enter value>
+`
+date&time 0 000000000 3 10 5 10 2 000000000 5 1 1 1 2 $ 0 0 1 1 .
+string 2 000100100 2 20 15 9 2 001010000 1 1 2 2 2 !!! 0 0 1 1 Giorgos
+formula 3 000000000 34 40 5 8 1 000000000 2 1 4 0 2 eur 1 0 0 1 22_+_22
+fieldlist 0 000010000 1 40 15 9 2 001010000 6 1 5 2 2 . 0 1 1 1 .
+`
+
+Reccurse needs to locate a first ` then a new line character. all field parameters must also end with a new line character. at the end of field declarations, a ` and new line character are expected as well. the comments above are give or take self-explanatory. spaces in the .rc file are strictly to be replaced by underscores. hello world -> hello_world.
+
+ 
+compiling
+---------
+Reccurse is proprietary, but free distribution is allowed. Altering of the executable is not permitted.
+
+The binary file is *locked* and will not tolerate modifications. Changing the program's filename to anything other than reccurse will stop it from working.
+
+sole non-static requirement for operation is libncurses-dev.
+
+Written by Giorgos Saridakis.
