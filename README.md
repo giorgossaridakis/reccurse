@@ -5,13 +5,13 @@ filemaker type with many customizable options
 
 Reccurse has reached distribution phase. I think it's one of a kind, considering all years of computer software.
 
-Executables has been compiled on Ubuntu 22.04 LTS, OpenBSD 7.2, Fedora Workstation 36-37 and Arch Linux 2023.
+Executables has been statically compiled on Ubuntu 22.04 LTS, OpenBSD 7.2.
 
 If your OS is different from all the above, I will build it for you.
 
 reccurse in this repository should run on just about every Linux platform.
 
-***caution: rename your executable to reccurse .It must be executed from it's containing directory.
+***caution: rename your executable to reccurse .
 
 Reccurse is proprietary software.
 
